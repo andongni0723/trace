@@ -1,0 +1,128 @@
+import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:people_todolist/core/database/database.dart';
+import 'package:people_todolist/features/people/providers/people_provider.dart';
+import 'package:people_todolist/shared/pages/messages_home_page.dart';
+
+class TestAssetLoader extends AssetLoader {
+  const TestAssetLoader();
+
+  static const Map<String, dynamic> _zhTw = {
+    'app': {'title': 'Snap Ledger'},
+    'messages': {
+      'todoTitle': '代辦事項',
+      'newMessage': '新增訊息',
+      'searchHint': '搜尋訊息',
+      'people': {
+        'cardPreview': '點一下查看這個人的待辦清單。',
+        'empty': '還沒有朋友，點右下角新增第一位。',
+        'loadError': '讀取朋友資料失敗。',
+      },
+      'tabs': {'all': '全部', 'unread': '未讀', 'groups': '群組'},
+      'sample': {
+        'mayaPreview': '線框稿已完成，我也補上更新後的 onboarding 流程。',
+        'productTeamPreview': 'Sprint review 改到下午 3:30，請先確認議程。',
+        'alexPreview': 'API 規格看起來沒問題，我午餐後會把修補版送出。',
+        'familyPreview': '這週五去阿嬤家吃晚餐，別遲到。',
+        'designPreview': '新的字級系統很不錯，我們應該再把空狀態簡化。',
+      },
+    },
+  };
+
+  @override
+  Future<Map<String, dynamic>> load(String path, Locale locale) async {
+    return _zhTw;
+  }
+}
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('messages home page renders key sections', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          peopleProvider.overrideWith(
+            (ref) => Stream.value([
+              PeopleData(
+                id: 'maya',
+                name: 'Maya Chen',
+                colorValue: 0xFF5B6CF0,
+                createdAt: DateTime(2026, 3, 25),
+                updatedAt: DateTime(2026, 3, 25),
+              ),
+              PeopleData(
+                id: 'alex',
+                name: 'Alex Johnson',
+                colorValue: 0xFFE67E22,
+                createdAt: DateTime(2026, 3, 25),
+                updatedAt: DateTime(2026, 3, 25),
+              ),
+            ]),
+          ),
+          personPreviewTodoProvider.overrideWith((ref, personId) {
+            return Stream.value(
+              Todo(
+                id: 'todo-$personId',
+                personId: personId,
+                title: personId == 'maya' ? 'Review onboarding copy' : 'Confirm API edge cases',
+                note: null,
+                starred: true,
+                dueAt: null,
+                done: false,
+                createdAt: DateTime(2026, 3, 25),
+                updatedAt: DateTime(2026, 3, 25),
+              ),
+            );
+          }),
+          personOpenTodoCountProvider.overrideWith((ref, personId) {
+            return Stream.value(personId == 'maya' ? 3 : 1);
+          }),
+        ],
+        child: EasyLocalization(
+          supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+          path: 'unused',
+          assetLoader: const TestAssetLoader(),
+          fallbackLocale: const Locale('zh', 'TW'),
+          startLocale: const Locale('zh', 'TW'),
+          child: Builder(
+            builder: (context) {
+              return MaterialApp(
+                supportedLocales: context.supportedLocales,
+                localizationsDelegates: context.localizationDelegates,
+                locale: context.locale,
+                home: const MessagesHomePage(
+                  enableStartupUpdateCheck: false,
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('代辦事項'), findsOneWidget);
+    expect(find.text('搜尋訊息'), findsOneWidget);
+    expect(find.text('全部'), findsOneWidget);
+    expect(find.text('未讀'), findsOneWidget);
+    expect(find.text('群組'), findsOneWidget);
+    expect(find.text('Maya Chen'), findsOneWidget);
+    expect(find.text('Alex Johnson'), findsOneWidget);
+    expect(find.text('Review onboarding copy'), findsOneWidget);
+    expect(find.text('Confirm API edge cases'), findsOneWidget);
+    expect(find.text('3'), findsOneWidget);
+    expect(find.text('1'), findsOneWidget);
+    expect(find.byType(FloatingActionButton), findsOneWidget);
+    expect(find.text('最近對話'), findsNothing);
+    expect(find.text('置頂更新'), findsNothing);
+    expect(find.text('09:42'), findsNothing);
+    expect(find.text('已讀'), findsNothing);
+  });
+}

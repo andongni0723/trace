@@ -1,0 +1,70 @@
+key,zh_TW,en
+app.title,Snap Ledger,Snap Ledger
+appSettings.title,設定,Settings
+appSettings.section.appearance,外觀,Appearance
+appSettings.section.app,App,App
+appSettings.section.data,資料,Data
+appSettings.themeMode.title,主題,Theme
+appSettings.themeMode.system,跟隨系統,System
+appSettings.themeMode.light,淺色,Light
+appSettings.themeMode.dark,深色,Dark
+appSettings.checkUpdate.title,檢查更新,Check for updates
+appSettings.checkUpdate.subtitle,檢查 GitHub Release 是否有新版本。,Check GitHub Releases for a newer version.
+appSettings.checkUpdate.availableTitle,發現新版本 {version},New version {version} available
+appSettings.checkUpdate.currentVersion,目前版本 {version},Current version {version}
+appSettings.checkUpdate.releaseNotes,版本說明,Release notes
+appSettings.checkUpdate.noReleaseNotes,這個版本沒有提供更新說明。,No release notes were provided for this version.
+appSettings.checkUpdate.downloadTitle,下載安裝檔,Download build
+appSettings.checkUpdate.releasePageTitle,查看 GitHub Release,Open GitHub release
+appSettings.checkUpdate.fetchError,目前無法取得最新版本資訊。,Unable to fetch the latest release information right now.
+appSettings.checkUpdate.upToDate,目前已經是最新版本。,You're already on the latest version.
+appSettings.checkUpdate.openLinkError,無法開啟外部連結。,Unable to open the external link.
+appSettings.exportData.title,匯出資料,Export data
+appSettings.exportData.subtitle,將人物、待辦與設定匯出成備份檔。,Export people, todos, and settings as a backup file.
+appSettings.exportData.success,已開啟資料匯出分享。,Backup export is ready to share.
+appSettings.exportData.error,匯出資料失敗。,Failed to export data.
+appSettings.importData.title,匯入資料,Import data
+appSettings.importData.subtitle,從備份檔匯入人物、待辦與設定。,Import people, todos, and settings from a backup file.
+appSettings.importData.success,資料匯入完成。,Data import completed.
+appSettings.importData.invalidFormat,這不是 people_todolist 的備份格式，已取消匯入。,This file is not a valid people_todolist backup. Import was cancelled.
+appSettings.importData.error,匯入資料失敗。,Failed to import data.
+time.todayAt,今天 {time},Today {time}
+time.tomorrowAt,明天 {time},Tomorrow {time}
+time.yesterdayAt,昨天 {time},Yesterday {time}
+time.inMinutes,{count}分鐘後,in {count} min
+time.inHours,{count}小時後,in {count} hr
+time.minutesAgo,{count}分鐘前,{count} min ago
+time.hoursAgo,{count}小時前,{count} hr ago
+messages.todoTitle,代辦事項,To-do
+messages.newMessage,新增訊息,New message
+messages.addFriend.title,新增朋友,Add friend
+messages.addFriend.create,建立,Create
+messages.addFriend.nameLabel,姓名,Name
+messages.addFriend.avatarColorLabel,頭像顏色,Avatar color
+messages.searchHint,搜尋訊息,Search messages
+messages.tabs.all,全部,All
+messages.tabs.unread,未讀,Unread
+messages.tabs.groups,群組,Groups
+messages.people.cardPreview,點一下查看這個人的待辦清單。,Tap to open this person's to-do list.
+messages.people.empty,還沒有朋友，點右下角新增第一位。,No friends yet. Add your first one from the button.
+messages.people.noSearchResult,找不到符合搜尋的人。,No matching people found.
+messages.people.loadError,讀取朋友資料失敗。,Unable to load people.
+personTodo.noteTitle,人物備註,Person note
+personTodo.noteEmpty,還沒有記錄這個人的備註。,No note has been recorded for this person yet.
+personTodo.noteFallback,"{name} 的個人備註尚未建立，最後更新時間是 {date}。","A detailed note for {name} has not been added yet. Last updated on {date}."
+personTodo.todoTitle,待辦清單,To-do list
+personTodo.todoEmpty,目前還沒有待辦事項。,There are no to-dos yet.
+personTodo.todoLoadError,讀取待辦清單失敗。,Unable to load the to-do list.
+personTodo.personLoadError,讀取人物資料失敗。,Unable to load this person.
+personTodo.personMissing,找不到這個人物資料。,This person could not be found.
+personTodo.addTodo.titleHint,新增待辦事項,Add a new task
+personTodo.addTodo.noteHint,新增備註,Add note
+personTodo.addTodo.save,儲存,Save
+personTodo.addTodo.update,更新,Update
+personTodo.peoplePicker.title,選擇參與者,Choose people
+personTodo.peoplePicker.done,Done,Done
+messages.sample.mayaPreview,線框稿已完成，我也補上更新後的 onboarding 流程。,Wireframes are ready. I also added the updated onboarding flow.
+messages.sample.productTeamPreview,"Sprint review 改到下午 3:30，請先確認議程。","Sprint review moved to 3:30 PM. Please check the agenda."
+messages.sample.alexPreview,API 規格看起來沒問題，我午餐後會把修補版送出。,The API contract looks good. Shipping the patch after lunch.
+messages.sample.familyPreview,這週五去阿嬤家吃晚餐，別遲到。,Dinner at grandma's place this Friday. Don't be late.
+messages.sample.designPreview,新的字級系統很不錯，我們應該再把空狀態簡化。,Loved the new type scale. We should simplify the empty state.
