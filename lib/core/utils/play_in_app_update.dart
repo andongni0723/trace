@@ -8,9 +8,7 @@ enum InAppUpdateFlow { none, immediate, flexible }
 class PlayInAppUpdate {
   PlayInAppUpdate._();
 
-  static const MethodChannel _channel = MethodChannel(
-    'people_todolist/in_app_update',
-  );
+  static const MethodChannel _channel = MethodChannel('trace/in_app_update');
 
   static Future<InAppUpdateFlow> checkForUpdate() async {
     if (!Platform.isAndroid) return InAppUpdateFlow.none;
@@ -23,9 +21,7 @@ class PlayInAppUpdate {
         _ => InAppUpdateFlow.none,
       };
     } on PlatformException catch (error) {
-      debugPrint(
-        '[InAppUpdate] check skipped: ${error.code} ${error.message}',
-      );
+      debugPrint('[InAppUpdate] check skipped: ${error.code} ${error.message}');
       return InAppUpdateFlow.none;
     }
   }
@@ -42,4 +38,3 @@ class PlayInAppUpdate {
     }
   }
 }
-

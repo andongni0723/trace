@@ -41,24 +41,20 @@ final personOpenTodoCountProvider = StreamProvider.family<int, String>((
   ref,
   personId,
 ) {
-  return ref.watch(todosDaoProvider).watchTodosForPerson(personId).map(
-        (todos) => todos.where((todo) => !todo.done).length,
-      );
+  return ref
+      .watch(todosDaoProvider)
+      .watchTodosForPerson(personId)
+      .map((todos) => todos.where((todo) => !todo.done).length);
 });
 
 final peopleActionsProvider = Provider<PeopleActions>((ref) {
-  return PeopleActions(
-    ref: ref,
-    uuid: const Uuid(),
-  );
+  return PeopleActions(ref: ref, uuid: const Uuid());
 });
 
 class PeopleActions {
-  PeopleActions({
-    required Ref ref,
-    required Uuid uuid,
-  })  : _ref = ref,
-        _uuid = uuid;
+  PeopleActions({required Ref ref, required Uuid uuid})
+    : _ref = ref,
+      _uuid = uuid;
 
   final Ref _ref;
   final Uuid _uuid;
@@ -74,16 +70,25 @@ class PeopleActions {
   Future<void> insertPerson({
     required String name,
     required Color avatarColor,
+    String? avatarPath,
   }) async {
     final trimmedName = name.trim();
     if (trimmedName.isEmpty) {
       return;
     }
 
-    await _ref.read(peopleDaoProvider).insertPerson(
-          id: _uuid.v4(),
+    final personId = _uuid.v4();
+    final storedAvatarPath = await _ref
+        .read(personAvatarStorageProvider)
+        .persistAvatar(personId: personId, sourcePath: avatarPath);
+
+    await _ref
+        .read(peopleDaoProvider)
+        .insertPerson(
+          id: personId,
           name: trimmedName,
           colorValue: avatarColor.toARGB32(),
+          avatarPath: storedAvatarPath,
         );
   }
 }

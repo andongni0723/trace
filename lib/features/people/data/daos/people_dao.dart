@@ -34,12 +34,14 @@ class PeopleDao extends DatabaseAccessor<AppDatabase> with _$PeopleDaoMixin {
     required String id,
     required String name,
     required int colorValue,
+    String? avatarPath,
   }) {
     return into(people).insert(
       PeopleCompanion.insert(
         id: id,
         name: name,
         colorValue: colorValue,
+        avatarPath: Value(avatarPath),
       ),
     );
   }
@@ -48,11 +50,13 @@ class PeopleDao extends DatabaseAccessor<AppDatabase> with _$PeopleDaoMixin {
     required String id,
     required String name,
     required int colorValue,
+    String? avatarPath,
   }) {
     return insertPerson(
       id: id,
       name: name,
       colorValue: colorValue,
+      avatarPath: avatarPath,
     );
   }
 
@@ -60,11 +64,13 @@ class PeopleDao extends DatabaseAccessor<AppDatabase> with _$PeopleDaoMixin {
     required String id,
     required String name,
     required int colorValue,
+    Value<String?> avatarPath = const Value.absent(),
   }) {
     return (update(people)..where((table) => _matchesId(id))).write(
       PeopleCompanion(
         name: Value(name),
         colorValue: Value(colorValue),
+        avatarPath: avatarPath,
         updatedAt: Value(DateTime.now()),
       ),
     );
@@ -74,12 +80,14 @@ class PeopleDao extends DatabaseAccessor<AppDatabase> with _$PeopleDaoMixin {
     required String id,
     required String name,
     required int colorValue,
+    Value<String?> avatarPath = const Value.absent(),
   }) {
     return into(people).insertOnConflictUpdate(
       PeopleCompanion(
         id: Value(id),
         name: Value(name),
         colorValue: Value(colorValue),
+        avatarPath: avatarPath,
         updatedAt: Value(DateTime.now()),
       ),
     );

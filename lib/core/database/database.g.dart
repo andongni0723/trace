@@ -41,6 +41,17 @@ class $PeopleTable extends People with TableInfo<$PeopleTable, PeopleData> {
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _avatarPathMeta = const VerificationMeta(
+    'avatarPath',
+  );
+  @override
+  late final GeneratedColumn<String> avatarPath = GeneratedColumn<String>(
+    'avatar_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -70,6 +81,7 @@ class $PeopleTable extends People with TableInfo<$PeopleTable, PeopleData> {
     id,
     name,
     colorValue,
+    avatarPath,
     createdAt,
     updatedAt,
   ];
@@ -106,6 +118,12 @@ class $PeopleTable extends People with TableInfo<$PeopleTable, PeopleData> {
     } else if (isInserting) {
       context.missing(_colorValueMeta);
     }
+    if (data.containsKey('avatar_path')) {
+      context.handle(
+        _avatarPathMeta,
+        avatarPath.isAcceptableOrUnknown(data['avatar_path']!, _avatarPathMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -139,6 +157,10 @@ class $PeopleTable extends People with TableInfo<$PeopleTable, PeopleData> {
         DriftSqlType.int,
         data['${effectivePrefix}color_value'],
       )!,
+      avatarPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}avatar_path'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -160,12 +182,14 @@ class PeopleData extends DataClass implements Insertable<PeopleData> {
   final String id;
   final String name;
   final int colorValue;
+  final String? avatarPath;
   final DateTime createdAt;
   final DateTime updatedAt;
   const PeopleData({
     required this.id,
     required this.name,
     required this.colorValue,
+    this.avatarPath,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -175,6 +199,9 @@ class PeopleData extends DataClass implements Insertable<PeopleData> {
     map['id'] = Variable<String>(id);
     map['name'] = Variable<String>(name);
     map['color_value'] = Variable<int>(colorValue);
+    if (!nullToAbsent || avatarPath != null) {
+      map['avatar_path'] = Variable<String>(avatarPath);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -185,6 +212,9 @@ class PeopleData extends DataClass implements Insertable<PeopleData> {
       id: Value(id),
       name: Value(name),
       colorValue: Value(colorValue),
+      avatarPath: avatarPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(avatarPath),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -199,6 +229,7 @@ class PeopleData extends DataClass implements Insertable<PeopleData> {
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       colorValue: serializer.fromJson<int>(json['colorValue']),
+      avatarPath: serializer.fromJson<String?>(json['avatarPath']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -210,6 +241,7 @@ class PeopleData extends DataClass implements Insertable<PeopleData> {
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
       'colorValue': serializer.toJson<int>(colorValue),
+      'avatarPath': serializer.toJson<String?>(avatarPath),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -219,12 +251,14 @@ class PeopleData extends DataClass implements Insertable<PeopleData> {
     String? id,
     String? name,
     int? colorValue,
+    Value<String?> avatarPath = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => PeopleData(
     id: id ?? this.id,
     name: name ?? this.name,
     colorValue: colorValue ?? this.colorValue,
+    avatarPath: avatarPath.present ? avatarPath.value : this.avatarPath,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -235,6 +269,9 @@ class PeopleData extends DataClass implements Insertable<PeopleData> {
       colorValue: data.colorValue.present
           ? data.colorValue.value
           : this.colorValue,
+      avatarPath: data.avatarPath.present
+          ? data.avatarPath.value
+          : this.avatarPath,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -246,6 +283,7 @@ class PeopleData extends DataClass implements Insertable<PeopleData> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('colorValue: $colorValue, ')
+          ..write('avatarPath: $avatarPath, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -253,7 +291,8 @@ class PeopleData extends DataClass implements Insertable<PeopleData> {
   }
 
   @override
-  int get hashCode => Object.hash(id, name, colorValue, createdAt, updatedAt);
+  int get hashCode =>
+      Object.hash(id, name, colorValue, avatarPath, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -261,6 +300,7 @@ class PeopleData extends DataClass implements Insertable<PeopleData> {
           other.id == this.id &&
           other.name == this.name &&
           other.colorValue == this.colorValue &&
+          other.avatarPath == this.avatarPath &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -269,6 +309,7 @@ class PeopleCompanion extends UpdateCompanion<PeopleData> {
   final Value<String> id;
   final Value<String> name;
   final Value<int> colorValue;
+  final Value<String?> avatarPath;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -276,6 +317,7 @@ class PeopleCompanion extends UpdateCompanion<PeopleData> {
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.colorValue = const Value.absent(),
+    this.avatarPath = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -284,6 +326,7 @@ class PeopleCompanion extends UpdateCompanion<PeopleData> {
     required String id,
     required String name,
     required int colorValue,
+    this.avatarPath = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -294,6 +337,7 @@ class PeopleCompanion extends UpdateCompanion<PeopleData> {
     Expression<String>? id,
     Expression<String>? name,
     Expression<int>? colorValue,
+    Expression<String>? avatarPath,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -302,6 +346,7 @@ class PeopleCompanion extends UpdateCompanion<PeopleData> {
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (colorValue != null) 'color_value': colorValue,
+      if (avatarPath != null) 'avatar_path': avatarPath,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -312,6 +357,7 @@ class PeopleCompanion extends UpdateCompanion<PeopleData> {
     Value<String>? id,
     Value<String>? name,
     Value<int>? colorValue,
+    Value<String?>? avatarPath,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -320,6 +366,7 @@ class PeopleCompanion extends UpdateCompanion<PeopleData> {
       id: id ?? this.id,
       name: name ?? this.name,
       colorValue: colorValue ?? this.colorValue,
+      avatarPath: avatarPath ?? this.avatarPath,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -337,6 +384,9 @@ class PeopleCompanion extends UpdateCompanion<PeopleData> {
     }
     if (colorValue.present) {
       map['color_value'] = Variable<int>(colorValue.value);
+    }
+    if (avatarPath.present) {
+      map['avatar_path'] = Variable<String>(avatarPath.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -356,6 +406,7 @@ class PeopleCompanion extends UpdateCompanion<PeopleData> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('colorValue: $colorValue, ')
+          ..write('avatarPath: $avatarPath, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -1191,6 +1242,916 @@ class TodoParticipantsCompanion extends UpdateCompanion<TodoParticipant> {
   }
 }
 
+class $PersonalDatabaseFieldsTable extends PersonalDatabaseFields
+    with TableInfo<$PersonalDatabaseFieldsTable, PersonalDatabaseField> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PersonalDatabaseFieldsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
+  @override
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+    'key',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 120,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _parentFieldIdMeta = const VerificationMeta(
+    'parentFieldId',
+  );
+  @override
+  late final GeneratedColumn<String> parentFieldId = GeneratedColumn<String>(
+    'parent_field_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _valueTypeMeta = const VerificationMeta(
+    'valueType',
+  );
+  @override
+  late final GeneratedColumn<String> valueType = GeneratedColumn<String>(
+    'value_type',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 20,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isPublicMeta = const VerificationMeta(
+    'isPublic',
+  );
+  @override
+  late final GeneratedColumn<bool> isPublic = GeneratedColumn<bool>(
+    'is_public',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_public" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _ownerPersonIdMeta = const VerificationMeta(
+    'ownerPersonId',
+  );
+  @override
+  late final GeneratedColumn<String> ownerPersonId = GeneratedColumn<String>(
+    'owner_person_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES people (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    key,
+    parentFieldId,
+    valueType,
+    isPublic,
+    ownerPersonId,
+    sortOrder,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'personal_database_fields';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PersonalDatabaseField> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('key')) {
+      context.handle(
+        _keyMeta,
+        key.isAcceptableOrUnknown(data['key']!, _keyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_keyMeta);
+    }
+    if (data.containsKey('parent_field_id')) {
+      context.handle(
+        _parentFieldIdMeta,
+        parentFieldId.isAcceptableOrUnknown(
+          data['parent_field_id']!,
+          _parentFieldIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('value_type')) {
+      context.handle(
+        _valueTypeMeta,
+        valueType.isAcceptableOrUnknown(data['value_type']!, _valueTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_valueTypeMeta);
+    }
+    if (data.containsKey('is_public')) {
+      context.handle(
+        _isPublicMeta,
+        isPublic.isAcceptableOrUnknown(data['is_public']!, _isPublicMeta),
+      );
+    }
+    if (data.containsKey('owner_person_id')) {
+      context.handle(
+        _ownerPersonIdMeta,
+        ownerPersonId.isAcceptableOrUnknown(
+          data['owner_person_id']!,
+          _ownerPersonIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PersonalDatabaseField map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PersonalDatabaseField(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      key: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}key'],
+      )!,
+      parentFieldId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}parent_field_id'],
+      ),
+      valueType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}value_type'],
+      )!,
+      isPublic: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_public'],
+      )!,
+      ownerPersonId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner_person_id'],
+      ),
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PersonalDatabaseFieldsTable createAlias(String alias) {
+    return $PersonalDatabaseFieldsTable(attachedDatabase, alias);
+  }
+}
+
+class PersonalDatabaseField extends DataClass
+    implements Insertable<PersonalDatabaseField> {
+  final String id;
+  final String key;
+  final String? parentFieldId;
+  final String valueType;
+  final bool isPublic;
+  final String? ownerPersonId;
+  final int sortOrder;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const PersonalDatabaseField({
+    required this.id,
+    required this.key,
+    this.parentFieldId,
+    required this.valueType,
+    required this.isPublic,
+    this.ownerPersonId,
+    required this.sortOrder,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['key'] = Variable<String>(key);
+    if (!nullToAbsent || parentFieldId != null) {
+      map['parent_field_id'] = Variable<String>(parentFieldId);
+    }
+    map['value_type'] = Variable<String>(valueType);
+    map['is_public'] = Variable<bool>(isPublic);
+    if (!nullToAbsent || ownerPersonId != null) {
+      map['owner_person_id'] = Variable<String>(ownerPersonId);
+    }
+    map['sort_order'] = Variable<int>(sortOrder);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  PersonalDatabaseFieldsCompanion toCompanion(bool nullToAbsent) {
+    return PersonalDatabaseFieldsCompanion(
+      id: Value(id),
+      key: Value(key),
+      parentFieldId: parentFieldId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(parentFieldId),
+      valueType: Value(valueType),
+      isPublic: Value(isPublic),
+      ownerPersonId: ownerPersonId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ownerPersonId),
+      sortOrder: Value(sortOrder),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory PersonalDatabaseField.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PersonalDatabaseField(
+      id: serializer.fromJson<String>(json['id']),
+      key: serializer.fromJson<String>(json['key']),
+      parentFieldId: serializer.fromJson<String?>(json['parentFieldId']),
+      valueType: serializer.fromJson<String>(json['valueType']),
+      isPublic: serializer.fromJson<bool>(json['isPublic']),
+      ownerPersonId: serializer.fromJson<String?>(json['ownerPersonId']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'key': serializer.toJson<String>(key),
+      'parentFieldId': serializer.toJson<String?>(parentFieldId),
+      'valueType': serializer.toJson<String>(valueType),
+      'isPublic': serializer.toJson<bool>(isPublic),
+      'ownerPersonId': serializer.toJson<String?>(ownerPersonId),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  PersonalDatabaseField copyWith({
+    String? id,
+    String? key,
+    Value<String?> parentFieldId = const Value.absent(),
+    String? valueType,
+    bool? isPublic,
+    Value<String?> ownerPersonId = const Value.absent(),
+    int? sortOrder,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => PersonalDatabaseField(
+    id: id ?? this.id,
+    key: key ?? this.key,
+    parentFieldId: parentFieldId.present
+        ? parentFieldId.value
+        : this.parentFieldId,
+    valueType: valueType ?? this.valueType,
+    isPublic: isPublic ?? this.isPublic,
+    ownerPersonId: ownerPersonId.present
+        ? ownerPersonId.value
+        : this.ownerPersonId,
+    sortOrder: sortOrder ?? this.sortOrder,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  PersonalDatabaseField copyWithCompanion(
+    PersonalDatabaseFieldsCompanion data,
+  ) {
+    return PersonalDatabaseField(
+      id: data.id.present ? data.id.value : this.id,
+      key: data.key.present ? data.key.value : this.key,
+      parentFieldId: data.parentFieldId.present
+          ? data.parentFieldId.value
+          : this.parentFieldId,
+      valueType: data.valueType.present ? data.valueType.value : this.valueType,
+      isPublic: data.isPublic.present ? data.isPublic.value : this.isPublic,
+      ownerPersonId: data.ownerPersonId.present
+          ? data.ownerPersonId.value
+          : this.ownerPersonId,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PersonalDatabaseField(')
+          ..write('id: $id, ')
+          ..write('key: $key, ')
+          ..write('parentFieldId: $parentFieldId, ')
+          ..write('valueType: $valueType, ')
+          ..write('isPublic: $isPublic, ')
+          ..write('ownerPersonId: $ownerPersonId, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    key,
+    parentFieldId,
+    valueType,
+    isPublic,
+    ownerPersonId,
+    sortOrder,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PersonalDatabaseField &&
+          other.id == this.id &&
+          other.key == this.key &&
+          other.parentFieldId == this.parentFieldId &&
+          other.valueType == this.valueType &&
+          other.isPublic == this.isPublic &&
+          other.ownerPersonId == this.ownerPersonId &&
+          other.sortOrder == this.sortOrder &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class PersonalDatabaseFieldsCompanion
+    extends UpdateCompanion<PersonalDatabaseField> {
+  final Value<String> id;
+  final Value<String> key;
+  final Value<String?> parentFieldId;
+  final Value<String> valueType;
+  final Value<bool> isPublic;
+  final Value<String?> ownerPersonId;
+  final Value<int> sortOrder;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const PersonalDatabaseFieldsCompanion({
+    this.id = const Value.absent(),
+    this.key = const Value.absent(),
+    this.parentFieldId = const Value.absent(),
+    this.valueType = const Value.absent(),
+    this.isPublic = const Value.absent(),
+    this.ownerPersonId = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PersonalDatabaseFieldsCompanion.insert({
+    required String id,
+    required String key,
+    this.parentFieldId = const Value.absent(),
+    required String valueType,
+    this.isPublic = const Value.absent(),
+    this.ownerPersonId = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       key = Value(key),
+       valueType = Value(valueType);
+  static Insertable<PersonalDatabaseField> custom({
+    Expression<String>? id,
+    Expression<String>? key,
+    Expression<String>? parentFieldId,
+    Expression<String>? valueType,
+    Expression<bool>? isPublic,
+    Expression<String>? ownerPersonId,
+    Expression<int>? sortOrder,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (key != null) 'key': key,
+      if (parentFieldId != null) 'parent_field_id': parentFieldId,
+      if (valueType != null) 'value_type': valueType,
+      if (isPublic != null) 'is_public': isPublic,
+      if (ownerPersonId != null) 'owner_person_id': ownerPersonId,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PersonalDatabaseFieldsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? key,
+    Value<String?>? parentFieldId,
+    Value<String>? valueType,
+    Value<bool>? isPublic,
+    Value<String?>? ownerPersonId,
+    Value<int>? sortOrder,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return PersonalDatabaseFieldsCompanion(
+      id: id ?? this.id,
+      key: key ?? this.key,
+      parentFieldId: parentFieldId ?? this.parentFieldId,
+      valueType: valueType ?? this.valueType,
+      isPublic: isPublic ?? this.isPublic,
+      ownerPersonId: ownerPersonId ?? this.ownerPersonId,
+      sortOrder: sortOrder ?? this.sortOrder,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
+    if (parentFieldId.present) {
+      map['parent_field_id'] = Variable<String>(parentFieldId.value);
+    }
+    if (valueType.present) {
+      map['value_type'] = Variable<String>(valueType.value);
+    }
+    if (isPublic.present) {
+      map['is_public'] = Variable<bool>(isPublic.value);
+    }
+    if (ownerPersonId.present) {
+      map['owner_person_id'] = Variable<String>(ownerPersonId.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PersonalDatabaseFieldsCompanion(')
+          ..write('id: $id, ')
+          ..write('key: $key, ')
+          ..write('parentFieldId: $parentFieldId, ')
+          ..write('valueType: $valueType, ')
+          ..write('isPublic: $isPublic, ')
+          ..write('ownerPersonId: $ownerPersonId, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PersonalDatabaseValuesTable extends PersonalDatabaseValues
+    with TableInfo<$PersonalDatabaseValuesTable, PersonalDatabaseValue> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PersonalDatabaseValuesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _fieldIdMeta = const VerificationMeta(
+    'fieldId',
+  );
+  @override
+  late final GeneratedColumn<String> fieldId = GeneratedColumn<String>(
+    'field_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES personal_database_fields (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _personIdMeta = const VerificationMeta(
+    'personId',
+  );
+  @override
+  late final GeneratedColumn<String> personId = GeneratedColumn<String>(
+    'person_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES people (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _jsonValueMeta = const VerificationMeta(
+    'jsonValue',
+  );
+  @override
+  late final GeneratedColumn<String> jsonValue = GeneratedColumn<String>(
+    'json_value',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('null'),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    fieldId,
+    personId,
+    jsonValue,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'personal_database_values';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PersonalDatabaseValue> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('field_id')) {
+      context.handle(
+        _fieldIdMeta,
+        fieldId.isAcceptableOrUnknown(data['field_id']!, _fieldIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_fieldIdMeta);
+    }
+    if (data.containsKey('person_id')) {
+      context.handle(
+        _personIdMeta,
+        personId.isAcceptableOrUnknown(data['person_id']!, _personIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_personIdMeta);
+    }
+    if (data.containsKey('json_value')) {
+      context.handle(
+        _jsonValueMeta,
+        jsonValue.isAcceptableOrUnknown(data['json_value']!, _jsonValueMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {fieldId, personId};
+  @override
+  PersonalDatabaseValue map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PersonalDatabaseValue(
+      fieldId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}field_id'],
+      )!,
+      personId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}person_id'],
+      )!,
+      jsonValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}json_value'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PersonalDatabaseValuesTable createAlias(String alias) {
+    return $PersonalDatabaseValuesTable(attachedDatabase, alias);
+  }
+}
+
+class PersonalDatabaseValue extends DataClass
+    implements Insertable<PersonalDatabaseValue> {
+  final String fieldId;
+  final String personId;
+  final String jsonValue;
+  final DateTime updatedAt;
+  const PersonalDatabaseValue({
+    required this.fieldId,
+    required this.personId,
+    required this.jsonValue,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['field_id'] = Variable<String>(fieldId);
+    map['person_id'] = Variable<String>(personId);
+    map['json_value'] = Variable<String>(jsonValue);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  PersonalDatabaseValuesCompanion toCompanion(bool nullToAbsent) {
+    return PersonalDatabaseValuesCompanion(
+      fieldId: Value(fieldId),
+      personId: Value(personId),
+      jsonValue: Value(jsonValue),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory PersonalDatabaseValue.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PersonalDatabaseValue(
+      fieldId: serializer.fromJson<String>(json['fieldId']),
+      personId: serializer.fromJson<String>(json['personId']),
+      jsonValue: serializer.fromJson<String>(json['jsonValue']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'fieldId': serializer.toJson<String>(fieldId),
+      'personId': serializer.toJson<String>(personId),
+      'jsonValue': serializer.toJson<String>(jsonValue),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  PersonalDatabaseValue copyWith({
+    String? fieldId,
+    String? personId,
+    String? jsonValue,
+    DateTime? updatedAt,
+  }) => PersonalDatabaseValue(
+    fieldId: fieldId ?? this.fieldId,
+    personId: personId ?? this.personId,
+    jsonValue: jsonValue ?? this.jsonValue,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  PersonalDatabaseValue copyWithCompanion(
+    PersonalDatabaseValuesCompanion data,
+  ) {
+    return PersonalDatabaseValue(
+      fieldId: data.fieldId.present ? data.fieldId.value : this.fieldId,
+      personId: data.personId.present ? data.personId.value : this.personId,
+      jsonValue: data.jsonValue.present ? data.jsonValue.value : this.jsonValue,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PersonalDatabaseValue(')
+          ..write('fieldId: $fieldId, ')
+          ..write('personId: $personId, ')
+          ..write('jsonValue: $jsonValue, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(fieldId, personId, jsonValue, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PersonalDatabaseValue &&
+          other.fieldId == this.fieldId &&
+          other.personId == this.personId &&
+          other.jsonValue == this.jsonValue &&
+          other.updatedAt == this.updatedAt);
+}
+
+class PersonalDatabaseValuesCompanion
+    extends UpdateCompanion<PersonalDatabaseValue> {
+  final Value<String> fieldId;
+  final Value<String> personId;
+  final Value<String> jsonValue;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const PersonalDatabaseValuesCompanion({
+    this.fieldId = const Value.absent(),
+    this.personId = const Value.absent(),
+    this.jsonValue = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PersonalDatabaseValuesCompanion.insert({
+    required String fieldId,
+    required String personId,
+    this.jsonValue = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : fieldId = Value(fieldId),
+       personId = Value(personId);
+  static Insertable<PersonalDatabaseValue> custom({
+    Expression<String>? fieldId,
+    Expression<String>? personId,
+    Expression<String>? jsonValue,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (fieldId != null) 'field_id': fieldId,
+      if (personId != null) 'person_id': personId,
+      if (jsonValue != null) 'json_value': jsonValue,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PersonalDatabaseValuesCompanion copyWith({
+    Value<String>? fieldId,
+    Value<String>? personId,
+    Value<String>? jsonValue,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return PersonalDatabaseValuesCompanion(
+      fieldId: fieldId ?? this.fieldId,
+      personId: personId ?? this.personId,
+      jsonValue: jsonValue ?? this.jsonValue,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (fieldId.present) {
+      map['field_id'] = Variable<String>(fieldId.value);
+    }
+    if (personId.present) {
+      map['person_id'] = Variable<String>(personId.value);
+    }
+    if (jsonValue.present) {
+      map['json_value'] = Variable<String>(jsonValue.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PersonalDatabaseValuesCompanion(')
+          ..write('fieldId: $fieldId, ')
+          ..write('personId: $personId, ')
+          ..write('jsonValue: $jsonValue, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1199,8 +2160,15 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $TodoParticipantsTable todoParticipants = $TodoParticipantsTable(
     this,
   );
+  late final $PersonalDatabaseFieldsTable personalDatabaseFields =
+      $PersonalDatabaseFieldsTable(this);
+  late final $PersonalDatabaseValuesTable personalDatabaseValues =
+      $PersonalDatabaseValuesTable(this);
   late final PeopleDao peopleDao = PeopleDao(this as AppDatabase);
   late final TodosDao todosDao = TodosDao(this as AppDatabase);
+  late final PersonalDatabaseDao personalDatabaseDao = PersonalDatabaseDao(
+    this as AppDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1209,6 +2177,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     people,
     todos,
     todoParticipants,
+    personalDatabaseFields,
+    personalDatabaseValues,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -1233,6 +2203,33 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       ),
       result: [TableUpdate('todo_participants', kind: UpdateKind.delete)],
     ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'people',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [
+        TableUpdate('personal_database_fields', kind: UpdateKind.delete),
+      ],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'personal_database_fields',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [
+        TableUpdate('personal_database_values', kind: UpdateKind.delete),
+      ],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'people',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [
+        TableUpdate('personal_database_values', kind: UpdateKind.delete),
+      ],
+    ),
   ]);
 }
 
@@ -1241,6 +2238,7 @@ typedef $$PeopleTableCreateCompanionBuilder =
       required String id,
       required String name,
       required int colorValue,
+      Value<String?> avatarPath,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -1250,6 +2248,7 @@ typedef $$PeopleTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> name,
       Value<int> colorValue,
+      Value<String?> avatarPath,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -1297,6 +2296,62 @@ final class $$PeopleTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<
+    $PersonalDatabaseFieldsTable,
+    List<PersonalDatabaseField>
+  >
+  _personalDatabaseFieldsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.personalDatabaseFields,
+        aliasName: $_aliasNameGenerator(
+          db.people.id,
+          db.personalDatabaseFields.ownerPersonId,
+        ),
+      );
+
+  $$PersonalDatabaseFieldsTableProcessedTableManager
+  get personalDatabaseFieldsRefs {
+    final manager = $$PersonalDatabaseFieldsTableTableManager(
+      $_db,
+      $_db.personalDatabaseFields,
+    ).filter((f) => f.ownerPersonId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _personalDatabaseFieldsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $PersonalDatabaseValuesTable,
+    List<PersonalDatabaseValue>
+  >
+  _personalDatabaseValuesRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.personalDatabaseValues,
+        aliasName: $_aliasNameGenerator(
+          db.people.id,
+          db.personalDatabaseValues.personId,
+        ),
+      );
+
+  $$PersonalDatabaseValuesTableProcessedTableManager
+  get personalDatabaseValuesRefs {
+    final manager = $$PersonalDatabaseValuesTableTableManager(
+      $_db,
+      $_db.personalDatabaseValues,
+    ).filter((f) => f.personId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _personalDatabaseValuesRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$PeopleTableFilterComposer
@@ -1320,6 +2375,11 @@ class $$PeopleTableFilterComposer
 
   ColumnFilters<int> get colorValue => $composableBuilder(
     column: $table.colorValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get avatarPath => $composableBuilder(
+    column: $table.avatarPath,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1382,6 +2442,58 @@ class $$PeopleTableFilterComposer
     );
     return f(composer);
   }
+
+  Expression<bool> personalDatabaseFieldsRefs(
+    Expression<bool> Function($$PersonalDatabaseFieldsTableFilterComposer f) f,
+  ) {
+    final $$PersonalDatabaseFieldsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.personalDatabaseFields,
+          getReferencedColumn: (t) => t.ownerPersonId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PersonalDatabaseFieldsTableFilterComposer(
+                $db: $db,
+                $table: $db.personalDatabaseFields,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<bool> personalDatabaseValuesRefs(
+    Expression<bool> Function($$PersonalDatabaseValuesTableFilterComposer f) f,
+  ) {
+    final $$PersonalDatabaseValuesTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.personalDatabaseValues,
+          getReferencedColumn: (t) => t.personId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PersonalDatabaseValuesTableFilterComposer(
+                $db: $db,
+                $table: $db.personalDatabaseValues,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$PeopleTableOrderingComposer
@@ -1405,6 +2517,11 @@ class $$PeopleTableOrderingComposer
 
   ColumnOrderings<int> get colorValue => $composableBuilder(
     column: $table.colorValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get avatarPath => $composableBuilder(
+    column: $table.avatarPath,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -1436,6 +2553,11 @@ class $$PeopleTableAnnotationComposer
 
   GeneratedColumn<int> get colorValue => $composableBuilder(
     column: $table.colorValue,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get avatarPath => $composableBuilder(
+    column: $table.avatarPath,
     builder: (column) => column,
   );
 
@@ -1494,6 +2616,58 @@ class $$PeopleTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> personalDatabaseFieldsRefs<T extends Object>(
+    Expression<T> Function($$PersonalDatabaseFieldsTableAnnotationComposer a) f,
+  ) {
+    final $$PersonalDatabaseFieldsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.personalDatabaseFields,
+          getReferencedColumn: (t) => t.ownerPersonId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PersonalDatabaseFieldsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.personalDatabaseFields,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> personalDatabaseValuesRefs<T extends Object>(
+    Expression<T> Function($$PersonalDatabaseValuesTableAnnotationComposer a) f,
+  ) {
+    final $$PersonalDatabaseValuesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.personalDatabaseValues,
+          getReferencedColumn: (t) => t.personId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PersonalDatabaseValuesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.personalDatabaseValues,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$PeopleTableTableManager
@@ -1509,7 +2683,12 @@ class $$PeopleTableTableManager
           $$PeopleTableUpdateCompanionBuilder,
           (PeopleData, $$PeopleTableReferences),
           PeopleData,
-          PrefetchHooks Function({bool todosRefs, bool todoParticipantsRefs})
+          PrefetchHooks Function({
+            bool todosRefs,
+            bool todoParticipantsRefs,
+            bool personalDatabaseFieldsRefs,
+            bool personalDatabaseValuesRefs,
+          })
         > {
   $$PeopleTableTableManager(_$AppDatabase db, $PeopleTable table)
     : super(
@@ -1527,6 +2706,7 @@ class $$PeopleTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<int> colorValue = const Value.absent(),
+                Value<String?> avatarPath = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -1534,6 +2714,7 @@ class $$PeopleTableTableManager
                 id: id,
                 name: name,
                 colorValue: colorValue,
+                avatarPath: avatarPath,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -1543,6 +2724,7 @@ class $$PeopleTableTableManager
                 required String id,
                 required String name,
                 required int colorValue,
+                Value<String?> avatarPath = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -1550,6 +2732,7 @@ class $$PeopleTableTableManager
                 id: id,
                 name: name,
                 colorValue: colorValue,
+                avatarPath: avatarPath,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -1561,12 +2744,19 @@ class $$PeopleTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({todosRefs = false, todoParticipantsRefs = false}) {
+              ({
+                todosRefs = false,
+                todoParticipantsRefs = false,
+                personalDatabaseFieldsRefs = false,
+                personalDatabaseValuesRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (todosRefs) db.todos,
                     if (todoParticipantsRefs) db.todoParticipants,
+                    if (personalDatabaseFieldsRefs) db.personalDatabaseFields,
+                    if (personalDatabaseValuesRefs) db.personalDatabaseValues,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -1609,6 +2799,48 @@ class $$PeopleTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (personalDatabaseFieldsRefs)
+                        await $_getPrefetchedData<
+                          PeopleData,
+                          $PeopleTable,
+                          PersonalDatabaseField
+                        >(
+                          currentTable: table,
+                          referencedTable: $$PeopleTableReferences
+                              ._personalDatabaseFieldsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PeopleTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).personalDatabaseFieldsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.ownerPersonId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (personalDatabaseValuesRefs)
+                        await $_getPrefetchedData<
+                          PeopleData,
+                          $PeopleTable,
+                          PersonalDatabaseValue
+                        >(
+                          currentTable: table,
+                          referencedTable: $$PeopleTableReferences
+                              ._personalDatabaseValuesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PeopleTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).personalDatabaseValuesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.personId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -1629,7 +2861,12 @@ typedef $$PeopleTableProcessedTableManager =
       $$PeopleTableUpdateCompanionBuilder,
       (PeopleData, $$PeopleTableReferences),
       PeopleData,
-      PrefetchHooks Function({bool todosRefs, bool todoParticipantsRefs})
+      PrefetchHooks Function({
+        bool todosRefs,
+        bool todoParticipantsRefs,
+        bool personalDatabaseFieldsRefs,
+        bool personalDatabaseValuesRefs,
+      })
     >;
 typedef $$TodosTableCreateCompanionBuilder =
     TodosCompanion Function({
@@ -2495,6 +3732,957 @@ typedef $$TodoParticipantsTableProcessedTableManager =
       TodoParticipant,
       PrefetchHooks Function({bool todoId, bool personId})
     >;
+typedef $$PersonalDatabaseFieldsTableCreateCompanionBuilder =
+    PersonalDatabaseFieldsCompanion Function({
+      required String id,
+      required String key,
+      Value<String?> parentFieldId,
+      required String valueType,
+      Value<bool> isPublic,
+      Value<String?> ownerPersonId,
+      Value<int> sortOrder,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$PersonalDatabaseFieldsTableUpdateCompanionBuilder =
+    PersonalDatabaseFieldsCompanion Function({
+      Value<String> id,
+      Value<String> key,
+      Value<String?> parentFieldId,
+      Value<String> valueType,
+      Value<bool> isPublic,
+      Value<String?> ownerPersonId,
+      Value<int> sortOrder,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$PersonalDatabaseFieldsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $PersonalDatabaseFieldsTable,
+          PersonalDatabaseField
+        > {
+  $$PersonalDatabaseFieldsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $PeopleTable _ownerPersonIdTable(_$AppDatabase db) =>
+      db.people.createAlias(
+        $_aliasNameGenerator(
+          db.personalDatabaseFields.ownerPersonId,
+          db.people.id,
+        ),
+      );
+
+  $$PeopleTableProcessedTableManager? get ownerPersonId {
+    final $_column = $_itemColumn<String>('owner_person_id');
+    if ($_column == null) return null;
+    final manager = $$PeopleTableTableManager(
+      $_db,
+      $_db.people,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_ownerPersonIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $PersonalDatabaseValuesTable,
+    List<PersonalDatabaseValue>
+  >
+  _personalDatabaseValuesRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.personalDatabaseValues,
+        aliasName: $_aliasNameGenerator(
+          db.personalDatabaseFields.id,
+          db.personalDatabaseValues.fieldId,
+        ),
+      );
+
+  $$PersonalDatabaseValuesTableProcessedTableManager
+  get personalDatabaseValuesRefs {
+    final manager = $$PersonalDatabaseValuesTableTableManager(
+      $_db,
+      $_db.personalDatabaseValues,
+    ).filter((f) => f.fieldId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _personalDatabaseValuesRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$PersonalDatabaseFieldsTableFilterComposer
+    extends Composer<_$AppDatabase, $PersonalDatabaseFieldsTable> {
+  $$PersonalDatabaseFieldsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get parentFieldId => $composableBuilder(
+    column: $table.parentFieldId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get valueType => $composableBuilder(
+    column: $table.valueType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isPublic => $composableBuilder(
+    column: $table.isPublic,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$PeopleTableFilterComposer get ownerPersonId {
+    final $$PeopleTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.ownerPersonId,
+      referencedTable: $db.people,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PeopleTableFilterComposer(
+            $db: $db,
+            $table: $db.people,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> personalDatabaseValuesRefs(
+    Expression<bool> Function($$PersonalDatabaseValuesTableFilterComposer f) f,
+  ) {
+    final $$PersonalDatabaseValuesTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.personalDatabaseValues,
+          getReferencedColumn: (t) => t.fieldId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PersonalDatabaseValuesTableFilterComposer(
+                $db: $db,
+                $table: $db.personalDatabaseValues,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$PersonalDatabaseFieldsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PersonalDatabaseFieldsTable> {
+  $$PersonalDatabaseFieldsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get parentFieldId => $composableBuilder(
+    column: $table.parentFieldId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get valueType => $composableBuilder(
+    column: $table.valueType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isPublic => $composableBuilder(
+    column: $table.isPublic,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$PeopleTableOrderingComposer get ownerPersonId {
+    final $$PeopleTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.ownerPersonId,
+      referencedTable: $db.people,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PeopleTableOrderingComposer(
+            $db: $db,
+            $table: $db.people,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PersonalDatabaseFieldsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PersonalDatabaseFieldsTable> {
+  $$PersonalDatabaseFieldsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<String> get parentFieldId => $composableBuilder(
+    column: $table.parentFieldId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get valueType =>
+      $composableBuilder(column: $table.valueType, builder: (column) => column);
+
+  GeneratedColumn<bool> get isPublic =>
+      $composableBuilder(column: $table.isPublic, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$PeopleTableAnnotationComposer get ownerPersonId {
+    final $$PeopleTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.ownerPersonId,
+      referencedTable: $db.people,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PeopleTableAnnotationComposer(
+            $db: $db,
+            $table: $db.people,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> personalDatabaseValuesRefs<T extends Object>(
+    Expression<T> Function($$PersonalDatabaseValuesTableAnnotationComposer a) f,
+  ) {
+    final $$PersonalDatabaseValuesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.personalDatabaseValues,
+          getReferencedColumn: (t) => t.fieldId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PersonalDatabaseValuesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.personalDatabaseValues,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$PersonalDatabaseFieldsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PersonalDatabaseFieldsTable,
+          PersonalDatabaseField,
+          $$PersonalDatabaseFieldsTableFilterComposer,
+          $$PersonalDatabaseFieldsTableOrderingComposer,
+          $$PersonalDatabaseFieldsTableAnnotationComposer,
+          $$PersonalDatabaseFieldsTableCreateCompanionBuilder,
+          $$PersonalDatabaseFieldsTableUpdateCompanionBuilder,
+          (PersonalDatabaseField, $$PersonalDatabaseFieldsTableReferences),
+          PersonalDatabaseField,
+          PrefetchHooks Function({
+            bool ownerPersonId,
+            bool personalDatabaseValuesRefs,
+          })
+        > {
+  $$PersonalDatabaseFieldsTableTableManager(
+    _$AppDatabase db,
+    $PersonalDatabaseFieldsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PersonalDatabaseFieldsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$PersonalDatabaseFieldsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$PersonalDatabaseFieldsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> key = const Value.absent(),
+                Value<String?> parentFieldId = const Value.absent(),
+                Value<String> valueType = const Value.absent(),
+                Value<bool> isPublic = const Value.absent(),
+                Value<String?> ownerPersonId = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PersonalDatabaseFieldsCompanion(
+                id: id,
+                key: key,
+                parentFieldId: parentFieldId,
+                valueType: valueType,
+                isPublic: isPublic,
+                ownerPersonId: ownerPersonId,
+                sortOrder: sortOrder,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String key,
+                Value<String?> parentFieldId = const Value.absent(),
+                required String valueType,
+                Value<bool> isPublic = const Value.absent(),
+                Value<String?> ownerPersonId = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PersonalDatabaseFieldsCompanion.insert(
+                id: id,
+                key: key,
+                parentFieldId: parentFieldId,
+                valueType: valueType,
+                isPublic: isPublic,
+                ownerPersonId: ownerPersonId,
+                sortOrder: sortOrder,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$PersonalDatabaseFieldsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({ownerPersonId = false, personalDatabaseValuesRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (personalDatabaseValuesRefs) db.personalDatabaseValues,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (ownerPersonId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.ownerPersonId,
+                                    referencedTable:
+                                        $$PersonalDatabaseFieldsTableReferences
+                                            ._ownerPersonIdTable(db),
+                                    referencedColumn:
+                                        $$PersonalDatabaseFieldsTableReferences
+                                            ._ownerPersonIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (personalDatabaseValuesRefs)
+                        await $_getPrefetchedData<
+                          PersonalDatabaseField,
+                          $PersonalDatabaseFieldsTable,
+                          PersonalDatabaseValue
+                        >(
+                          currentTable: table,
+                          referencedTable:
+                              $$PersonalDatabaseFieldsTableReferences
+                                  ._personalDatabaseValuesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PersonalDatabaseFieldsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).personalDatabaseValuesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.fieldId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$PersonalDatabaseFieldsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PersonalDatabaseFieldsTable,
+      PersonalDatabaseField,
+      $$PersonalDatabaseFieldsTableFilterComposer,
+      $$PersonalDatabaseFieldsTableOrderingComposer,
+      $$PersonalDatabaseFieldsTableAnnotationComposer,
+      $$PersonalDatabaseFieldsTableCreateCompanionBuilder,
+      $$PersonalDatabaseFieldsTableUpdateCompanionBuilder,
+      (PersonalDatabaseField, $$PersonalDatabaseFieldsTableReferences),
+      PersonalDatabaseField,
+      PrefetchHooks Function({
+        bool ownerPersonId,
+        bool personalDatabaseValuesRefs,
+      })
+    >;
+typedef $$PersonalDatabaseValuesTableCreateCompanionBuilder =
+    PersonalDatabaseValuesCompanion Function({
+      required String fieldId,
+      required String personId,
+      Value<String> jsonValue,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$PersonalDatabaseValuesTableUpdateCompanionBuilder =
+    PersonalDatabaseValuesCompanion Function({
+      Value<String> fieldId,
+      Value<String> personId,
+      Value<String> jsonValue,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$PersonalDatabaseValuesTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $PersonalDatabaseValuesTable,
+          PersonalDatabaseValue
+        > {
+  $$PersonalDatabaseValuesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $PersonalDatabaseFieldsTable _fieldIdTable(_$AppDatabase db) =>
+      db.personalDatabaseFields.createAlias(
+        $_aliasNameGenerator(
+          db.personalDatabaseValues.fieldId,
+          db.personalDatabaseFields.id,
+        ),
+      );
+
+  $$PersonalDatabaseFieldsTableProcessedTableManager get fieldId {
+    final $_column = $_itemColumn<String>('field_id')!;
+
+    final manager = $$PersonalDatabaseFieldsTableTableManager(
+      $_db,
+      $_db.personalDatabaseFields,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_fieldIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $PeopleTable _personIdTable(_$AppDatabase db) => db.people.createAlias(
+    $_aliasNameGenerator(db.personalDatabaseValues.personId, db.people.id),
+  );
+
+  $$PeopleTableProcessedTableManager get personId {
+    final $_column = $_itemColumn<String>('person_id')!;
+
+    final manager = $$PeopleTableTableManager(
+      $_db,
+      $_db.people,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_personIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$PersonalDatabaseValuesTableFilterComposer
+    extends Composer<_$AppDatabase, $PersonalDatabaseValuesTable> {
+  $$PersonalDatabaseValuesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get jsonValue => $composableBuilder(
+    column: $table.jsonValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$PersonalDatabaseFieldsTableFilterComposer get fieldId {
+    final $$PersonalDatabaseFieldsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.fieldId,
+          referencedTable: $db.personalDatabaseFields,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PersonalDatabaseFieldsTableFilterComposer(
+                $db: $db,
+                $table: $db.personalDatabaseFields,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$PeopleTableFilterComposer get personId {
+    final $$PeopleTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personId,
+      referencedTable: $db.people,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PeopleTableFilterComposer(
+            $db: $db,
+            $table: $db.people,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PersonalDatabaseValuesTableOrderingComposer
+    extends Composer<_$AppDatabase, $PersonalDatabaseValuesTable> {
+  $$PersonalDatabaseValuesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get jsonValue => $composableBuilder(
+    column: $table.jsonValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$PersonalDatabaseFieldsTableOrderingComposer get fieldId {
+    final $$PersonalDatabaseFieldsTableOrderingComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.fieldId,
+          referencedTable: $db.personalDatabaseFields,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PersonalDatabaseFieldsTableOrderingComposer(
+                $db: $db,
+                $table: $db.personalDatabaseFields,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$PeopleTableOrderingComposer get personId {
+    final $$PeopleTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personId,
+      referencedTable: $db.people,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PeopleTableOrderingComposer(
+            $db: $db,
+            $table: $db.people,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PersonalDatabaseValuesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PersonalDatabaseValuesTable> {
+  $$PersonalDatabaseValuesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get jsonValue =>
+      $composableBuilder(column: $table.jsonValue, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$PersonalDatabaseFieldsTableAnnotationComposer get fieldId {
+    final $$PersonalDatabaseFieldsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.fieldId,
+          referencedTable: $db.personalDatabaseFields,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PersonalDatabaseFieldsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.personalDatabaseFields,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$PeopleTableAnnotationComposer get personId {
+    final $$PeopleTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personId,
+      referencedTable: $db.people,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PeopleTableAnnotationComposer(
+            $db: $db,
+            $table: $db.people,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PersonalDatabaseValuesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PersonalDatabaseValuesTable,
+          PersonalDatabaseValue,
+          $$PersonalDatabaseValuesTableFilterComposer,
+          $$PersonalDatabaseValuesTableOrderingComposer,
+          $$PersonalDatabaseValuesTableAnnotationComposer,
+          $$PersonalDatabaseValuesTableCreateCompanionBuilder,
+          $$PersonalDatabaseValuesTableUpdateCompanionBuilder,
+          (PersonalDatabaseValue, $$PersonalDatabaseValuesTableReferences),
+          PersonalDatabaseValue,
+          PrefetchHooks Function({bool fieldId, bool personId})
+        > {
+  $$PersonalDatabaseValuesTableTableManager(
+    _$AppDatabase db,
+    $PersonalDatabaseValuesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PersonalDatabaseValuesTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$PersonalDatabaseValuesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$PersonalDatabaseValuesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> fieldId = const Value.absent(),
+                Value<String> personId = const Value.absent(),
+                Value<String> jsonValue = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PersonalDatabaseValuesCompanion(
+                fieldId: fieldId,
+                personId: personId,
+                jsonValue: jsonValue,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String fieldId,
+                required String personId,
+                Value<String> jsonValue = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PersonalDatabaseValuesCompanion.insert(
+                fieldId: fieldId,
+                personId: personId,
+                jsonValue: jsonValue,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$PersonalDatabaseValuesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({fieldId = false, personId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (fieldId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.fieldId,
+                                referencedTable:
+                                    $$PersonalDatabaseValuesTableReferences
+                                        ._fieldIdTable(db),
+                                referencedColumn:
+                                    $$PersonalDatabaseValuesTableReferences
+                                        ._fieldIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+                    if (personId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.personId,
+                                referencedTable:
+                                    $$PersonalDatabaseValuesTableReferences
+                                        ._personIdTable(db),
+                                referencedColumn:
+                                    $$PersonalDatabaseValuesTableReferences
+                                        ._personIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$PersonalDatabaseValuesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PersonalDatabaseValuesTable,
+      PersonalDatabaseValue,
+      $$PersonalDatabaseValuesTableFilterComposer,
+      $$PersonalDatabaseValuesTableOrderingComposer,
+      $$PersonalDatabaseValuesTableAnnotationComposer,
+      $$PersonalDatabaseValuesTableCreateCompanionBuilder,
+      $$PersonalDatabaseValuesTableUpdateCompanionBuilder,
+      (PersonalDatabaseValue, $$PersonalDatabaseValuesTableReferences),
+      PersonalDatabaseValue,
+      PrefetchHooks Function({bool fieldId, bool personId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2505,4 +4693,14 @@ class $AppDatabaseManager {
       $$TodosTableTableManager(_db, _db.todos);
   $$TodoParticipantsTableTableManager get todoParticipants =>
       $$TodoParticipantsTableTableManager(_db, _db.todoParticipants);
+  $$PersonalDatabaseFieldsTableTableManager get personalDatabaseFields =>
+      $$PersonalDatabaseFieldsTableTableManager(
+        _db,
+        _db.personalDatabaseFields,
+      );
+  $$PersonalDatabaseValuesTableTableManager get personalDatabaseValues =>
+      $$PersonalDatabaseValuesTableTableManager(
+        _db,
+        _db.personalDatabaseValues,
+      );
 }

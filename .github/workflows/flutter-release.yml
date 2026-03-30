@@ -79,14 +79,14 @@ jobs:
 
       - name: Rename APK artifact
         run: |
-          ARTIFACT_PATH="build/app/outputs/flutter-apk/people_todolist_${{ env.VERSION_NAME }}_android-arm64-release.apk"
+          ARTIFACT_PATH="build/app/outputs/flutter-apk/trace_${{ env.VERSION_NAME }}_android-arm64-release.apk"
           mv build/app/outputs/flutter-apk/app-release.apk "$ARTIFACT_PATH"
           echo "ARTIFACT_PATH=$ARTIFACT_PATH" >> "$GITHUB_ENV"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: people-todolist-release-apk
+          name: trace-release-apk
           path: ${{ env.ARTIFACT_PATH }}
 
       - name: Create GitHub Release + upload APK

@@ -1,7 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:people_todolist/core/utils/useful_extension.dart';
+import 'package:trace/core/utils/useful_extension.dart';
 
 import '../../data/models/app_settings.dart';
 import '../../providers/app_settings_provider.dart';

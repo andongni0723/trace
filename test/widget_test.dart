@@ -3,15 +3,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:people_todolist/core/database/database.dart';
-import 'package:people_todolist/features/people/providers/people_provider.dart';
-import 'package:people_todolist/shared/pages/messages_home_page.dart';
+import 'package:trace/core/routing/router.dart';
+import 'package:trace/core/database/database.dart';
+import 'package:trace/features/database/providers/database_provider.dart';
+import 'package:trace/features/people/providers/people_provider.dart';
+import 'package:trace/shared/pages/messages_home_page.dart';
 
 class TestAssetLoader extends AssetLoader {
   const TestAssetLoader();
 
   static const Map<String, dynamic> _zhTw = {
     'app': {'title': 'Snap Ledger'},
+    'appShell': {
+      'navigation': {'list': '清單', 'database': '資料庫'},
+    },
     'messages': {
       'todoTitle': '代辦事項',
       'newMessage': '新增訊息',
@@ -28,6 +33,17 @@ class TestAssetLoader extends AssetLoader {
         'alexPreview': 'API 規格看起來沒問題，我午餐後會把修補版送出。',
         'familyPreview': '這週五去阿嬤家吃晚餐，別遲到。',
         'designPreview': '新的字級系統很不錯，我們應該再把空狀態簡化。',
+      },
+    },
+    'database': {
+      'title': '資料庫',
+      'subtitle': '快速查看目前本機資料庫中的人物與待辦統計。',
+      'loadError': '讀取資料庫摘要失敗。',
+      'metrics': {
+        'people': '人物數',
+        'todos': '待辦總數',
+        'openTodos': '未完成待辦',
+        'completedTodos': '已完成待辦',
       },
     },
   };
@@ -53,6 +69,7 @@ void main() {
                 id: 'maya',
                 name: 'Maya Chen',
                 colorValue: 0xFF5B6CF0,
+                avatarPath: null,
                 createdAt: DateTime(2026, 3, 25),
                 updatedAt: DateTime(2026, 3, 25),
               ),
@@ -60,6 +77,7 @@ void main() {
                 id: 'alex',
                 name: 'Alex Johnson',
                 colorValue: 0xFFE67E22,
+                avatarPath: null,
                 createdAt: DateTime(2026, 3, 25),
                 updatedAt: DateTime(2026, 3, 25),
               ),
@@ -70,7 +88,9 @@ void main() {
               Todo(
                 id: 'todo-$personId',
                 personId: personId,
-                title: personId == 'maya' ? 'Review onboarding copy' : 'Confirm API edge cases',
+                title: personId == 'maya'
+                    ? 'Review onboarding copy'
+                    : 'Confirm API edge cases',
                 note: null,
                 starred: true,
                 dueAt: null,
@@ -96,9 +116,7 @@ void main() {
                 supportedLocales: context.supportedLocales,
                 localizationsDelegates: context.localizationDelegates,
                 locale: context.locale,
-                home: const MessagesHomePage(
-                  enableStartupUpdateCheck: false,
-                ),
+                home: const MessagesHomePage(enableStartupUpdateCheck: false),
               );
             },
           ),
@@ -119,10 +137,58 @@ void main() {
     expect(find.text('Confirm API edge cases'), findsOneWidget);
     expect(find.text('3'), findsOneWidget);
     expect(find.text('1'), findsOneWidget);
-    expect(find.byType(FloatingActionButton), findsOneWidget);
     expect(find.text('最近對話'), findsNothing);
     expect(find.text('置頂更新'), findsNothing);
     expect(find.text('09:42'), findsNothing);
     expect(find.text('已讀'), findsNothing);
+  });
+
+  testWidgets('app shell exposes navigation to the database branch', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          peopleProvider.overrideWith(
+            (ref) => Stream.value(const <PeopleData>[]),
+          ),
+          allTodosProvider.overrideWith((ref) => Stream.value(const <Todo>[])),
+          personPreviewTodoProvider.overrideWith((ref, personId) {
+            return Stream.value(null);
+          }),
+          personOpenTodoCountProvider.overrideWith((ref, personId) {
+            return Stream.value(0);
+          }),
+        ],
+        child: EasyLocalization(
+          supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+          path: 'unused',
+          assetLoader: const TestAssetLoader(),
+          fallbackLocale: const Locale('zh', 'TW'),
+          startLocale: const Locale('zh', 'TW'),
+          child: Builder(
+            builder: (context) {
+              return MaterialApp.router(
+                supportedLocales: context.supportedLocales,
+                localizationsDelegates: context.localizationDelegates,
+                locale: context.locale,
+                routerConfig: router,
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('清單'), findsOneWidget);
+    expect(find.text('資料庫'), findsOneWidget);
+
+    await tester.tap(find.text('資料庫'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('人物數'), findsOneWidget);
+    expect(find.text('待辦總數'), findsOneWidget);
   });
 }

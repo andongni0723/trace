@@ -1,13 +1,17 @@
 key,zh_TW,en
 app.title,Snap Ledger,Snap Ledger
+appShell.navigation.list,清單,List
+appShell.navigation.database,資料庫,Database
 appSettings.title,設定,Settings
 appSettings.section.appearance,外觀,Appearance
 appSettings.section.app,App,App
+appSettings.section.security,安全性,Security
 appSettings.section.data,資料,Data
 appSettings.themeMode.title,主題,Theme
 appSettings.themeMode.system,跟隨系統,System
 appSettings.themeMode.light,淺色,Light
 appSettings.themeMode.dark,深色,Dark
+appSettings.comingSoon,即將推出,Coming soon
 appSettings.checkUpdate.title,檢查更新,Check for updates
 appSettings.checkUpdate.subtitle,檢查 GitHub Release 是否有新版本。,Check GitHub Releases for a newer version.
 appSettings.checkUpdate.availableTitle,發現新版本 {version},New version {version} available
@@ -26,8 +30,27 @@ appSettings.exportData.error,匯出資料失敗。,Failed to export data.
 appSettings.importData.title,匯入資料,Import data
 appSettings.importData.subtitle,從備份檔匯入人物、待辦與設定。,Import people, todos, and settings from a backup file.
 appSettings.importData.success,資料匯入完成。,Data import completed.
-appSettings.importData.invalidFormat,這不是 people_todolist 的備份格式，已取消匯入。,This file is not a valid people_todolist backup. Import was cancelled.
+appSettings.importData.invalidFormat,這不是 trace 的備份格式，已取消匯入。,This file is not a valid trace backup. Import was cancelled.
 appSettings.importData.error,匯入資料失敗。,Failed to import data.
+appSettings.fingerprint.title,指紋辨識,Fingerprint recognition
+appSettings.fingerprint.subtitle,開啟後可在 app 重新進入時要求再次驗證。,When enabled, the app can require verification after it is reopened.
+appSettings.fingerprint.unavailable,此裝置目前無法使用生物辨識。,Biometric authentication is not available on this device.
+appSettings.fingerprint.systemPrompt,請驗證身分以開啟 trace。,Authenticate to open trace.
+appSettings.fingerprint.lockTitle,需要指紋辨識,Biometric authentication required
+appSettings.fingerprint.lockSubtitle,請先完成指紋辨識以繼續使用。,Use biometric authentication to continue.
+appSettings.fingerprint.lockChecking,正在確認身分，請稍候。,Checking your identity.
+appSettings.fingerprint.lockRetry,再試一次,Try again
+appSettings.fingerprint.lockError,驗證未完成，請再試一次。,Authentication did not complete. Try again.
+appSettings.fingerprint.turnOff,關閉指紋辨識,Turn off biometric lock
+appSettings.fingerprint.recheckFrequency.title,重新驗證頻率,Re-authentication frequency
+appSettings.fingerprint.recheckFrequency.subtitle,選擇在多久後重新要求指紋驗證。,Choose when to ask for fingerprint verification again.
+appSettings.fingerprint.recheckFrequency.summary,目前可選 15 分鐘、30 分鐘，或下次開啟 app。,Available choices: 15 minutes, 30 minutes, or next app open.
+appSettings.fingerprint.recheckFrequency.15m,15 分鐘後,After 15 minutes
+appSettings.fingerprint.recheckFrequency.15mHint,適合短時間離開後返回。,Good for returning after a short break.
+appSettings.fingerprint.recheckFrequency.30m,30 分鐘後,After 30 minutes
+appSettings.fingerprint.recheckFrequency.30mHint,適合較長的暫離情境。,Good for a longer pause away.
+appSettings.fingerprint.recheckFrequency.nextOpen,下次開啟 app 時,Next time the app opens
+appSettings.fingerprint.recheckFrequency.nextOpenHint,每次重新打開都要驗證一次。,Require verification every time the app is reopened.
 time.todayAt,今天 {time},Today {time}
 time.tomorrowAt,明天 {time},Tomorrow {time}
 time.yesterdayAt,昨天 {time},Yesterday {time}
@@ -49,9 +72,81 @@ messages.people.cardPreview,點一下查看這個人的待辦清單。,Tap to op
 messages.people.empty,還沒有朋友，點右下角新增第一位。,No friends yet. Add your first one from the button.
 messages.people.noSearchResult,找不到符合搜尋的人。,No matching people found.
 messages.people.loadError,讀取朋友資料失敗。,Unable to load people.
+database.title,資料庫,Database
+database.subtitle,快速查看目前本機資料庫中的人物與待辦統計。,Quickly review the people and to-do totals stored in the local database.
+database.loadError,讀取資料庫摘要失敗。,Unable to load the database summary.
+database.metrics.people,人物數,People
+database.metrics.todos,待辦總數,Total to-dos
+database.metrics.openTodos,未完成待辦,Open to-dos
+database.metrics.completedTodos,已完成待辦,Completed to-dos
 personTodo.noteTitle,人物備註,Person note
 personTodo.noteEmpty,還沒有記錄這個人的備註。,No note has been recorded for this person yet.
 personTodo.noteFallback,"{name} 的個人備註尚未建立，最後更新時間是 {date}。","A detailed note for {name} has not been added yet. Last updated on {date}."
+personTodo.avatar.title,人物頭像,Person avatar
+personTodo.avatar.subtitle,選擇、更新或移除這個人的頭像圖片。,Choose, update, or remove this person's avatar image.
+personTodo.avatar.none,尚未設定圖片。,No image selected yet.
+personTodo.avatar.selected,已設定圖片,Image selected
+personTodo.avatar.select,選擇圖片,Choose image
+personTodo.avatar.change,更換圖片,Change image
+personTodo.avatar.remove,移除圖片,Remove image
+personTodo.tabs.todoList,待辦清單,To-do list
+personTodo.tabs.database,資料庫,Database
+personTodo.database.title,個人資料庫,Personal database
+personTodo.database.addField,新增欄位,Add field
+personTodo.database.emptyTitle,還沒有欄位,No fields yet
+personTodo.database.emptyBody,建立欄位來記錄這個人的個人資料與情境資訊。,Create fields to store this person's context and notes.
+personTodo.database.loadError,讀取個人資料庫失敗。,Unable to load the personal database.
+personTodo.database.type.string,字串,String
+personTodo.database.type.number,數字,Number
+personTodo.database.type.boolean,布林,Boolean
+personTodo.database.type.object,物件,Object
+personTodo.database.type.list,陣列,List
+personTodo.database.type.null,空值,Null
+personTodo.database.fieldType.string,字串,String
+personTodo.database.fieldType.number,數字,Number
+personTodo.database.fieldType.boolean,布林,Boolean
+personTodo.database.fieldType.object,物件,Object
+personTodo.database.fieldType.list,陣列,List
+personTodo.database.fieldType.null,空值,Null
+personTodo.database.scope.private,私人,Private
+personTodo.database.scope.public,公開,Public
+personTodo.database.action.addChild,新增子欄位,Add child
+personTodo.database.action.edit,編輯,Edit
+personTodo.database.action.delete,刪除,Delete
+personTodo.database.menu.more,更多操作,More actions
+personTodo.database.actionError,個人資料庫更新失敗。,Unable to update the personal database.
+personTodo.database.deleteDialog.title,刪除欄位,Delete field
+personTodo.database.deleteDialog.body,確定要刪除欄位「{key}」嗎？,Delete field "{key}"?
+personTodo.database.deleteDialog.cancel,取消,Cancel
+personTodo.database.deleteDialog.delete,刪除,Delete
+personTodo.database.sheet.addTitle,新增欄位,Add field
+personTodo.database.sheet.createTitle,新增欄位,Create field
+personTodo.database.sheet.create,建立,Create
+personTodo.database.sheet.editTitle,編輯欄位,Edit field
+personTodo.database.sheet.update,更新,Update
+personTodo.database.sheet.addChildTitle,新增子欄位,Add child field
+personTodo.database.sheet.key,Key,Key
+personTodo.database.sheet.value,Value,Value
+personTodo.database.sheet.type,Type,Type
+personTodo.database.sheet.save,儲存,Save
+personTodo.database.sheet.scopePrivate,私人,Private
+personTodo.database.sheet.scopePublic,公開,Public
+personTodo.database.sheet.boolTrue,true,true
+personTodo.database.sheet.boolFalse,false,false
+personTodo.database.sheet.nullValue,此欄位值為 null。,This field value is null.
+personTodo.database.sheet.objectHint,Object 內容請用新增子欄位管理。,Use add child to manage object entries.
+personTodo.database.sheet.keyRequired,請輸入 key。,Key is required.
+personTodo.database.sheet.invalidNumber,數字格式不正確。,Invalid number format.
+personTodo.database.sheet.invalidObject,請輸入有效的 JSON object。,Enter a valid JSON object.
+personTodo.database.sheet.invalidList,請輸入有效的 JSON list。,Enter a valid JSON list.
+personTodo.menu.more,更多操作,More actions
+personTodo.menu.renamePerson,重新命名人物,Rename person
+personTodo.menu.deletePerson,刪除人物,Delete person
+personTodo.renameDialog.nameLabel,人物名稱,Person name
+personTodo.deleteDialog.message,確定要刪除「{name}」嗎？這個人的待辦與資料也會一起刪除。,Delete "{name}"? This person's todos and data will also be removed.
+personTodo.dialog.cancel,取消,Cancel
+personTodo.dialog.save,儲存,Save
+personTodo.completed.title,已完成,Completed
 personTodo.todoTitle,待辦清單,To-do list
 personTodo.todoEmpty,目前還沒有待辦事項。,There are no to-dos yet.
 personTodo.todoLoadError,讀取待辦清單失敗。,Unable to load the to-do list.

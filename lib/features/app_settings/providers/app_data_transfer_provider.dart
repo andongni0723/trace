@@ -2,11 +2,15 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/database/database.dart';
+import '../biometric_lock/data/models/biometric_lock_settings.dart';
+import '../biometric_lock/data/repositories/biometric_lock_settings_repository.dart';
+import '../biometric_lock/providers/biometric_lock_provider.dart';
 import '../../people/providers/people_database_providers.dart';
 import '../data/models/app_settings.dart';
 import 'app_settings_provider.dart';
@@ -15,9 +19,11 @@ final appDataTransferProvider = Provider<AppDataTransferService>((ref) {
   return AppDataTransferService(ref);
 });
 
-const _backupAppId = 'people_todolist';
+const _backupAppId = 'trace';
+const _legacyBackupAppIds = {'people_todolist'};
 const _backupType = 'app_backup';
-const _backupVersion = 1;
+const _backupVersion = 4;
+const _supportedBackupVersions = {1, 2, 3, 4};
 
 class AppDataTransferService {
   AppDataTransferService(this._ref);
@@ -25,34 +31,12 @@ class AppDataTransferService {
   final Ref _ref;
 
   Future<bool> exportData() async {
-    final database = _ref.read(appDatabaseProvider);
-    final appSettings = await _readCurrentSettings();
-
-    final people = await database.select(database.people).get();
-    final todos = await database.select(database.todos).get();
-    final participants = await database.select(database.todoParticipants).get();
-
-    final payload = <String, Object?>{
-      'appId': _backupAppId,
-      'backupType': _backupType,
-      'version': _backupVersion,
-      'exportedAt': DateTime.now().toIso8601String(),
-      'settings': {
-        'themeMode': appSettings.themeMode.name,
-      },
-      'people': people.map((person) => person.toJson()).toList(growable: false),
-      'todos': todos.map((todo) => todo.toJson()).toList(growable: false),
-      'todoParticipants': participants
-          .map((participant) => participant.toJson())
-          .toList(growable: false),
-    };
+    final payload = await buildBackupPayload();
 
     final fileName =
-        'people_todolist_backup_${DateTime.now().millisecondsSinceEpoch}.json';
+        'trace_backup_${DateTime.now().millisecondsSinceEpoch}.json';
     final bytes = Uint8List.fromList(
-      utf8.encode(
-        const JsonEncoder.withIndent('  ').convert(payload),
-      ),
+      utf8.encode(const JsonEncoder.withIndent('  ').convert(payload)),
     );
 
     try {
@@ -70,10 +54,7 @@ class AppDataTransferService {
       await tempFile.writeAsBytes(bytes, flush: true);
 
       await SharePlus.instance.share(
-        ShareParams(
-          files: [XFile(tempFile.path)],
-          title: 'people_todolist backup',
-        ),
+        ShareParams(files: [XFile(tempFile.path)], title: 'trace backup'),
       );
 
       return true;
@@ -91,62 +72,185 @@ class AppDataTransferService {
     }
 
     final file = File(result.files.single.path!);
-    final rawJson = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+    final rawJson =
+        jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+    await importPayload(rawJson);
+
+    return true;
+  }
+
+  Future<Map<String, Object?>> buildBackupPayload() async {
+    final database = _ref.read(appDatabaseProvider);
+    final appSettings = await _readCurrentSettings();
+    final biometricSettings = await _readCurrentBiometricSettings();
+
+    final people = await database.select(database.people).get();
+    final todos = await database.select(database.todos).get();
+    final participants = await database.select(database.todoParticipants).get();
+    final personalDatabaseFields = await database
+        .select(database.personalDatabaseFields)
+        .get();
+    final personalDatabaseValues = await database
+        .select(database.personalDatabaseValues)
+        .get();
+    final personAvatars = await _ref
+        .read(personAvatarStorageProvider)
+        .buildBackupPayload(
+          people.map(
+            (person) => (personId: person.id, avatarPath: person.avatarPath),
+          ),
+        );
+
+    return <String, Object?>{
+      'appId': _backupAppId,
+      'backupType': _backupType,
+      'version': _backupVersion,
+      'exportedAt': DateTime.now().toIso8601String(),
+      'settings': {
+        'themeMode': appSettings.themeMode.name,
+        'biometricLock': {
+          'enabled': biometricSettings.enabled,
+          'reauthInterval': biometricSettings.reauthInterval.preferenceValue,
+        },
+      },
+      'people': people.map((person) => person.toJson()).toList(growable: false),
+      'personAvatars': personAvatars,
+      'todos': todos.map((todo) => todo.toJson()).toList(growable: false),
+      'todoParticipants': participants
+          .map((participant) => participant.toJson())
+          .toList(growable: false),
+      'personalDatabaseFields': personalDatabaseFields
+          .map((field) => field.toJson())
+          .toList(growable: false),
+      'personalDatabaseValues': personalDatabaseValues
+          .map((value) => value.toJson())
+          .toList(growable: false),
+    };
+  }
+
+  Future<void> importPayload(Map<String, dynamic> rawJson) async {
     _validateBackupPayload(rawJson);
 
     final peopleJson = (rawJson['people'] as List<dynamic>? ?? const []);
     final todosJson = (rawJson['todos'] as List<dynamic>? ?? const []);
     final participantsJson =
         (rawJson['todoParticipants'] as List<dynamic>? ?? const []);
+    final personalDatabaseFieldsJson =
+        (rawJson['personalDatabaseFields'] as List<dynamic>? ?? const []);
+    final personalDatabaseValuesJson =
+        (rawJson['personalDatabaseValues'] as List<dynamic>? ?? const []);
+    final personAvatarsJson = rawJson['personAvatars'] as Map<String, dynamic>?;
     final settingsJson = rawJson['settings'] as Map<String, dynamic>?;
+    final biometricSettingsJson =
+        settingsJson?['biometricLock'] as Map<String, dynamic>?;
+    final database = _ref.read(appDatabaseProvider);
+    final previousPeople = await database.select(database.people).get();
+    final previousManagedAvatarPaths = previousPeople
+        .map((person) => person.avatarPath)
+        .whereType<String>()
+        .toSet();
 
-    final people = peopleJson
+    final importedPeople = peopleJson
         .map(
-          (item) => PeopleData.fromJson(
-            Map<String, dynamic>.from(item as Map),
-          ),
+          (item) => PeopleData.fromJson(Map<String, dynamic>.from(item as Map)),
         )
         .toList(growable: false);
+    final people = <PeopleData>[];
+    final restoredAvatarPaths = <String>{};
+    try {
+      final restoredPeople = await _restorePeopleWithManagedAvatars(
+        importedPeople,
+        personAvatarsJson,
+      );
+      people.addAll(restoredPeople);
+      restoredAvatarPaths.addAll(
+        restoredPeople.map((person) => person.avatarPath).whereType<String>(),
+      );
+    } catch (_) {
+      await _cleanupAvatarPaths(restoredAvatarPaths);
+      rethrow;
+    }
     final todos = todosJson
-        .map(
-          (item) => Todo.fromJson(
-            Map<String, dynamic>.from(item as Map),
-          ),
-        )
+        .map((item) => Todo.fromJson(Map<String, dynamic>.from(item as Map)))
         .toList(growable: false);
     final participants = participantsJson
         .map(
-          (item) => TodoParticipant.fromJson(
+          (item) =>
+              TodoParticipant.fromJson(Map<String, dynamic>.from(item as Map)),
+        )
+        .toList(growable: false);
+    final personalDatabaseFields = personalDatabaseFieldsJson
+        .map(
+          (item) => PersonalDatabaseField.fromJson(
+            Map<String, dynamic>.from(item as Map),
+          ),
+        )
+        .toList(growable: false);
+    final personalDatabaseValues = personalDatabaseValuesJson
+        .map(
+          (item) => PersonalDatabaseValue.fromJson(
             Map<String, dynamic>.from(item as Map),
           ),
         )
         .toList(growable: false);
 
-    final database = _ref.read(appDatabaseProvider);
-    await database.transaction(() async {
-      await database.delete(database.todoParticipants).go();
-      await database.delete(database.todos).go();
-      await database.delete(database.people).go();
+    try {
+      await database.transaction(() async {
+        await database.delete(database.personalDatabaseValues).go();
+        await database.delete(database.personalDatabaseFields).go();
+        await database.delete(database.todoParticipants).go();
+        await database.delete(database.todos).go();
+        await database.delete(database.people).go();
 
-      await database.batch((batch) {
-        if (people.isNotEmpty) {
-          batch.insertAll(database.people, people);
-        }
-        if (todos.isNotEmpty) {
-          batch.insertAll(database.todos, todos);
-        }
-        if (participants.isNotEmpty) {
-          batch.insertAll(database.todoParticipants, participants);
-        }
+        await database.batch((batch) {
+          if (people.isNotEmpty) {
+            batch.insertAll(database.people, people);
+          }
+          if (todos.isNotEmpty) {
+            batch.insertAll(database.todos, todos);
+          }
+          if (participants.isNotEmpty) {
+            batch.insertAll(database.todoParticipants, participants);
+          }
+          if (personalDatabaseFields.isNotEmpty) {
+            batch.insertAll(
+              database.personalDatabaseFields,
+              personalDatabaseFields,
+            );
+          }
+          if (personalDatabaseValues.isNotEmpty) {
+            batch.insertAll(
+              database.personalDatabaseValues,
+              personalDatabaseValues,
+            );
+          }
+        });
       });
-    });
+    } catch (_) {
+      await _cleanupAvatarPaths(restoredAvatarPaths);
+      rethrow;
+    }
 
     final importedThemeMode = AppThemeModePreferenceX.fromPreference(
       settingsJson?['themeMode'] as String?,
     );
     await _ref.read(appSettingsActionsProvider).setThemeMode(importedThemeMode);
+    await _ref
+        .read(biometricLockSettingsRepositoryProvider)
+        .save(
+          BiometricLockSettings(
+            enabled: biometricSettingsJson?['enabled'] as bool? ?? false,
+            reauthInterval: BiometricReauthIntervalX.fromPreference(
+              biometricSettingsJson?['reauthInterval'] as String?,
+            ),
+          ),
+        );
+    _ref.invalidate(biometricLockStateProvider);
 
-    return true;
+    final avatarPathsToDelete = previousManagedAvatarPaths.difference(
+      restoredAvatarPaths,
+    );
+    await _cleanupAvatarPaths(avatarPathsToDelete);
   }
 
   Future<AppSettings> _readCurrentSettings() async {
@@ -154,6 +258,14 @@ class AppDataTransferService {
       return await _ref.read(appSettingsProvider.future);
     } catch (_) {
       return const AppSettings();
+    }
+  }
+
+  Future<BiometricLockSettings> _readCurrentBiometricSettings() async {
+    try {
+      return _ref.read(biometricLockSettingsRepositoryProvider).load();
+    } catch (_) {
+      return const BiometricLockSettings();
     }
   }
 
@@ -165,14 +277,54 @@ class AppDataTransferService {
     final hasRequiredStructure =
         rawJson['settings'] is Map<String, dynamic> &&
         rawJson['people'] is List<dynamic> &&
+        (rawJson['personAvatars'] == null ||
+            rawJson['personAvatars'] is Map<String, dynamic>) &&
         rawJson['todos'] is List<dynamic> &&
-        rawJson['todoParticipants'] is List<dynamic>;
+        rawJson['todoParticipants'] is List<dynamic> &&
+        (rawJson['personalDatabaseFields'] == null ||
+            rawJson['personalDatabaseFields'] is List<dynamic>) &&
+        (rawJson['personalDatabaseValues'] == null ||
+            rawJson['personalDatabaseValues'] is List<dynamic>);
 
-    if (appId != _backupAppId ||
+    final isKnownAppId =
+        appId == _backupAppId || _legacyBackupAppIds.contains(appId);
+
+    if (!isKnownAppId ||
         backupType != _backupType ||
-        version != _backupVersion ||
+        !_supportedBackupVersions.contains(version) ||
         !hasRequiredStructure) {
-      throw const FormatException('Invalid people_todolist backup format.');
+      throw const FormatException('Invalid trace backup format.');
+    }
+  }
+
+  Future<List<PeopleData>> _restorePeopleWithManagedAvatars(
+    List<PeopleData> people,
+    Map<String, dynamic>? personAvatarsJson,
+  ) async {
+    final avatarStorage = _ref.read(personAvatarStorageProvider);
+
+    return Future.wait(
+      people.map((person) async {
+        final encodedAvatar = personAvatarsJson?[person.id];
+        if (encodedAvatar is! String || encodedAvatar.isEmpty) {
+          return person.copyWith(avatarPath: Value(null));
+        }
+
+        final restoredAvatarPath = await avatarStorage.restoreAvatar(
+          personId: person.id,
+          base64Bytes: encodedAvatar,
+          originalPath: person.avatarPath,
+        );
+
+        return person.copyWith(avatarPath: Value(restoredAvatarPath));
+      }),
+    );
+  }
+
+  Future<void> _cleanupAvatarPaths(Iterable<String> avatarPaths) async {
+    final avatarStorage = _ref.read(personAvatarStorageProvider);
+    for (final avatarPath in avatarPaths) {
+      await avatarStorage.deleteManagedAvatar(avatarPath);
     }
   }
 }

@@ -26,18 +26,28 @@ class TodosDao extends DatabaseAccessor<AppDatabase> with _$TodosDaoMixin {
     return _todosForPersonQuery(personId).watch();
   }
 
+  Stream<List<Todo>> watchAllTodos() {
+    return (select(todos)..orderBy([
+          (table) => OrderingTerm.asc(table.done),
+          (table) => OrderingTerm.desc(table.updatedAt),
+        ]))
+        .watch();
+  }
+
   Future<List<Todo>> getTodosForPerson(String personId) {
     return _todosForPersonQuery(personId).get();
   }
 
   Stream<Todo?> watchTodoById(String todoId) {
-    return (select(todos)..where((table) => _matchesTodoId(todoId)))
-        .watchSingleOrNull();
+    return (select(
+      todos,
+    )..where((table) => _matchesTodoId(todoId))).watchSingleOrNull();
   }
 
   Future<Todo?> getTodoById(String todoId) {
-    return (select(todos)..where((table) => _matchesTodoId(todoId)))
-        .getSingleOrNull();
+    return (select(
+      todos,
+    )..where((table) => _matchesTodoId(todoId))).getSingleOrNull();
   }
 
   Stream<List<TodoWithPeople>> watchTodosWithPeopleForPerson(String personId) {
@@ -97,18 +107,20 @@ class TodosDao extends DatabaseAccessor<AppDatabase> with _$TodosDaoMixin {
     List<String>? participantPersonIds,
   }) async {
     return transaction(() async {
-      final didUpdate = await (update(todos)..where((table) => _matchesTodoId(id)))
-          .write(
-        TodosCompanion(
-          personId: personId == null ? const Value.absent() : Value(personId),
-          title: title == null ? const Value.absent() : Value(title),
-          note: note,
-          starred: starred == null ? const Value.absent() : Value(starred),
-          dueAt: dueAt,
-          done: done == null ? const Value.absent() : Value(done),
-          updatedAt: Value(DateTime.now()),
-        ),
-      );
+      final didUpdate =
+          await (update(todos)..where((table) => _matchesTodoId(id))).write(
+            TodosCompanion(
+              personId: personId == null
+                  ? const Value.absent()
+                  : Value(personId),
+              title: title == null ? const Value.absent() : Value(title),
+              note: note,
+              starred: starred == null ? const Value.absent() : Value(starred),
+              dueAt: dueAt,
+              done: done == null ? const Value.absent() : Value(done),
+              updatedAt: Value(DateTime.now()),
+            ),
+          );
 
       if (participantPersonIds != null) {
         await _replaceParticipants(
@@ -121,27 +133,15 @@ class TodosDao extends DatabaseAccessor<AppDatabase> with _$TodosDaoMixin {
     });
   }
 
-  Future<int> setTodoDone({
-    required String todoId,
-    required bool done,
-  }) {
+  Future<int> setTodoDone({required String todoId, required bool done}) {
     return (update(todos)..where((table) => _matchesTodoId(todoId))).write(
-      TodosCompanion(
-        done: Value(done),
-        updatedAt: Value(DateTime.now()),
-      ),
+      TodosCompanion(done: Value(done), updatedAt: Value(DateTime.now())),
     );
   }
 
-  Future<int> setTodoStarred({
-    required String todoId,
-    required bool starred,
-  }) {
+  Future<int> setTodoStarred({required String todoId, required bool starred}) {
     return (update(todos)..where((table) => _matchesTodoId(todoId))).write(
-      TodosCompanion(
-        starred: Value(starred),
-        updatedAt: Value(DateTime.now()),
-      ),
+      TodosCompanion(starred: Value(starred), updatedAt: Value(DateTime.now())),
     );
   }
 
@@ -152,29 +152,22 @@ class TodosDao extends DatabaseAccessor<AppDatabase> with _$TodosDaoMixin {
   Future<List<PeopleData>> getParticipantsForTodo(String todoId) async {
     final rows = await _participantsJoinQuery(todoIds: [todoId]).get();
 
-    return rows
-        .map((row) => row.readTable(people))
-        .toList(growable: false);
+    return rows.map((row) => row.readTable(people)).toList(growable: false);
   }
 
   Stream<List<PeopleData>> watchParticipantsForTodo(String todoId) {
     return _participantsJoinQuery(todoIds: [todoId]).watch().map(
-          (rows) => rows
-              .map((row) => row.readTable(people))
-              .toList(growable: false),
-        );
+      (rows) =>
+          rows.map((row) => row.readTable(people)).toList(growable: false),
+    );
   }
 
   JoinedSelectStatement<HasResultSet, dynamic> _participantsJoinQuery({
     required Iterable<String> todoIds,
   }) {
     return select(todoParticipants).join([
-      innerJoin(
-        people,
-        people.id.equalsExp(todoParticipants.personId),
-      ),
-    ])
-      ..where(todoParticipants.todoId.isIn(todoIds));
+      innerJoin(people, people.id.equalsExp(todoParticipants.personId)),
+    ])..where(todoParticipants.todoId.isIn(todoIds));
   }
 
   Future<List<TodoWithPeople>> _composeTodoBundles(List<Todo> todoItems) async {
@@ -210,7 +203,9 @@ class TodosDao extends DatabaseAccessor<AppDatabase> with _$TodosDaoMixin {
     for (final row in rows) {
       final participant = row.readTable(todoParticipants);
       final person = row.readTable(people);
-      participantsByTodoId.putIfAbsent(participant.todoId, () => []).add(person);
+      participantsByTodoId
+          .putIfAbsent(participant.todoId, () => [])
+          .add(person);
     }
 
     return participantsByTodoId;
@@ -220,10 +215,13 @@ class TodosDao extends DatabaseAccessor<AppDatabase> with _$TodosDaoMixin {
     required String todoId,
     required List<String> participantPersonIds,
   }) async {
-    await (delete(todoParticipants)..where((table) => table.todoId.equals(todoId)))
-        .go();
+    await (delete(
+      todoParticipants,
+    )..where((table) => table.todoId.equals(todoId))).go();
 
-    final distinctParticipantIds = participantPersonIds.toSet().toList(growable: false);
+    final distinctParticipantIds = participantPersonIds.toSet().toList(
+      growable: false,
+    );
     if (distinctParticipantIds.isEmpty) {
       return;
     }

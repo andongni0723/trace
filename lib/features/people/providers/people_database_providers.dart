@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/database.dart';
 import '../data/daos/people_dao.dart';
+import '../data/daos/personal_database_dao.dart';
+import '../data/services/person_avatar_storage.dart';
 import '../data/daos/todos_dao.dart';
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
@@ -16,4 +18,12 @@ final peopleDaoProvider = Provider<PeopleDao>((ref) {
 
 final todosDaoProvider = Provider<TodosDao>((ref) {
   return ref.watch(appDatabaseProvider).todosDao;
+});
+
+final personalDatabaseDaoProvider = Provider<PersonalDatabaseDao>((ref) {
+  return ref.watch(appDatabaseProvider).personalDatabaseDao;
+});
+
+final personAvatarStorageProvider = Provider<PersonAvatarStorage>((ref) {
+  return PersonAvatarStorage();
 });

@@ -7,7 +7,7 @@ import '../../core/utils/useful_extension.dart';
 import '../../core/utils/utils_function.dart';
 
 const _releaseOwner = 'andongni0723';
-const _releaseRepo = 'people_todolist_app';
+const _releaseRepo = 'trace';
 
 Future<void> showUpdateVersionDialog(
   BuildContext context, {
@@ -57,6 +57,7 @@ Future<void> showUpdateVersionDialog(
 
   await showModalBottomSheet<void>(
     context: context,
+    useRootNavigator: true,
     isScrollControlled: true,
     showDragHandle: true,
     backgroundColor: context.cs.surface,

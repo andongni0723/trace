@@ -1,8 +1,11 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:people_todolist/core/utils/useful_extension.dart';
-import 'package:people_todolist/features/people/providers/people_provider.dart';
+import 'package:trace/core/utils/app_haptics.dart';
+import 'package:trace/core/utils/useful_extension.dart';
+import 'package:trace/features/people/providers/people_provider.dart';
+import 'package:trace/shared/widgets/person_avatar.dart';
 
 const List<Color> _avatarColors = [
   Color(0xFF5B6CF0),
@@ -30,6 +33,7 @@ class AddFriendBottomSheet extends ConsumerStatefulWidget {
 class _AddFriendBottomSheetState extends ConsumerState<AddFriendBottomSheet> {
   final TextEditingController _nameController = TextEditingController();
   Color _selectedColor = _avatarColors.first;
+  String? _selectedAvatarPath;
   bool _isSubmitting = false;
 
   @override
@@ -45,10 +49,9 @@ class _AddFriendBottomSheetState extends ConsumerState<AddFriendBottomSheet> {
 
     return SafeArea(
       top: false,
-      child: Padding(
+      child: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(24, 8, 24, bottomInset + 24),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -62,9 +65,7 @@ class _AddFriendBottomSheetState extends ConsumerState<AddFriendBottomSheet> {
                   ),
                 ),
                 IconButton(
-                  onPressed: canCreate
-                      ? _handleCreatePressed
-                      : null,
+                  onPressed: canCreate ? _handleCreatePressed : null,
                   tooltip: 'messages.addFriend.create'.tr(),
                   icon: _isSubmitting
                       ? const SizedBox(
@@ -76,6 +77,8 @@ class _AddFriendBottomSheetState extends ConsumerState<AddFriendBottomSheet> {
                 ),
               ],
             ),
+            const SizedBox(height: 20),
+            _buildAvatarSection(context),
             const SizedBox(height: 20),
             TextField(
               controller: _nameController,
@@ -104,53 +107,162 @@ class _AddFriendBottomSheetState extends ConsumerState<AddFriendBottomSheet> {
             Wrap(
               spacing: 12,
               runSpacing: 12,
-              children: _avatarColors.map((color) {
-                final isSelected = color == _selectedColor;
+              children: _avatarColors
+                  .map((color) {
+                    final isSelected = color == _selectedColor;
 
-                return Semantics(
-                  button: true,
-                  selected: isSelected,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(999),
-                    onTap: () {
-                      setState(() {
-                        _selectedColor = color;
-                      });
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      curve: Curves.easeOutCubic,
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isSelected
-                              ? context.cs.onSurface
-                              : context.cs.outlineVariant,
-                          width: isSelected ? 3 : 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: context.cs.shadow.withValues(alpha: 0.12),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
+                    return Semantics(
+                      button: true,
+                      selected: isSelected,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(999),
+                        onTap: () {
+                          AppHaptics.selection();
+                          setState(() {
+                            _selectedColor = color;
+                          });
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          curve: Curves.easeOutCubic,
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isSelected
+                                  ? context.cs.onSurface
+                                  : context.cs.outlineVariant,
+                              width: isSelected ? 3 : 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: context.cs.shadow.withValues(
+                                  alpha: 0.12,
+                                ),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
-                        ],
+                          child: isSelected
+                              ? const Icon(
+                                  Icons.check_rounded,
+                                  color: Colors.white,
+                                )
+                              : null,
+                        ),
                       ),
-                      child: isSelected
-                          ? const Icon(Icons.check_rounded, color: Colors.white)
-                          : null,
-                    ),
-                  ),
-                );
-              }).toList(growable: false),
+                    );
+                  })
+                  .toList(growable: false),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildAvatarSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'personTodo.avatar.title'.tr(),
+          style: context.tt.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            PersonAvatar(
+              name: _nameController.text.trim().isEmpty
+                  ? 'messages.addFriend.title'.tr()
+                  : _nameController.text.trim(),
+              colorValue: _selectedColor.toARGB32(),
+              avatarPath: _selectedAvatarPath,
+              size: 72,
+              borderWidth: 1,
+              borderColor: context.cs.outlineVariant,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _selectedAvatarPath == null
+                        ? 'personTodo.avatar.none'.tr()
+                        : 'personTodo.avatar.selected'.tr(),
+                    style: context.tt.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'personTodo.avatar.subtitle'.tr(),
+                    style: context.tt.bodyMedium?.copyWith(
+                      color: context.cs.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      FilledButton.tonalIcon(
+                        onPressed: _pickAvatarImage,
+                        icon: Icon(
+                          _selectedAvatarPath == null
+                              ? Icons.add_photo_alternate_outlined
+                              : Icons.edit_outlined,
+                        ),
+                        label: Text(
+                          _selectedAvatarPath == null
+                              ? 'personTodo.avatar.select'.tr()
+                              : 'personTodo.avatar.change'.tr(),
+                        ),
+                      ),
+                      if (_selectedAvatarPath != null)
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            AppHaptics.selection();
+                            setState(() {
+                              _selectedAvatarPath = null;
+                            });
+                          },
+                          icon: const Icon(Icons.delete_outline_rounded),
+                          label: Text('personTodo.avatar.remove'.tr()),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Future<void> _pickAvatarImage() async {
+    AppHaptics.primaryAction();
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+
+    final pickedPath = result.files.single.path;
+    if (pickedPath == null || pickedPath.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _selectedAvatarPath = pickedPath;
+    });
   }
 
   Future<void> _handleCreatePressed() async {
@@ -163,11 +275,15 @@ class _AddFriendBottomSheetState extends ConsumerState<AddFriendBottomSheet> {
     });
 
     try {
-      await ref.read(peopleActionsProvider).insertPerson(
+      await ref
+          .read(peopleActionsProvider)
+          .insertPerson(
             name: _nameController.text,
             avatarColor: _selectedColor,
+            avatarPath: _selectedAvatarPath,
           );
       if (mounted) {
+        AppHaptics.confirm();
         Navigator.of(context).pop();
       }
     } finally {

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:people_todolist/core/database/database.dart';
+import 'package:trace/core/database/database.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:people_todolist/core/utils/todo_due_date_formatter.dart';
-import 'package:people_todolist/core/utils/useful_extension.dart';
-import 'package:people_todolist/features/people/data/models/todo_with_people.dart';
-import 'package:people_todolist/shared/widgets/todo_participant_avatars.dart';
+import 'package:trace/core/utils/app_haptics.dart';
+import 'package:trace/core/utils/todo_due_date_formatter.dart';
+import 'package:trace/core/utils/useful_extension.dart';
+import 'package:trace/features/people/data/models/todo_with_people.dart';
+import 'package:trace/shared/widgets/todo_participant_avatars.dart';
 
 class PersonTodoItem extends StatelessWidget {
   const PersonTodoItem({
@@ -41,12 +42,18 @@ class PersonTodoItem extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: onPressed,
+        onTap: () {
+          AppHaptics.primaryAction();
+          onPressed();
+        },
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             IconButton(
-              onPressed: onToggleDone,
+              onPressed: () {
+                AppHaptics.selection();
+                onToggleDone();
+              },
               icon: Icon(
                 todo.done
                     ? Icons.check_circle_rounded
@@ -122,7 +129,10 @@ class PersonTodoItem extends StatelessWidget {
                       ),
                     ),
                   IconButton(
-                    onPressed: onToggleStar,
+                    onPressed: () {
+                      AppHaptics.selection();
+                      onToggleStar();
+                    },
                     icon: Icon(
                       todo.starred
                           ? Icons.star_rounded

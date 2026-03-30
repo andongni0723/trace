@@ -2,11 +2,12 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:people_todolist/core/database/database.dart';
-import 'package:people_todolist/core/utils/useful_extension.dart';
-import 'package:people_todolist/features/people/providers/people_provider.dart';
-import 'package:people_todolist/shared/dialogs/update_version_dialog.dart';
-import 'package:people_todolist/shared/widgets/add_friend_bottom_sheet.dart';
+import 'package:trace/core/database/database.dart';
+import 'package:trace/core/utils/app_haptics.dart';
+import 'package:trace/core/utils/useful_extension.dart';
+import 'package:trace/features/people/providers/people_provider.dart';
+import 'package:trace/shared/dialogs/update_version_dialog.dart';
+import 'package:trace/shared/widgets/person_avatar.dart';
 
 const double _wideHorizontalPadding = 32;
 const double _compactHorizontalPadding = 20;
@@ -26,10 +27,7 @@ const double _countBadgeMinSize = 32;
 const double _countBadgeHorizontalPadding = 10;
 
 class MessagesHomePage extends ConsumerStatefulWidget {
-  const MessagesHomePage({
-    this.enableStartupUpdateCheck = true,
-    super.key,
-  });
+  const MessagesHomePage({this.enableStartupUpdateCheck = true, super.key});
 
   final bool enableStartupUpdateCheck;
 
@@ -65,20 +63,7 @@ class _MessagesHomePageState extends ConsumerState<MessagesHomePage> {
     }
 
     _hasStartedUpdateCheck = true;
-    await showUpdateVersionDialog(
-      context,
-      showStatusFeedback: false,
-    );
-  }
-
-  Future<void> _openAddFriendBottomSheet() {
-    return showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      backgroundColor: context.cs.surface,
-      builder: (_) => const AddFriendBottomSheet(),
-    );
+    await showUpdateVersionDialog(context, showStatusFeedback: false);
   }
 
   List<String> _localizedTabs(BuildContext context) => [
@@ -120,12 +105,9 @@ class _MessagesHomePageState extends ConsumerState<MessagesHomePage> {
         : _compactHorizontalPadding;
     final tabs = _localizedTabs(context);
 
-    return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: _openAddFriendBottomSheet,
-        child: const Icon(Icons.add),
-      ),
-      body: SafeArea(
+    return Material(
+      color: context.cs.surface,
+      child: SafeArea(
         child: _buildScrollView(
           context: context,
           horizontalPadding: horizontalPadding,
@@ -194,6 +176,7 @@ class _MessagesHomePageState extends ConsumerState<MessagesHomePage> {
         if (_searchQuery.isNotEmpty)
           IconButton(
             onPressed: () {
+              AppHaptics.selection();
               _searchController.clear();
               setState(() {
                 _searchQuery = '';
@@ -224,6 +207,7 @@ class _MessagesHomePageState extends ConsumerState<MessagesHomePage> {
               label: Text(tabs[index]),
               selected: isSelected,
               onSelected: (_) {
+                AppHaptics.selection();
                 setState(() {
                   _selectedTabIndex = index;
                 });
@@ -329,6 +313,7 @@ class _HeaderCard extends ConsumerWidget {
         ),
         IconButton(
           onPressed: () {
+            AppHaptics.primaryAction();
             context.push('/settings');
           },
           icon: const Icon(Icons.settings_outlined),
@@ -347,7 +332,9 @@ class _ConversationCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final previewTodoAsync = ref.watch(personPreviewTodoProvider(person.id));
-    final openTodoCountAsync = ref.watch(personOpenTodoCountProvider(person.id));
+    final openTodoCountAsync = ref.watch(
+      personOpenTodoCountProvider(person.id),
+    );
 
     return Material(
       color: context.cs.surfaceContainerLow,
@@ -355,6 +342,7 @@ class _ConversationCard extends ConsumerWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () {
+          AppHaptics.primaryAction();
           context.push('/people/${person.id}');
         },
         child: Padding(
@@ -365,21 +353,11 @@ class _ConversationCard extends ConsumerWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  CircleAvatar(
-                    radius: _avatarRadius,
-                    backgroundColor: Color(person.colorValue),
-                    child: Text(
-                      _initialsOf(person.name),
-                      style: context.tt.titleMedium?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
+              PersonAvatar(
+                name: person.name,
+                colorValue: person.colorValue,
+                avatarPath: person.avatarPath,
+                size: _avatarRadius * 2,
               ),
               const SizedBox(width: _tileAvatarSpacing),
               Expanded(
@@ -490,13 +468,3 @@ BorderRadius _tileBorderRadiusFor(_TilePosition position) {
 }
 
 enum _TilePosition { single, first, middle, last }
-
-String _initialsOf(String name) {
-  final parts = name.split(' ');
-  if (parts.length == 1) {
-    return parts.first.characters.first.toUpperCase();
-  }
-
-  return '${parts.first.characters.first}${parts.last.characters.first}'
-      .toUpperCase();
-}

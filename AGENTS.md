@@ -29,8 +29,28 @@
 - Do not mix data classes and UI code in the same file.
 - Avoid packing multiple state, stateful widget, or other large widget classes into one file when they should be separated by responsibility.
 - Avoid manually writing repetitive model classes when `freezed` can generate them.
+- Do not handwrite immutable boilerplate such as `copyWith`, value equality, `hashCode`, or `toString` for models/state objects when `freezed` is a reasonable fit; prefer `freezed` first for typed immutable structures in this project.
 - Prefer the existing localization solution in this project over introducing JSON/XML-based ad hoc localization.
 - Reuse stable packages and established Flutter patterns instead of reinventing common infrastructure.
+
+## Flutter Project Conventions
+
+### Data Models
+- Always use `freezed` + `json_serializable` for immutable models.
+- Do not handwrite `==`, `hashCode`, `copyWith`, or constructors for model classes unless explicitly requested.
+- If a new model is added, also update the corresponding `part` files and generator annotations.
+
+### Layout
+- Prefer `Row.spacing` and `Column.spacing` for uniform gaps.
+- Do not insert `SizedBox(width/height)` between children unless:
+  - the spacing is intentionally irregular, or
+  - the gap is conditional / dynamic, or
+  - compatibility with older Flutter SDK is required.
+
+### Code Quality
+- Keep widgets small and composable.
+- Prefer const constructors when possible.
+- Run formatter and analyzer after edits.
 
 ## UI Expectations
 - Follow Material Design 3 principles:

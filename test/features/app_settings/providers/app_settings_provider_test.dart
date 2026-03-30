@@ -2,8 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:people_todolist/features/app_settings/data/models/app_settings.dart';
-import 'package:people_todolist/features/app_settings/providers/app_settings_provider.dart';
+import 'package:trace/features/app_settings/data/models/app_settings.dart';
+import 'package:trace/features/app_settings/providers/app_settings_provider.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

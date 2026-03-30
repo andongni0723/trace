@@ -3,11 +3,11 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:people_todolist/core/database/database.dart';
-import 'package:people_todolist/features/people/data/models/todo_with_people.dart';
-import 'package:people_todolist/features/people/providers/people_database_providers.dart';
-import 'package:people_todolist/features/people/providers/people_provider.dart';
-import 'package:people_todolist/shared/widgets/add_todo_bottom_sheet.dart';
+import 'package:trace/core/database/database.dart';
+import 'package:trace/features/people/data/models/todo_with_people.dart';
+import 'package:trace/features/people/providers/people_database_providers.dart';
+import 'package:trace/features/people/providers/people_provider.dart';
+import 'package:trace/shared/widgets/add_todo_bottom_sheet.dart';
 
 class _TestAssetLoader extends AssetLoader {
   const _TestAssetLoader();
@@ -68,7 +68,9 @@ void main() {
       ProviderScope(
         overrides: [
           appDatabaseProvider.overrideWithValue(database),
-          peopleProvider.overrideWith((ref) => Stream.value(const <PeopleData>[])),
+          peopleProvider.overrideWith(
+            (ref) => Stream.value(const <PeopleData>[]),
+          ),
         ],
         child: EasyLocalization(
           supportedLocales: const [Locale('zh', 'TW')],

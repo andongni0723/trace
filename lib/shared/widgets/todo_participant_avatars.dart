@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:people_todolist/core/database/database.dart';
-import 'package:people_todolist/core/utils/useful_extension.dart';
+import 'package:trace/core/database/database.dart';
+import 'package:trace/core/utils/useful_extension.dart';
+import 'package:trace/shared/widgets/person_avatar.dart';
 
 class TodoParticipantAvatars extends StatelessWidget {
   const TodoParticipantAvatars({
@@ -22,7 +23,10 @@ class TodoParticipantAvatars extends StatelessWidget {
     final overflowCount = people.length - visiblePeople.length;
 
     return SizedBox(
-      width: 28.0 + ((visiblePeople.length - 1) * 18.0) + (overflowCount > 0 ? 28.0 : 0),
+      width:
+          28.0 +
+          ((visiblePeople.length - 1) * 18.0) +
+          (overflowCount > 0 ? 28.0 : 0),
       height: 28,
       child: Stack(
         children: [
@@ -59,27 +63,11 @@ class _AvatarBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CircleAvatar(
-      radius: 14,
-      backgroundColor: Color(person.colorValue),
-      child: Text(
-        _initialsOf(person.name),
-        style: context.tt.labelMedium?.copyWith(
-          color: Colors.white,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
+    return PersonAvatar(
+      name: person.name,
+      colorValue: person.colorValue,
+      avatarPath: person.avatarPath,
+      size: 28,
     );
   }
 }
-
-String _initialsOf(String name) {
-  final parts = name.trim().split(RegExp(r'\s+'));
-  if (parts.length == 1) {
-    return parts.first.characters.first.toUpperCase();
-  }
-
-  return '${parts.first.characters.first}${parts.last.characters.first}'
-      .toUpperCase();
-}
-

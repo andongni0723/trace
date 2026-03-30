@@ -1,12 +1,14 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:people_todolist/core/database/database.dart';
-import 'package:people_todolist/core/utils/useful_extension.dart';
-import 'package:people_todolist/features/people/data/models/todo_with_people.dart';
-import 'package:people_todolist/features/people/providers/person_detail_provider.dart';
-import 'package:people_todolist/features/people/providers/people_provider.dart';
-import 'package:people_todolist/shared/widgets/todo_people_picker_sheet.dart';
+import 'package:trace/core/database/database.dart';
+import 'package:trace/core/utils/app_haptics.dart';
+import 'package:trace/core/utils/useful_extension.dart';
+import 'package:trace/features/people/data/models/todo_with_people.dart';
+import 'package:trace/features/people/providers/person_detail_provider.dart';
+import 'package:trace/features/people/providers/people_provider.dart';
+import 'package:trace/shared/widgets/person_avatar.dart';
+import 'package:trace/shared/widgets/todo_people_picker_sheet.dart';
 
 class AddTodoBottomSheet extends ConsumerStatefulWidget {
   const AddTodoBottomSheet({
@@ -86,32 +88,33 @@ class _AddTodoBottomSheetState extends ConsumerState<AddTodoBottomSheet> {
               peopleAsync.when(
                 data: (people) {
                   final selectedPeople = people
-                      .where((person) => _selectedParticipantIds.contains(person.id))
+                      .where(
+                        (person) => _selectedParticipantIds.contains(person.id),
+                      )
                       .toList(growable: false);
 
                   return Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: selectedPeople.map((person) {
-                      return InputChip(
-                        label: Text(person.name),
-                        avatar: CircleAvatar(
-                          backgroundColor: Color(person.colorValue),
-                          child: Text(
-                            _initialsOf(person.name),
-                            style: context.tt.labelSmall?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
+                    children: selectedPeople
+                        .map((person) {
+                          return InputChip(
+                            label: Text(person.name),
+                            avatar: PersonAvatar(
+                              name: person.name,
+                              colorValue: person.colorValue,
+                              avatarPath: person.avatarPath,
+                              size: 24,
                             ),
-                          ),
-                        ),
-                        onDeleted: () {
-                          setState(() {
-                            _selectedParticipantIds.remove(person.id);
-                          });
-                        },
-                      );
-                    }).toList(growable: false),
+                            onDeleted: () {
+                              AppHaptics.selection();
+                              setState(() {
+                                _selectedParticipantIds.remove(person.id);
+                              });
+                            },
+                          );
+                        })
+                        .toList(growable: false),
                   );
                 },
                 loading: () => const SizedBox.shrink(),
@@ -136,19 +139,21 @@ class _AddTodoBottomSheetState extends ConsumerState<AddTodoBottomSheet> {
               children: [
                 IconButton(
                   onPressed: () {
+                    AppHaptics.selection();
                     setState(() {
                       _showNoteField = !_showNoteField;
                     });
                   },
                   icon: Icon(
-                    _showNoteField
-                        ? Icons.notes_rounded
-                        : Icons.notes_outlined,
+                    _showNoteField ? Icons.notes_rounded : Icons.notes_outlined,
                   ),
                 ),
                 IconButton(
                   onPressed: peopleAsync.hasValue
-                      ? () => _openPeoplePicker(peopleAsync.value!)
+                      ? () {
+                          AppHaptics.primaryAction();
+                          _openPeoplePicker(peopleAsync.value!);
+                        }
                       : null,
                   icon: Icon(
                     _selectedParticipantIds.isNotEmpty
@@ -157,7 +162,10 @@ class _AddTodoBottomSheetState extends ConsumerState<AddTodoBottomSheet> {
                   ),
                 ),
                 IconButton(
-                  onPressed: _pickDueDateTime,
+                  onPressed: () {
+                    AppHaptics.primaryAction();
+                    _pickDueDateTime();
+                  },
                   icon: Icon(
                     _dueAt == null
                         ? Icons.schedule_outlined
@@ -166,6 +174,7 @@ class _AddTodoBottomSheetState extends ConsumerState<AddTodoBottomSheet> {
                 ),
                 IconButton(
                   onPressed: () {
+                    AppHaptics.selection();
                     setState(() {
                       _isStarred = !_isStarred;
                     });
@@ -220,6 +229,7 @@ class _AddTodoBottomSheetState extends ConsumerState<AddTodoBottomSheet> {
                   color: context.cs.onSurfaceVariant,
                 ),
                 onDeleted: () {
+                  AppHaptics.selection();
                   setState(() {
                     _dueAt = null;
                   });
@@ -251,9 +261,7 @@ class _AddTodoBottomSheetState extends ConsumerState<AddTodoBottomSheet> {
       initialTime: TimeOfDay.fromDateTime(_dueAt ?? now),
       builder: (context, child) {
         return MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(alwaysUse24HourFormat: true),
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
           child: child!,
         );
       },
@@ -287,26 +295,35 @@ class _AddTodoBottomSheetState extends ConsumerState<AddTodoBottomSheet> {
       final note = _noteController.text;
 
       if (_isEditing) {
-        await ref.read(personTodoActionsProvider).updateTodo(
+        await ref
+            .read(personTodoActionsProvider)
+            .updateTodo(
               todoId: widget.initialTodo!.todo.id,
               title: _titleController.text,
               note: note,
               dueAt: _dueAt,
               starred: _isStarred,
-              participantPersonIds: _selectedParticipantIds.toList(growable: false),
+              participantPersonIds: _selectedParticipantIds.toList(
+                growable: false,
+              ),
             );
       } else {
-        await ref.read(personTodoActionsProvider).createTodo(
+        await ref
+            .read(personTodoActionsProvider)
+            .createTodo(
               personId: widget.personId,
               title: _titleController.text,
               note: note,
               dueAt: _dueAt,
               starred: _isStarred,
-              participantPersonIds: _selectedParticipantIds.toList(growable: false),
+              participantPersonIds: _selectedParticipantIds.toList(
+                growable: false,
+              ),
             );
       }
 
       if (mounted) {
+        AppHaptics.confirm();
         Navigator.of(context).pop();
       }
     } finally {
@@ -325,7 +342,9 @@ class _AddTodoBottomSheetState extends ConsumerState<AddTodoBottomSheet> {
       isScrollControlled: true,
       backgroundColor: context.cs.surface,
       builder: (_) => TodoPeoplePickerSheet(
-        people: people.where((person) => person.id != widget.personId).toList(growable: false),
+        people: people
+            .where((person) => person.id != widget.personId)
+            .toList(growable: false),
         initialSelectedIds: _selectedParticipantIds,
       ),
     );
@@ -338,14 +357,4 @@ class _AddTodoBottomSheetState extends ConsumerState<AddTodoBottomSheet> {
       _selectedParticipantIds = selectedIds.toSet();
     });
   }
-}
-
-String _initialsOf(String name) {
-  final parts = name.trim().split(RegExp(r'\s+'));
-  if (parts.length == 1) {
-    return parts.first.characters.first.toUpperCase();
-  }
-
-  return '${parts.first.characters.first}${parts.last.characters.first}'
-      .toUpperCase();
 }

@@ -7,6 +7,8 @@ class People extends Table {
 
   IntColumn get colorValue => integer()();
 
+  TextColumn get avatarPath => text().nullable()();
+
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();

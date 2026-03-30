@@ -1,7 +1,9 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:people_todolist/core/database/database.dart';
-import 'package:people_todolist/core/utils/useful_extension.dart';
+import 'package:trace/core/database/database.dart';
+import 'package:trace/core/utils/app_haptics.dart';
+import 'package:trace/core/utils/useful_extension.dart';
+import 'package:trace/shared/widgets/person_avatar.dart';
 
 class TodoPeoplePickerSheet extends StatefulWidget {
   const TodoPeoplePickerSheet({
@@ -41,7 +43,10 @@ class _TodoPeoplePickerSheetState extends State<TodoPeoplePickerSheet> {
                 ),
                 TextButton(
                   onPressed: () {
-                    Navigator.of(context).pop(_selectedIds.toList(growable: false));
+                    AppHaptics.confirm();
+                    Navigator.of(
+                      context,
+                    ).pop(_selectedIds.toList(growable: false));
                   },
                   child: Text('personTodo.peoplePicker.done'.tr()),
                 ),
@@ -59,6 +64,7 @@ class _TodoPeoplePickerSheetState extends State<TodoPeoplePickerSheet> {
                   return CheckboxListTile(
                     value: isSelected,
                     onChanged: (_) {
+                      AppHaptics.selection();
                       setState(() {
                         if (isSelected) {
                           _selectedIds.remove(person.id);
@@ -68,15 +74,11 @@ class _TodoPeoplePickerSheetState extends State<TodoPeoplePickerSheet> {
                       });
                     },
                     contentPadding: EdgeInsets.zero,
-                    secondary: CircleAvatar(
-                      backgroundColor: Color(person.colorValue),
-                      child: Text(
-                        _initialsOf(person.name),
-                        style: context.tt.labelMedium?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                    secondary: PersonAvatar(
+                      name: person.name,
+                      colorValue: person.colorValue,
+                      avatarPath: person.avatarPath,
+                      size: 28,
                     ),
                     title: Text(person.name),
                     controlAffinity: ListTileControlAffinity.trailing,
@@ -90,14 +92,3 @@ class _TodoPeoplePickerSheetState extends State<TodoPeoplePickerSheet> {
     );
   }
 }
-
-String _initialsOf(String name) {
-  final parts = name.trim().split(RegExp(r'\s+'));
-  if (parts.length == 1) {
-    return parts.first.characters.first.toUpperCase();
-  }
-
-  return '${parts.first.characters.first}${parts.last.characters.first}'
-      .toUpperCase();
-}
-
