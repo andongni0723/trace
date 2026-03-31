@@ -157,6 +157,16 @@ personTodo.propertyChooser.createNewTitle,建立新屬性,Create new property
 personTodo.propertyChooser.emptyTitle,尚未有屬性,No properties yet
 personTodo.propertyChooser.emptyBody,先建立第一個屬性，之後就能重複加入不同人物。,Create the first property and reuse it across people.
 personTodo.propertyChooser.added,已加入此人,Added
+personTodo.propertyChooser.menu.editKeyName,編輯 key 名稱,Edit key name
+personTodo.propertyChooser.menu.deleteProperty,刪除屬性,Delete property
+personTodo.propertyChooser.renameDialog.title,編輯 key 名稱,Edit key name
+personTodo.propertyChooser.renameDialog.label,Property key,Property key
+personTodo.propertyChooser.renameDialog.cancel,取消,Cancel
+personTodo.propertyChooser.renameDialog.save,儲存,Save
+personTodo.propertyChooser.deleteDialog.title,刪除屬性,Delete property
+personTodo.propertyChooser.deleteDialog.body,確定要刪除屬性「{key}」嗎？這會刪除所有人物的同一個 property。,Delete property "{key}"? This removes the same property from every person.
+personTodo.propertyChooser.deleteDialog.cancel,取消,Cancel
+personTodo.propertyChooser.deleteDialog.delete,刪除,Delete
 personTodo.menu.more,更多操作,More actions
 personTodo.menu.renamePerson,重新命名人物,Rename person
 personTodo.menu.deletePerson,刪除人物,Delete person

@@ -16,3 +16,17 @@ extension StringX on String {
     return startsWith(prefix) ? substring(prefix.length) : this;
   }
 }
+
+mixin LateInitMixin<T extends StatefulWidget> on State<T> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        lateInitState();
+      }
+    });
+  }
+
+  void lateInitState();
+}

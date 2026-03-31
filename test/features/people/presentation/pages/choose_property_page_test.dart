@@ -9,6 +9,7 @@ class _ChoosePropertyTestAssetLoader extends AssetLoader {
 
   static const Map<String, dynamic> _zhTw = {
     'personTodo': {
+      'database': {'actionError': '個人資料庫更新失敗。'},
       'propertyChooser': {
         'title': '選擇屬性',
         'subtitle': '從屬性庫挑選一個要加入這個人的項目，或建立新的屬性。',
@@ -19,6 +20,19 @@ class _ChoosePropertyTestAssetLoader extends AssetLoader {
         'emptyTitle': '尚未有屬性',
         'emptyBody': '先建立第一個屬性，之後就能重複加入不同人物。',
         'added': '已加入此人',
+        'menu': {'editKeyName': '編輯 key 名稱', 'deleteProperty': '刪除屬性'},
+        'renameDialog': {
+          'title': '編輯 key 名稱',
+          'label': 'Property key',
+          'cancel': '取消',
+          'save': '儲存',
+        },
+        'deleteDialog': {
+          'title': '刪除屬性',
+          'body': '確定要刪除屬性「{key}」嗎？這會刪除所有人物的同一個 property。',
+          'cancel': '取消',
+          'delete': '刪除',
+        },
       },
     },
   };
@@ -32,6 +46,12 @@ class _ChoosePropertyTestAssetLoader extends AssetLoader {
 Future<void> _pumpChooserPage(
   WidgetTester tester, {
   required List<ChoosePropertyItem> properties,
+  Future<ChoosePropertyItem?> Function(
+    ChoosePropertyItem item,
+    String newTitle,
+  )?
+  onRenameProperty,
+  Future<void> Function(ChoosePropertyItem item)? onDeleteProperty,
 }) async {
   await tester.pumpWidget(
     EasyLocalization(
@@ -46,7 +66,11 @@ Future<void> _pumpChooserPage(
             supportedLocales: context.supportedLocales,
             localizationsDelegates: context.localizationDelegates,
             locale: context.locale,
-            home: ChoosePropertyPage(properties: properties),
+            home: ChoosePropertyPage(
+              properties: properties,
+              onRenameProperty: onRenameProperty,
+              onDeleteProperty: onDeleteProperty,
+            ),
           );
         },
       ),
@@ -203,4 +227,92 @@ void main() {
       expect(createTile.color, firstTile.color);
     },
   );
+
+  testWidgets('long press opens menu and can rename a property', (
+    tester,
+  ) async {
+    var renameCallCount = 0;
+
+    await _pumpChooserPage(
+      tester,
+      properties: const [
+        ChoosePropertyItem(
+          id: 'nickname',
+          title: '舊名稱',
+          subtitle: 'String',
+          valueType: PersonalDatabaseValueType.string,
+          rawValue: 'Captain',
+          valuePreview: 'Captain',
+        ),
+      ],
+      onRenameProperty: (item, newTitle) async {
+        renameCallCount += 1;
+        return item.copyWith(title: newTitle);
+      },
+      onDeleteProperty: (item) async {},
+    );
+
+    await tester.longPress(find.text('舊名稱'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('編輯 key 名稱'), findsOneWidget);
+    expect(find.text('刪除屬性'), findsOneWidget);
+
+    await tester.tap(find.text('編輯 key 名稱'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(TextField),
+      ),
+      '新名稱',
+    );
+    await tester.tap(find.text('儲存'));
+    await tester.pumpAndSettle();
+
+    expect(renameCallCount, 1);
+    expect(find.text('新名稱'), findsOneWidget);
+    expect(find.text('舊名稱'), findsNothing);
+  });
+
+  testWidgets('long press menu can delete a property from the local list', (
+    tester,
+  ) async {
+    var deleteCallCount = 0;
+
+    await _pumpChooserPage(
+      tester,
+      properties: const [
+        ChoosePropertyItem(
+          id: 'nickname',
+          title: '要刪除的屬性',
+          subtitle: 'String',
+          valueType: PersonalDatabaseValueType.string,
+          rawValue: 'Captain',
+          valuePreview: 'Captain',
+        ),
+      ],
+      onDeleteProperty: (item) async {
+        deleteCallCount += 1;
+      },
+    );
+
+    await tester.longPress(find.text('要刪除的屬性'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('刪除屬性'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('確定要刪除屬性「要刪除的屬性」嗎？這會刪除所有人物的同一個 property。'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('刪除'));
+    await tester.pumpAndSettle();
+
+    expect(deleteCallCount, 1);
+    expect(find.text('要刪除的屬性'), findsNothing);
+  });
 }

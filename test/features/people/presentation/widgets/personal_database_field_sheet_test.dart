@@ -1,8 +1,10 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:trace/features/people/data/models/personal_database_mention.dart';
 import 'package:trace/features/people/data/models/personal_database_value_type.dart';
 import 'package:trace/features/people/presentation/widgets/personal_database_field_sheet.dart';
+import 'package:trace/features/people/presentation/widgets/personal_database_mention_input.dart';
 
 class _PersonalDatabaseFieldSheetTestAssetLoader extends AssetLoader {
   const _PersonalDatabaseFieldSheetTestAssetLoader();
@@ -111,5 +113,218 @@ void main() {
     expect(result!.type, PersonalDatabaseValueType.object);
     expect(result.value, isA<Map<String, Object?>>());
     expect(result.value, isEmpty);
+  });
+
+  testWidgets('string input decodes and re-encodes stored mention tokens', (
+    tester,
+  ) async {
+    const codec = PersonalDatabaseMentionCodec();
+    const mention = PersonalDatabasePersonMention(
+      personId: 'person-1',
+      displayName: '安東尼',
+    );
+    PersonalDatabaseFieldSheetResult? result;
+
+    await tester.pumpWidget(
+      EasyLocalization(
+        supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+        path: 'unused',
+        assetLoader: const _PersonalDatabaseFieldSheetTestAssetLoader(),
+        fallbackLocale: const Locale('zh', 'TW'),
+        startLocale: const Locale('zh', 'TW'),
+        child: Builder(
+          builder: (localizationContext) {
+            return MaterialApp(
+              supportedLocales: localizationContext.supportedLocales,
+              localizationsDelegates: localizationContext.localizationDelegates,
+              locale: localizationContext.locale,
+              home: Builder(
+                builder: (materialContext) {
+                  return Scaffold(
+                    body: Center(
+                      child: FilledButton(
+                        onPressed: () async {
+                          result = await showPersonalDatabaseFieldSheet(
+                            context: materialContext,
+                            title: 'Edit property',
+                            submitLabel: 'Save',
+                            showKeyInput: false,
+                            initialType: PersonalDatabaseValueType.string,
+                            initialValue:
+                                'Hello ${codec.encodeMention(mention)}',
+                            mentionCodec: codec,
+                          );
+                        },
+                        child: const Text('Open'),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+
+    final textField = tester.widget<TextField>(find.byType(TextField).last);
+    expect(textField.controller?.text, 'Hello @安東尼');
+
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(result?.value, 'Hello ${codec.encodeMention(mention)}');
+  });
+
+  testWidgets('string input saves selected mention as token', (tester) async {
+    const codec = PersonalDatabaseMentionCodec();
+    PersonalDatabaseFieldSheetResult? result;
+
+    await tester.pumpWidget(
+      EasyLocalization(
+        supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+        path: 'unused',
+        assetLoader: const _PersonalDatabaseFieldSheetTestAssetLoader(),
+        fallbackLocale: const Locale('zh', 'TW'),
+        startLocale: const Locale('zh', 'TW'),
+        child: Builder(
+          builder: (localizationContext) {
+            return MaterialApp(
+              supportedLocales: localizationContext.supportedLocales,
+              localizationsDelegates: localizationContext.localizationDelegates,
+              locale: localizationContext.locale,
+              home: Builder(
+                builder: (materialContext) {
+                  return Scaffold(
+                    body: Center(
+                      child: FilledButton(
+                        onPressed: () async {
+                          result = await showPersonalDatabaseFieldSheet(
+                            context: materialContext,
+                            title: 'Edit property',
+                            submitLabel: 'Save',
+                            showKeyInput: false,
+                            initialType: PersonalDatabaseValueType.string,
+                            mentionSuggestions: const [
+                              PersonalDatabaseMentionSuggestion(
+                                id: 'person-2',
+                                name: '小美',
+                                colorValue: 0xFF3366FF,
+                              ),
+                            ],
+                            mentionCodec: codec,
+                          );
+                        },
+                        child: const Text('Open'),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).last, '@');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('小美').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(
+      result?.value,
+      codec.encodeMention(
+        const PersonalDatabasePersonMention(
+          personId: 'person-2',
+          displayName: '小美',
+        ),
+      ),
+    );
+  });
+
+  testWidgets('string input prefers latest suggestion name for existing token', (
+    tester,
+  ) async {
+    const codec = PersonalDatabaseMentionCodec();
+    const staleMention = PersonalDatabasePersonMention(
+      personId: 'person-3',
+      displayName: '舊名字',
+    );
+    PersonalDatabaseFieldSheetResult? result;
+
+    await tester.pumpWidget(
+      EasyLocalization(
+        supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+        path: 'unused',
+        assetLoader: const _PersonalDatabaseFieldSheetTestAssetLoader(),
+        fallbackLocale: const Locale('zh', 'TW'),
+        startLocale: const Locale('zh', 'TW'),
+        child: Builder(
+          builder: (localizationContext) {
+            return MaterialApp(
+              supportedLocales: localizationContext.supportedLocales,
+              localizationsDelegates: localizationContext.localizationDelegates,
+              locale: localizationContext.locale,
+              home: Builder(
+                builder: (materialContext) {
+                  return Scaffold(
+                    body: Center(
+                      child: FilledButton(
+                        onPressed: () async {
+                          result = await showPersonalDatabaseFieldSheet(
+                            context: materialContext,
+                            title: 'Edit property',
+                            submitLabel: 'Save',
+                            showKeyInput: false,
+                            initialType: PersonalDatabaseValueType.string,
+                            initialValue:
+                                'Hello ${codec.encodeMention(staleMention)}',
+                            mentionSuggestions: const [
+                              PersonalDatabaseMentionSuggestion(
+                                id: 'person-3',
+                                name: '新名字',
+                                colorValue: 0xFF3366FF,
+                              ),
+                            ],
+                            mentionCodec: codec,
+                          );
+                        },
+                        child: const Text('Open'),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+
+    final textField = tester.widget<TextField>(find.byType(TextField).last);
+    expect(textField.controller?.text, 'Hello @新名字');
+
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(
+      result?.value,
+      'Hello ${codec.encodeMention(const PersonalDatabasePersonMention(personId: 'person-3', displayName: '新名字'))}',
+    );
   });
 }

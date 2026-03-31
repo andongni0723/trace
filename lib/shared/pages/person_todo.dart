@@ -9,7 +9,9 @@ import 'package:trace/core/utils/useful_extension.dart';
 import 'package:trace/features/people/data/models/todo_with_people.dart';
 import 'package:trace/features/people/presentation/pages/choose_property_page.dart';
 import 'package:trace/features/people/presentation/widgets/person_personal_database_tab.dart';
+import 'package:trace/features/people/presentation/widgets/personal_database_mention_input.dart';
 import 'package:trace/features/people/providers/person_detail_provider.dart';
+import 'package:trace/features/people/providers/people_provider.dart';
 import 'package:trace/features/people/providers/people_database_providers.dart';
 import 'package:trace/features/people/providers/personal_database_provider.dart';
 import 'package:trace/shared/widgets/add_todo_bottom_sheet.dart';
@@ -20,10 +22,17 @@ import 'package:trace/features/people/presentation/widgets/personal_database_fie
 
 enum _PersonMenuAction { rename, delete }
 
+enum PersonTodoInitialTab { todoList, database }
+
 class PersonTodoPage extends ConsumerStatefulWidget {
-  const PersonTodoPage({required this.personId, super.key});
+  const PersonTodoPage({
+    required this.personId,
+    this.initialTab = PersonTodoInitialTab.todoList,
+    super.key,
+  });
 
   final String personId;
+  final PersonTodoInitialTab initialTab;
 
   @override
   ConsumerState<PersonTodoPage> createState() => _PersonTodoPageState();
@@ -36,8 +45,21 @@ class _PersonTodoPageState extends ConsumerState<PersonTodoPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this)
-      ..addListener(_handleTabChanged);
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: _tabIndexFor(widget.initialTab),
+    )..addListener(_handleTabChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant PersonTodoPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final targetIndex = _tabIndexFor(widget.initialTab);
+    if (oldWidget.initialTab != widget.initialTab &&
+        _tabController.index != targetIndex) {
+      _tabController.animateTo(targetIndex);
+    }
   }
 
   @override
@@ -52,6 +74,13 @@ class _PersonTodoPageState extends ConsumerState<PersonTodoPage>
     if (mounted) {
       setState(() {});
     }
+  }
+
+  int _tabIndexFor(PersonTodoInitialTab tab) {
+    return switch (tab) {
+      PersonTodoInitialTab.todoList => 0,
+      PersonTodoInitialTab.database => 1,
+    };
   }
 
   Future<void> _openAddTodoBottomSheet() {
@@ -167,6 +196,21 @@ class _PersonTodoPageState extends ConsumerState<PersonTodoPage>
             ),
           )
           .toList(growable: false),
+      onRenameProperty: (item, newTitle) async {
+        await ref
+            .read(personalDatabaseActionsProvider)
+            .updatePropertyDefinition(
+              fieldId: item.id,
+              key: newTitle,
+              type: item.valueType,
+            );
+        return item.copyWith(title: newTitle);
+      },
+      onDeleteProperty: (item) {
+        return ref
+            .read(personalDatabaseActionsProvider)
+            .deletePropertyDefinition(item.id);
+      },
     );
 
     if (!mounted || choice == null) {
@@ -196,11 +240,14 @@ class _PersonTodoPageState extends ConsumerState<PersonTodoPage>
   }
 
   Future<void> _createNewProperty() async {
+    final mentionSuggestions = _mentionSuggestions();
     final result = await showPersonalDatabaseFieldSheet(
       context: context,
       title: 'personTodo.propertyChooser.createNewTitle'.tr(),
       submitLabel: 'personTodo.database.sheet.create'.tr(),
       showKeyInput: true,
+      mentionSuggestions: mentionSuggestions,
+      mentionCodec: ref.read(personalDatabaseMentionCodecProvider),
     );
 
     if (!mounted || result == null || result.key == null) {
@@ -215,6 +262,20 @@ class _PersonTodoPageState extends ConsumerState<PersonTodoPage>
           type: result.type,
           value: result.value,
         );
+  }
+
+  List<PersonalDatabaseMentionSuggestion> _mentionSuggestions() {
+    final people =
+        ref.read(peopleProvider).asData?.value ?? const <PeopleData>[];
+    return [
+      for (final person in people)
+        PersonalDatabaseMentionSuggestion(
+          id: person.id,
+          name: person.name,
+          colorValue: person.colorValue,
+          avatarPath: person.avatarPath,
+        ),
+    ];
   }
 
   @override
@@ -270,7 +331,7 @@ class _PersonTodoPageState extends ConsumerState<PersonTodoPage>
               PopupMenuButton<_PersonMenuAction>(
                 tooltip: 'personTodo.menu.more'.tr(),
                 onSelected: (action) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                  Future<void>.microtask(() {
                     if (!mounted) {
                       return;
                     }
@@ -376,7 +437,8 @@ class _RenamePersonSheet extends ConsumerStatefulWidget {
   ConsumerState<_RenamePersonSheet> createState() => _RenamePersonSheetState();
 }
 
-class _RenamePersonSheetState extends ConsumerState<_RenamePersonSheet> {
+class _RenamePersonSheetState extends ConsumerState<_RenamePersonSheet>
+    with LateInitMixin<_RenamePersonSheet> {
   static const _sheetFocusDelay = Duration(milliseconds: 220);
 
   late final TextEditingController _controller;
@@ -390,13 +452,15 @@ class _RenamePersonSheetState extends ConsumerState<_RenamePersonSheet> {
     _controller = TextEditingController(text: widget.person.name);
     _nameFocusNode = FocusNode();
     _selectedAvatarPath = widget.person.avatarPath;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future<void>.delayed(_sheetFocusDelay, () {
-        if (!mounted) {
-          return;
-        }
-        _nameFocusNode.requestFocus();
-      });
+  }
+
+  @override
+  void lateInitState() {
+    Future<void>.delayed(_sheetFocusDelay, () {
+      if (!mounted) {
+        return;
+      }
+      _nameFocusNode.requestFocus();
     });
   }
 

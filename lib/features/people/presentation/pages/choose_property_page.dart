@@ -6,9 +6,20 @@ import 'package:trace/features/people/data/models/personal_database_field_node.d
 import 'package:trace/features/people/data/models/personal_database_value_type.dart';
 
 class ChoosePropertyPage extends StatefulWidget {
-  const ChoosePropertyPage({required this.properties, super.key});
+  const ChoosePropertyPage({
+    required this.properties,
+    this.onRenameProperty,
+    this.onDeleteProperty,
+    super.key,
+  });
 
   final List<ChoosePropertyItem> properties;
+  final Future<ChoosePropertyItem?> Function(
+    ChoosePropertyItem item,
+    String newTitle,
+  )?
+  onRenameProperty;
+  final Future<void> Function(ChoosePropertyItem item)? onDeleteProperty;
 
   @override
   State<ChoosePropertyPage> createState() => _ChoosePropertyPageState();
@@ -47,6 +58,26 @@ class ChoosePropertyItem {
   final Object? rawValue;
   final String valuePreview;
   final bool isAssignedToCurrentPerson;
+
+  ChoosePropertyItem copyWith({
+    String? title,
+    String? subtitle,
+    PersonalDatabaseValueType? valueType,
+    Object? rawValue,
+    String? valuePreview,
+    bool? isAssignedToCurrentPerson,
+  }) {
+    return ChoosePropertyItem(
+      id: id,
+      title: title ?? this.title,
+      subtitle: subtitle ?? this.subtitle,
+      valueType: valueType ?? this.valueType,
+      rawValue: rawValue ?? this.rawValue,
+      valuePreview: valuePreview ?? this.valuePreview,
+      isAssignedToCurrentPerson:
+          isAssignedToCurrentPerson ?? this.isAssignedToCurrentPerson,
+    );
+  }
 }
 
 sealed class ChoosePropertyResult {
@@ -66,10 +97,20 @@ final class ChoosePropertyCreateNew extends ChoosePropertyResult {
 Future<ChoosePropertyResult?> showChoosePropertyPage({
   required BuildContext context,
   required List<ChoosePropertyItem> properties,
+  Future<ChoosePropertyItem?> Function(
+    ChoosePropertyItem item,
+    String newTitle,
+  )?
+  onRenameProperty,
+  Future<void> Function(ChoosePropertyItem item)? onDeleteProperty,
 }) {
   return Navigator.of(context).push<ChoosePropertyResult>(
     MaterialPageRoute(
-      builder: (_) => ChoosePropertyPage(properties: properties),
+      builder: (_) => ChoosePropertyPage(
+        properties: properties,
+        onRenameProperty: onRenameProperty,
+        onDeleteProperty: onDeleteProperty,
+      ),
     ),
   );
 }
@@ -80,7 +121,14 @@ class _ChoosePropertyPageState extends State<ChoosePropertyPage> {
   static const _tileSpacing = 4.0;
 
   final TextEditingController _searchController = TextEditingController();
+  late List<ChoosePropertyItem> _properties;
   String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _properties = List<ChoosePropertyItem>.from(widget.properties);
+  }
 
   @override
   void dispose() {
@@ -155,6 +203,14 @@ class _ChoosePropertyPageState extends State<ChoosePropertyPage> {
                       onTap: item.isAssignedToCurrentPerson
                           ? null
                           : () => _select(item),
+                      onLongPressStart:
+                          widget.onRenameProperty != null ||
+                              widget.onDeleteProperty != null
+                          ? (position) => _openPropertyMenu(
+                              item: item,
+                              position: position,
+                            )
+                          : null,
                     );
                   },
                   separatorBuilder: (context, index) =>
@@ -170,10 +226,10 @@ class _ChoosePropertyPageState extends State<ChoosePropertyPage> {
   List<ChoosePropertyItem> _filteredProperties() {
     final query = _query.trim().toLowerCase();
     if (query.isEmpty) {
-      return widget.properties;
+      return _properties;
     }
 
-    return widget.properties
+    return _properties
         .where((item) {
           return item.title.toLowerCase().contains(query) ||
               item.subtitle.toLowerCase().contains(query) ||
@@ -190,6 +246,164 @@ class _ChoosePropertyPageState extends State<ChoosePropertyPage> {
   void _createNew() {
     AppHaptics.primaryAction();
     Navigator.of(context).pop(const ChoosePropertyCreateNew());
+  }
+
+  Future<void> _openPropertyMenu({
+    required ChoosePropertyItem item,
+    required Offset position,
+  }) async {
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final selectedAction = await showMenu<_PropertyMenuAction>(
+      context: context,
+      position: RelativeRect.fromRect(
+        Rect.fromLTWH(position.dx, position.dy, 0, 0),
+        Offset.zero & overlay.size,
+      ),
+      items: [
+        if (widget.onRenameProperty != null)
+          PopupMenuItem(
+            value: _PropertyMenuAction.rename,
+            child: Text('personTodo.propertyChooser.menu.editKeyName'.tr()),
+          ),
+        if (widget.onDeleteProperty != null)
+          PopupMenuItem(
+            value: _PropertyMenuAction.delete,
+            child: Text('personTodo.propertyChooser.menu.deleteProperty'.tr()),
+          ),
+      ],
+    );
+
+    if (!mounted || selectedAction == null) {
+      return;
+    }
+
+    switch (selectedAction) {
+      case _PropertyMenuAction.rename:
+        await _renameProperty(item);
+      case _PropertyMenuAction.delete:
+        await _deleteProperty(item);
+    }
+  }
+
+  Future<void> _renameProperty(ChoosePropertyItem item) async {
+    final newTitle = await _showRenameDialog(item);
+    if (!mounted || newTitle == null) {
+      return;
+    }
+
+    try {
+      final updatedItem = await widget.onRenameProperty?.call(item, newTitle);
+      if (!mounted || updatedItem == null) {
+        return;
+      }
+
+      setState(() {
+        _properties = _properties
+            .map(
+              (candidate) => candidate.id == item.id ? updatedItem : candidate,
+            )
+            .toList(growable: false);
+      });
+      AppHaptics.confirm();
+    } catch (_) {
+      _showActionError();
+    }
+  }
+
+  Future<void> _deleteProperty(ChoosePropertyItem item) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('personTodo.propertyChooser.deleteDialog.title'.tr()),
+          content: Text(
+            'personTodo.propertyChooser.deleteDialog.body'.tr(
+              namedArgs: {'key': item.title},
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(
+                'personTodo.propertyChooser.deleteDialog.cancel'.tr(),
+              ),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(
+                'personTodo.propertyChooser.deleteDialog.delete'.tr(),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (!mounted || shouldDelete != true) {
+      return;
+    }
+
+    try {
+      await widget.onDeleteProperty?.call(item);
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _properties = _properties
+            .where((candidate) => candidate.id != item.id)
+            .toList(growable: false);
+      });
+      AppHaptics.confirm();
+    } catch (_) {
+      _showActionError();
+    }
+  }
+
+  Future<String?> _showRenameDialog(ChoosePropertyItem item) async {
+    final controller = TextEditingController(text: item.title);
+    return showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('personTodo.propertyChooser.renameDialog.title'.tr()),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: 'personTodo.propertyChooser.renameDialog.label'.tr(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'personTodo.propertyChooser.renameDialog.cancel'.tr(),
+              ),
+            ),
+            FilledButton(
+              onPressed: () {
+                final trimmed = controller.text.trim();
+                if (trimmed.isEmpty) {
+                  return;
+                }
+                Navigator.of(context).pop(trimmed);
+              },
+              child: Text('personTodo.propertyChooser.renameDialog.save'.tr()),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showActionError() {
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('personTodo.database.actionError'.tr())),
+    );
   }
 
   _TilePosition _tilePositionFor({required int index, required int length}) {
@@ -270,68 +484,80 @@ class _PropertyTile extends StatelessWidget {
     required this.item,
     required this.borderRadius,
     required this.onTap,
+    this.onLongPressStart,
   });
 
   final ChoosePropertyItem item;
   final BorderRadius borderRadius;
   final VoidCallback? onTap;
+  final ValueChanged<Offset>? onLongPressStart;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      key: ValueKey('choose-property-tile-${item.id}'),
-      color: context.cs.surfaceContainerLow,
-      borderRadius: borderRadius,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  item.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.tt.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    item.subtitle,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onLongPressStart: onLongPressStart == null
+          ? null
+          : (details) => onLongPressStart!(details.globalPosition),
+      child: Material(
+        key: ValueKey('choose-property-tile-${item.id}'),
+        color: context.cs.surfaceContainerLow,
+        borderRadius: borderRadius,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    item.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: context.tt.labelLarge?.copyWith(
-                      color: context.cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
+                    style: context.tt.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Icon(
-                    key: ValueKey('choose-property-icon-${item.id}'),
-                    item.isAssignedToCurrentPerson
-                        ? Icons.check_circle_rounded
-                        : Icons.arrow_forward_ios_rounded,
-                    size: item.isAssignedToCurrentPerson ? 22 : 18,
-                    color: item.isAssignedToCurrentPerson
-                        ? context.cs.primary
-                        : context.cs.onSurfaceVariant,
-                  ),
-                ],
-              ),
-            ],
+                ),
+                const SizedBox(width: 16),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      item.subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.tt.labelLarge?.copyWith(
+                        color: context.cs.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Icon(
+                      key: ValueKey('choose-property-icon-${item.id}'),
+                      item.isAssignedToCurrentPerson
+                          ? Icons.check_circle_rounded
+                          : Icons.arrow_forward_ios_rounded,
+                      size: item.isAssignedToCurrentPerson ? 22 : 18,
+                      color: item.isAssignedToCurrentPerson
+                          ? context.cs.primary
+                          : context.cs.onSurfaceVariant,
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 }
+
+enum _PropertyMenuAction { rename, delete }
+
+enum _TilePosition { single, first, middle, last }
 
 class _CreateNewTile extends StatelessWidget {
   const _CreateNewTile({required this.onTap, required this.borderRadius});
@@ -439,5 +665,3 @@ String _valuePreview(Object? value) {
   }
   return '$value';
 }
-
-enum _TilePosition { single, first, middle, last }

@@ -19,6 +19,7 @@ class PersonalDatabaseEditorRowData {
     required this.isExpanded,
     required this.isContainer,
     required this.parentIsList,
+    this.valueSegments = const [],
   });
 
   final String nodeId;
@@ -32,6 +33,16 @@ class PersonalDatabaseEditorRowData {
   final bool isExpanded;
   final bool isContainer;
   final bool parentIsList;
+  final List<PersonalDatabaseEditorValueSegment> valueSegments;
+}
+
+class PersonalDatabaseEditorValueSegment {
+  const PersonalDatabaseEditorValueSegment({required this.text, this.personId});
+
+  final String text;
+  final String? personId;
+
+  bool get isMention => personId != null;
 }
 
 class PersonalDatabaseEditor extends StatelessWidget {
@@ -40,6 +51,7 @@ class PersonalDatabaseEditor extends StatelessWidget {
     required this.padding,
     required this.onPressedValue,
     required this.onPressedAction,
+    required this.onPressedMention,
     super.key,
   });
 
@@ -51,6 +63,7 @@ class PersonalDatabaseEditor extends StatelessWidget {
     PersonalDatabaseEditorAction action,
   )
   onPressedAction;
+  final ValueChanged<String> onPressedMention;
 
   @override
   Widget build(BuildContext context) {
@@ -77,6 +90,7 @@ class PersonalDatabaseEditor extends StatelessWidget {
           position: _positionForIndex(index),
           onPressedValue: () => onPressedValue(rows[index]),
           onPressedAction: (action) => onPressedAction(rows[index], action),
+          onPressedMention: onPressedMention,
         ),
         if (index != rows.length - 1) const SizedBox(height: 4),
       ],
@@ -134,12 +148,14 @@ class _PersonalDatabaseEditorRow extends StatelessWidget {
     required this.position,
     required this.onPressedValue,
     required this.onPressedAction,
+    required this.onPressedMention,
   });
 
   final PersonalDatabaseEditorRowData row;
   final _PersonalDatabaseEditorRowPosition position;
   final VoidCallback onPressedValue;
   final ValueChanged<PersonalDatabaseEditorAction> onPressedAction;
+  final ValueChanged<String> onPressedMention;
 
   @override
   Widget build(BuildContext context) {
@@ -193,13 +209,9 @@ class _PersonalDatabaseEditorRow extends StatelessWidget {
                     child: Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            row.valuePreview,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: context.tt.bodyMedium?.copyWith(
-                              color: context.cs.onSurfaceVariant,
-                            ),
+                          child: _PersonalDatabaseEditorValueText(
+                            row: row,
+                            onPressedMention: onPressedMention,
                           ),
                         ),
                         if (row.isContainer) ...[
@@ -241,6 +253,60 @@ class _PersonalDatabaseEditorRow extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _PersonalDatabaseEditorValueText extends StatelessWidget {
+  const _PersonalDatabaseEditorValueText({
+    required this.row,
+    required this.onPressedMention,
+  });
+
+  final PersonalDatabaseEditorRowData row;
+  final ValueChanged<String> onPressedMention;
+
+  @override
+  Widget build(BuildContext context) {
+    final baseStyle = context.tt.bodyMedium?.copyWith(
+      color: context.cs.onSurfaceVariant,
+    );
+    if (row.valueSegments.isEmpty) {
+      return Text(
+        row.valuePreview,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: baseStyle,
+      );
+    }
+
+    return Text.rich(
+      TextSpan(
+        children: [
+          for (final segment in row.valueSegments)
+            if (segment.isMention)
+              WidgetSpan(
+                alignment: PlaceholderAlignment.middle,
+                baseline: TextBaseline.alphabetic,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(4),
+                  onTap: () => onPressedMention(segment.personId!),
+                  child: Text(
+                    segment.text,
+                    style: baseStyle?.copyWith(
+                      color: context.cs.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              )
+            else
+              TextSpan(text: segment.text),
+        ],
+        style: baseStyle,
+      ),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
     );
   }
 }

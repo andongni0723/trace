@@ -20,7 +20,7 @@ class BiometricLockGate extends ConsumerStatefulWidget {
 }
 
 class _BiometricLockGateState extends ConsumerState<BiometricLockGate>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, LateInitMixin<BiometricLockGate> {
   bool _isBootstrapping = true;
   bool _showOpeningAnimation = false;
   bool _hasPlayedOpeningAnimation = false;
@@ -29,9 +29,11 @@ class _BiometricLockGateState extends ConsumerState<BiometricLockGate>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(_bootstrap());
-    });
+  }
+
+  @override
+  void lateInitState() {
+    unawaited(_bootstrap());
   }
 
   @override

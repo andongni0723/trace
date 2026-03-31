@@ -51,6 +51,7 @@
 - Keep widgets small and composable.
 - Prefer const constructors when possible.
 - Run formatter and analyzer after edits.
+- When post-frame initialization is needed inside a `State`, prefer `LateInitMixin` + `lateInitState()` from `core/utils/useful_extension.dart` instead of calling `WidgetsBinding.instance.addPostFrameCallback` directly.
 
 ## UI Expectations
 - Follow Material Design 3 principles:

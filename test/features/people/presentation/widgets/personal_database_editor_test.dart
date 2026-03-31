@@ -1,0 +1,89 @@
+import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:trace/features/people/data/models/personal_database_value_type.dart';
+import 'package:trace/features/people/presentation/widgets/personal_database_editor.dart';
+
+class _PersonalDatabaseEditorTestAssetLoader extends AssetLoader {
+  const _PersonalDatabaseEditorTestAssetLoader();
+
+  static const Map<String, dynamic> _zhTw = {
+    'personTodo': {
+      'database': {
+        'title': '個人資料庫',
+        'action': {'edit': '編輯', 'delete': '刪除', 'addChild': '新增子項目'},
+      },
+    },
+  };
+
+  @override
+  Future<Map<String, dynamic>> load(String path, Locale locale) async {
+    return _zhTw;
+  }
+}
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('tapping mention segment calls onPressedMention', (tester) async {
+    String? tappedPersonId;
+
+    await tester.pumpWidget(
+      EasyLocalization(
+        supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+        path: 'unused',
+        assetLoader: const _PersonalDatabaseEditorTestAssetLoader(),
+        fallbackLocale: const Locale('zh', 'TW'),
+        startLocale: const Locale('zh', 'TW'),
+        child: Builder(
+          builder: (context) {
+            return MaterialApp(
+              supportedLocales: context.supportedLocales,
+              localizationsDelegates: context.localizationDelegates,
+              locale: context.locale,
+              home: Scaffold(
+                body: PersonalDatabaseEditor(
+                  rows: const [
+                    PersonalDatabaseEditorRowData(
+                      nodeId: 'row-1',
+                      rootFieldId: 'field-1',
+                      path: [],
+                      keyLabel: '關係',
+                      valuePreview: '"@安東尼"',
+                      rawValue: 'ignored',
+                      valueType: PersonalDatabaseValueType.string,
+                      depth: 0,
+                      isExpanded: false,
+                      isContainer: false,
+                      parentIsList: false,
+                      valueSegments: [
+                        PersonalDatabaseEditorValueSegment(text: '"'),
+                        PersonalDatabaseEditorValueSegment(
+                          text: '@安東尼',
+                          personId: 'person-1',
+                        ),
+                        PersonalDatabaseEditorValueSegment(text: '"'),
+                      ],
+                    ),
+                  ],
+                  padding: EdgeInsets.zero,
+                  onPressedValue: (_) {},
+                  onPressedAction: (_, __) {},
+                  onPressedMention: (personId) {
+                    tappedPersonId = personId;
+                  },
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('@安東尼'));
+    await tester.pumpAndSettle();
+
+    expect(tappedPersonId, 'person-1');
+  });
+}

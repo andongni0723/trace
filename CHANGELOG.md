@@ -1,13 +1,15 @@
 ## v1.2.0
 更新內容:
-- 更新 database structure，擴充 personal database 相關資料表與欄位結構，支援更完整的人物資料管理。
-- 新增 app opening animation，在指紋驗證成功後或未啟用指紋辨識時播放 icon 與 Trace 字樣的開場動畫。
-- 新增 theme color seed 設定，可在 app 設定中切換多組主題色彩。
+- 更新資料庫結構，擴充個人資料庫相關資料表與欄位結構，支援更完整的人物資料管理。
+- 新增個人資料庫人物標記功能，支援在個人資料欄位中標記與引用人物。
+- 新增 app 開場動畫，在指紋驗證成功後或未啟用指紋辨識時播放圖示與 Trace 字樣的開場動畫。
+- 新增主題色種子設定，可在 app 設定中切換多組主題色彩。
 
 Updates:
-- Updated the database structure to support richer personal database tables and field relationships.
-- Added an app opening animation that plays after successful biometric verification or when biometric lock is disabled.
-- Added theme color seed settings so users can switch between multiple app accent palettes.
+- Updated the database structure for personal database tables and field models to support richer per-person data management.
+- Added user tagging in the personal database so people can be mentioned and referenced inside personal data fields.
+- Added an app opening animation that plays the icon and Trace wordmark after successful biometric verification or when biometric lock is disabled.
+- Added theme color seed settings so users can switch between multiple theme color palettes in app settings.
 
 ## v1.1.0
 更新內容:

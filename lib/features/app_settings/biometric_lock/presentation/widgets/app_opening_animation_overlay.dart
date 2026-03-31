@@ -13,13 +13,16 @@ class AppOpeningAnimationOverlay extends StatefulWidget {
 }
 
 class _AppOpeningAnimationOverlayState extends State<AppOpeningAnimationOverlay>
-    with SingleTickerProviderStateMixin {
+    with
+        SingleTickerProviderStateMixin,
+        LateInitMixin<AppOpeningAnimationOverlay> {
   static const _wordmark = 'Trace';
 
   late final AnimationController _controller;
   late final Animation<double> _iconOpacity;
   late final Animation<double> _iconScale;
   late final Animation<double> _overlayOpacity;
+  bool _completedWithoutAnimation = false;
 
   @override
   void initState() {
@@ -51,11 +54,11 @@ class _AppOpeningAnimationOverlayState extends State<AppOpeningAnimationOverlay>
       }
     });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _controller.forward();
-      }
-    });
+  }
+
+  @override
+  void lateInitState() {
+    _controller.forward();
   }
 
   @override
@@ -70,11 +73,14 @@ class _AppOpeningAnimationOverlayState extends State<AppOpeningAnimationOverlay>
         MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
     if (disableAnimations) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          widget.onCompleted();
-        }
-      });
+      if (!_completedWithoutAnimation) {
+        _completedWithoutAnimation = true;
+        Future<void>.microtask(() {
+          if (mounted) {
+            widget.onCompleted();
+          }
+        });
+      }
       return Positioned.fill(child: ColoredBox(color: context.cs.surface));
     }
 

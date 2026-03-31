@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../data/models/personal_database_field_node.dart';
+import '../data/models/personal_database_mention.dart';
 import '../data/models/personal_database_value_type.dart';
 import 'people_database_providers.dart';
 
@@ -32,6 +33,11 @@ final personalDatabaseAssignedFieldIdsProvider =
       return ref
           .watch(personalDatabaseDaoProvider)
           .watchAssignedFieldIdsForPerson(personId);
+    });
+
+final personalDatabaseMentionCodecProvider =
+    Provider<PersonalDatabaseMentionCodec>((ref) {
+      return const PersonalDatabaseMentionCodec();
     });
 
 final personalDatabaseActionsProvider = Provider<PersonalDatabaseActions>((

@@ -35,18 +35,16 @@ class MessagesHomePage extends ConsumerStatefulWidget {
   ConsumerState<MessagesHomePage> createState() => _MessagesHomePageState();
 }
 
-class _MessagesHomePageState extends ConsumerState<MessagesHomePage> {
+class _MessagesHomePageState extends ConsumerState<MessagesHomePage>
+    with LateInitMixin<MessagesHomePage> {
   int _selectedTabIndex = 0;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   bool _hasStartedUpdateCheck = false;
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkForStartupUpdate();
-    });
+  void lateInitState() {
+    _checkForStartupUpdate();
   }
 
   @override

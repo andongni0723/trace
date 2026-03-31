@@ -25,7 +25,8 @@ class AddTodoBottomSheet extends ConsumerStatefulWidget {
   ConsumerState<AddTodoBottomSheet> createState() => _AddTodoBottomSheetState();
 }
 
-class _AddTodoBottomSheetState extends ConsumerState<AddTodoBottomSheet> {
+class _AddTodoBottomSheetState extends ConsumerState<AddTodoBottomSheet>
+    with LateInitMixin<AddTodoBottomSheet> {
   late final TextEditingController _titleController;
   late final TextEditingController _noteController;
   late final FocusNode _titleFocusNode;
@@ -52,12 +53,12 @@ class _AddTodoBottomSheetState extends ConsumerState<AddTodoBottomSheet> {
       ...?widget.initialTodo?.relatedPeople.map((person) => person.id),
     };
 
+  }
+
+  @override
+  void lateInitState() {
     if (!_isEditing) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _titleFocusNode.requestFocus();
-        }
-      });
+      _titleFocusNode.requestFocus();
     }
   }
 

@@ -3,11 +3,16 @@ import 'dart:convert';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../core/database/database.dart';
 import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/utils/useful_extension.dart';
 import '../../data/models/personal_database_field_node.dart';
+import '../../data/models/personal_database_mention.dart';
 import '../../data/models/personal_database_value_type.dart';
+import '../widgets/personal_database_mention_input.dart';
+import '../../providers/people_provider.dart';
 import '../../providers/personal_database_provider.dart';
 import 'personal_database_editor.dart';
 import 'personal_database_field_sheet.dart';
@@ -36,11 +41,22 @@ class _PersonPersonalDatabaseTabState
     final fieldsAsync = ref.watch(
       personalDatabaseFieldTreeProvider(widget.personId),
     );
+    final peopleAsync = ref.watch(peopleProvider);
+    final mentionCodec = ref.watch(personalDatabaseMentionCodecProvider);
 
     return fieldsAsync.when(
       data: (fields) {
         final fieldsById = {for (final field in fields) field.id: field};
-        final rows = _buildRows(fields);
+        final peopleById = {
+          for (final person
+              in peopleAsync.asData?.value ?? const <PeopleData>[])
+            person.id: person,
+        };
+        final rows = _buildRows(
+          fields,
+          peopleById: peopleById,
+          mentionCodec: mentionCodec,
+        );
 
         return PersonalDatabaseEditor(
           rows: rows,
@@ -49,6 +65,8 @@ class _PersonPersonalDatabaseTabState
           onPressedAction: (row, action) {
             _onPressedAction(row, action, fieldsById);
           },
+          onPressedMention: (personId) =>
+              _handleMentionPressed(personId, peopleById),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -66,8 +84,10 @@ class _PersonPersonalDatabaseTabState
   }
 
   List<PersonalDatabaseEditorRowData> _buildRows(
-    List<PersonalDatabaseFieldNode> fields,
-  ) {
+    List<PersonalDatabaseFieldNode> fields, {
+    required Map<String, PeopleData> peopleById,
+    required PersonalDatabaseMentionCodec mentionCodec,
+  }) {
     final rows = <PersonalDatabaseEditorRowData>[];
     for (final field in fields) {
       _appendRows(
@@ -78,6 +98,8 @@ class _PersonPersonalDatabaseTabState
         value: field.value,
         depth: 0,
         parentIsList: false,
+        peopleById: peopleById,
+        mentionCodec: mentionCodec,
       );
     }
     return rows;
@@ -91,6 +113,8 @@ class _PersonPersonalDatabaseTabState
     required Object? value,
     required int depth,
     required bool parentIsList,
+    required Map<String, PeopleData> peopleById,
+    required PersonalDatabaseMentionCodec mentionCodec,
   }) {
     final valueType = _valueTypeFromValue(value);
     final nodeId = _nodeId(rootFieldId: rootFieldId, path: path);
@@ -105,13 +129,18 @@ class _PersonPersonalDatabaseTabState
         rootFieldId: rootFieldId,
         path: path,
         keyLabel: keyLabel,
-        valuePreview: _valuePreview(value),
+        valuePreview: _valuePreview(value, mentionCodec: mentionCodec),
         rawValue: value,
         valueType: valueType,
         depth: depth,
         isExpanded: isExpanded,
         isContainer: isContainer,
         parentIsList: parentIsList,
+        valueSegments: _valueSegments(
+          value,
+          peopleById: peopleById,
+          mentionCodec: mentionCodec,
+        ),
       ),
     );
 
@@ -129,6 +158,8 @@ class _PersonPersonalDatabaseTabState
           value: entry.value,
           depth: depth + 1,
           parentIsList: false,
+          peopleById: peopleById,
+          mentionCodec: mentionCodec,
         );
       }
       return;
@@ -144,6 +175,8 @@ class _PersonPersonalDatabaseTabState
           value: value[index],
           depth: depth + 1,
           parentIsList: true,
+          peopleById: peopleById,
+          mentionCodec: mentionCodec,
         );
       }
     }
@@ -209,11 +242,14 @@ class _PersonPersonalDatabaseTabState
     }
 
     AppHaptics.primaryAction();
+    final mentionSuggestions = _mentionSuggestions();
     final result = await showPersonalDatabaseFieldSheet(
       context: context,
       title: 'personTodo.database.sheet.addChildTitle'.tr(),
       submitLabel: 'personTodo.database.sheet.create'.tr(),
       showKeyInput: row.valueType == PersonalDatabaseValueType.object,
+      mentionSuggestions: mentionSuggestions,
+      mentionCodec: ref.read(personalDatabaseMentionCodecProvider),
     );
     if (!mounted || result == null) {
       return;
@@ -256,6 +292,7 @@ class _PersonPersonalDatabaseTabState
         : (row.path.last is String ? row.path.last as String : null);
 
     AppHaptics.primaryAction();
+    final mentionSuggestions = _mentionSuggestions();
     final result = await showPersonalDatabaseFieldSheet(
       context: context,
       title: 'personTodo.database.sheet.editTitle'.tr(),
@@ -264,6 +301,8 @@ class _PersonPersonalDatabaseTabState
       initialKey: initialKey,
       initialType: isRoot ? rootField.type : row.valueType,
       initialValue: row.rawValue,
+      mentionSuggestions: mentionSuggestions,
+      mentionCodec: ref.read(personalDatabaseMentionCodecProvider),
     );
 
     if (!mounted || result == null) {
@@ -392,6 +431,31 @@ class _PersonPersonalDatabaseTabState
       SnackBar(content: Text('personTodo.database.actionError'.tr())),
     );
   }
+
+  void _handleMentionPressed(
+    String personId,
+    Map<String, PeopleData> peopleById,
+  ) {
+    if (personId == widget.personId || !peopleById.containsKey(personId)) {
+      return;
+    }
+
+    context.push('/people/$personId?tab=database');
+  }
+
+  List<PersonalDatabaseMentionSuggestion> _mentionSuggestions() {
+    final people =
+        ref.read(peopleProvider).asData?.value ?? const <PeopleData>[];
+    return [
+      for (final person in people)
+        PersonalDatabaseMentionSuggestion(
+          id: person.id,
+          name: person.name,
+          colorValue: person.colorValue,
+          avatarPath: person.avatarPath,
+        ),
+    ];
+  }
 }
 
 String _nodeId({required String rootFieldId, required List<Object> path}) {
@@ -420,12 +484,16 @@ PersonalDatabaseValueType _valueTypeFromValue(Object? value) {
   return PersonalDatabaseValueType.string;
 }
 
-String _valuePreview(Object? value) {
+String _valuePreview(
+  Object? value, {
+  required PersonalDatabaseMentionCodec mentionCodec,
+}) {
   if (value == null) {
     return 'null';
   }
   if (value is String) {
-    return value.isEmpty ? '""' : '"$value"';
+    final displayText = mentionCodec.toDisplayText(value);
+    return displayText.isEmpty ? '""' : '"$displayText"';
   }
   if (value is num || value is bool) {
     return '$value';
@@ -437,4 +505,36 @@ String _valuePreview(Object? value) {
     return '[${value.length}]';
   }
   return '$value';
+}
+
+List<PersonalDatabaseEditorValueSegment> _valueSegments(
+  Object? value, {
+  required Map<String, PeopleData> peopleById,
+  required PersonalDatabaseMentionCodec mentionCodec,
+}) {
+  if (value is! String) {
+    return const [];
+  }
+
+  final segments = mentionCodec.parseSegments(value);
+  if (segments.isEmpty) {
+    return const [PersonalDatabaseEditorValueSegment(text: '""')];
+  }
+
+  return [
+    const PersonalDatabaseEditorValueSegment(text: '"'),
+    for (final segment in segments)
+      switch (segment) {
+        PersonalDatabaseMentionPersonSegment(:final mention) =>
+          PersonalDatabaseEditorValueSegment(
+            text:
+                '@${peopleById[mention.personId]?.name ?? mention.displayName}',
+            personId: mention.personId,
+          ),
+        PersonalDatabaseMentionTextSegment(:final text) =>
+          PersonalDatabaseEditorValueSegment(text: text),
+        _ => PersonalDatabaseEditorValueSegment(text: segment.displayText),
+      },
+    const PersonalDatabaseEditorValueSegment(text: '"'),
+  ];
 }
