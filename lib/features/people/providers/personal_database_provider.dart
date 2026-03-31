@@ -8,6 +8,12 @@ import '../data/models/personal_database_value_type.dart';
 import 'people_database_providers.dart';
 
 typedef PersonalDatabaseFieldViewModel = PersonalDatabaseFieldNode;
+typedef PersonalDatabaseLibraryFieldViewModel = PersonalDatabaseFieldNode;
+
+final personalDatabaseLibraryProvider =
+    StreamProvider<List<PersonalDatabaseFieldNode>>((ref) {
+      return ref.watch(personalDatabaseDaoProvider).watchFieldLibrary();
+    });
 
 final personalDatabaseFieldTreeProvider =
     StreamProvider.family<List<PersonalDatabaseFieldNode>, String>((
@@ -20,6 +26,13 @@ final personalDatabaseFieldTreeProvider =
     });
 
 final personalDatabaseFieldsProvider = personalDatabaseFieldTreeProvider;
+
+final personalDatabaseAssignedFieldIdsProvider =
+    StreamProvider.family<Set<String>, String>((ref, personId) {
+      return ref
+          .watch(personalDatabaseDaoProvider)
+          .watchAssignedFieldIdsForPerson(personId);
+    });
 
 final personalDatabaseActionsProvider = Provider<PersonalDatabaseActions>((
   ref,
@@ -42,28 +55,13 @@ class PersonalDatabaseActions {
     required bool isPublic,
     required Object? value,
     String? parentFieldId,
-  }) async {
-    final trimmedKey = key.trim();
-    if (trimmedKey.isEmpty) {
-      return;
-    }
-
-    final dao = _ref.read(personalDatabaseDaoProvider);
-    final sortOrder = await dao.getNextSortOrder(
-      actorPersonId: actorPersonId,
-      isPublic: isPublic,
-      parentFieldId: parentFieldId,
-    );
-
-    await dao.createField(
-      id: _uuid.v4(),
-      actorPersonId: actorPersonId,
-      key: trimmedKey,
+  }) {
+    return createPropertyAndAssignToPerson(
+      personId: actorPersonId,
+      key: key,
       type: type,
-      isPublic: isPublic,
-      jsonValue: _encodeValue(type: type, value: value),
+      value: value,
       parentFieldId: parentFieldId,
-      sortOrder: sortOrder,
     );
   }
 
@@ -75,16 +73,13 @@ class PersonalDatabaseActions {
     required bool isPublic,
     required Object? value,
   }) {
-    return _ref
-        .read(personalDatabaseDaoProvider)
-        .updateField(
-          fieldId: fieldId,
-          actorPersonId: actorPersonId,
-          key: key,
-          type: type,
-          isPublic: isPublic,
-          jsonValue: _encodeValue(type: type, value: value),
-        );
+    return updatePropertyAndValueForPerson(
+      personId: actorPersonId,
+      fieldId: fieldId,
+      key: key,
+      type: type,
+      value: value,
+    );
   }
 
   Future<void> updateFieldValue({
@@ -103,7 +98,95 @@ class PersonalDatabaseActions {
   }
 
   Future<void> deleteField(String fieldId) {
-    return _ref.read(personalDatabaseDaoProvider).deleteField(fieldId);
+    return deletePropertyDefinition(fieldId);
+  }
+
+  Future<void> createPropertyAndAssignToPerson({
+    required String personId,
+    required String key,
+    required PersonalDatabaseValueType type,
+    required Object? value,
+    String? parentFieldId,
+  }) async {
+    final trimmedKey = key.trim();
+    if (trimmedKey.isEmpty) {
+      return;
+    }
+
+    final dao = _ref.read(personalDatabaseDaoProvider);
+    final sortOrder = await dao.getNextFieldLibrarySortOrder(
+      parentFieldId: parentFieldId,
+    );
+    final assignmentSortOrder = await dao.getNextAssignedFieldSortOrder(
+      personId,
+    );
+
+    await dao.createFieldAndAssignToPerson(
+      id: _uuid.v4(),
+      personId: personId,
+      key: trimmedKey,
+      type: type,
+      jsonValue: _encodeValue(type: type, value: value),
+      parentFieldId: parentFieldId,
+      sortOrder: sortOrder,
+      assignmentSortOrder: assignmentSortOrder,
+    );
+  }
+
+  Future<void> assignFieldToPerson({
+    required String personId,
+    required String fieldId,
+    Object? value,
+  }) {
+    final dao = _ref.read(personalDatabaseDaoProvider);
+    return dao.assignFieldToPerson(
+      fieldId: fieldId,
+      personId: personId,
+      jsonValue: value == null ? null : jsonEncode(value),
+    );
+  }
+
+  Future<void> removeFieldFromPerson({
+    required String personId,
+    required String fieldId,
+  }) {
+    return _ref
+        .read(personalDatabaseDaoProvider)
+        .removeFieldFromPerson(fieldId: fieldId, personId: personId);
+  }
+
+  Future<void> updatePropertyDefinition({
+    required String fieldId,
+    required String key,
+    required PersonalDatabaseValueType type,
+  }) {
+    return _ref
+        .read(personalDatabaseDaoProvider)
+        .updatePropertyDefinition(fieldId: fieldId, key: key, type: type);
+  }
+
+  Future<void> deletePropertyDefinition(String fieldId) {
+    return _ref
+        .read(personalDatabaseDaoProvider)
+        .deleteFieldDefinition(fieldId);
+  }
+
+  Future<void> updatePropertyAndValueForPerson({
+    required String personId,
+    required String fieldId,
+    required String key,
+    required PersonalDatabaseValueType type,
+    required Object? value,
+  }) async {
+    await updatePropertyDefinition(fieldId: fieldId, key: key, type: type);
+    await _ref
+        .read(personalDatabaseDaoProvider)
+        .updateFieldValueForPerson(
+          fieldId: fieldId,
+          personId: personId,
+          type: type,
+          jsonValue: _encodeValue(type: type, value: value),
+        );
   }
 
   Future<void> updateRootFieldKey({
@@ -111,12 +194,11 @@ class PersonalDatabaseActions {
     required PersonalDatabaseFieldNode field,
     required String key,
   }) {
-    return updateField(
-      actorPersonId: actorPersonId,
+    return updatePropertyAndValueForPerson(
+      personId: actorPersonId,
       fieldId: field.id,
       key: key,
       type: field.type,
-      isPublic: field.isPublic,
       value: field.value,
     );
   }
@@ -221,7 +303,7 @@ class PersonalDatabaseActions {
     required List<Object> path,
   }) async {
     if (path.isEmpty) {
-      await deleteField(field.id);
+      await removeFieldFromPerson(personId: personId, fieldId: field.id);
       return;
     }
 

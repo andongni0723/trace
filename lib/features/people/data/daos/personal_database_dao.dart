@@ -5,53 +5,107 @@ import 'package:drift/drift.dart';
 import '../../../../core/database/database.dart';
 import '../../../../core/database/tables/people.dart';
 import '../../../../core/database/tables/personal_database_fields.dart';
+import '../../../../core/database/tables/personal_database_person_fields.dart';
 import '../../../../core/database/tables/personal_database_values.dart';
 import '../models/personal_database_field_node.dart';
 import '../models/personal_database_value_type.dart';
 
 part 'personal_database_dao.g.dart';
 
-@DriftAccessor(tables: [PersonalDatabaseFields, PersonalDatabaseValues, People])
+@DriftAccessor(
+  tables: [
+    PersonalDatabaseFields,
+    PersonalDatabasePersonFields,
+    PersonalDatabaseValues,
+    People,
+  ],
+)
 class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
     with _$PersonalDatabaseDaoMixin {
   PersonalDatabaseDao(super.db);
 
+  Selectable<PersonalDatabaseField> _orderedFieldLibraryQuery() {
+    return (select(personalDatabaseFields)
+      ..where((table) => table.parentFieldId.isNull())
+      ..orderBy([
+        (table) => OrderingTerm.asc(table.sortOrder),
+        (table) => OrderingTerm.asc(table.createdAt),
+        (table) => OrderingTerm.asc(table.key),
+      ]));
+  }
+
+  Stream<List<PersonalDatabaseFieldNode>> watchFieldLibrary() {
+    return _orderedFieldLibraryQuery().watch().map(
+      (fields) => _buildFieldTreeFromDefinitions(
+        fields.map(_fieldRowFromDefinition).toList(growable: false),
+      ),
+    );
+  }
+
+  Future<List<PersonalDatabaseFieldNode>> getFieldLibrary() async {
+    final fields = await _orderedFieldLibraryQuery().get();
+    return _buildFieldTreeFromDefinitions(
+      fields.map(_fieldRowFromDefinition).toList(growable: false),
+    );
+  }
+
+  Stream<Set<String>> watchAssignedFieldIdsForPerson(String personId) {
+    return (select(personalDatabasePersonFields)
+          ..where((table) => table.personId.equals(personId)))
+        .watch()
+        .map((rows) => rows.map((row) => row.fieldId).toSet());
+  }
+
+  Future<Set<String>> getAssignedFieldIdsForPerson(String personId) async {
+    final rows = await (select(personalDatabasePersonFields)
+          ..where((table) => table.personId.equals(personId)))
+        .get();
+    return rows.map((row) => row.fieldId).toSet();
+  }
+
   Stream<List<PersonalDatabaseFieldNode>> watchFieldTreeForPerson(
     String personId,
   ) {
+    final personFieldsAlias = alias(
+      personalDatabasePersonFields,
+      'assigned_fields_for_person',
+    );
     final valuesAlias = alias(personalDatabaseValues, 'values_for_person');
     final query =
         select(personalDatabaseFields).join([
-            leftOuterJoin(
-              valuesAlias,
-              valuesAlias.fieldId.equalsExp(personalDatabaseFields.id) &
-                  valuesAlias.personId.equals(personId),
-            ),
-          ])
-          ..where(
-            personalDatabaseFields.isPublic.equals(true) |
-                personalDatabaseFields.ownerPersonId.equals(personId),
-          )
-          ..orderBy([
-            OrderingTerm.asc(personalDatabaseFields.sortOrder),
-            OrderingTerm.asc(personalDatabaseFields.createdAt),
-            OrderingTerm.asc(personalDatabaseFields.key),
-          ]);
+          innerJoin(
+            personFieldsAlias,
+            personFieldsAlias.fieldId.equalsExp(personalDatabaseFields.id) &
+                personFieldsAlias.personId.equals(personId),
+          ),
+          leftOuterJoin(
+            valuesAlias,
+            valuesAlias.fieldId.equalsExp(personalDatabaseFields.id) &
+                valuesAlias.personId.equals(personId),
+          ),
+        ])..orderBy([
+          OrderingTerm.asc(personFieldsAlias.sortOrder),
+          OrderingTerm.asc(personalDatabaseFields.sortOrder),
+          OrderingTerm.asc(personalDatabaseFields.createdAt),
+          OrderingTerm.asc(personalDatabaseFields.key),
+        ]);
 
-    return query.watch().map((rows) => _buildFieldTree(rows, valuesAlias));
+    return query.watch().map(
+      (rows) => _buildFieldTree(rows, personFieldsAlias, valuesAlias),
+    );
   }
 
   Future<int> getNextSortOrder({
     required String actorPersonId,
     required bool isPublic,
     String? parentFieldId,
-  }) async {
+  }) {
+    return getNextFieldLibrarySortOrder(parentFieldId: parentFieldId);
+  }
+
+  Future<int> getNextFieldLibrarySortOrder({String? parentFieldId}) async {
     final query = selectOnly(personalDatabaseFields)
       ..addColumns([personalDatabaseFields.id.count()]);
-
-    query.where(
-      _scopeExpression(actorPersonId: actorPersonId, isPublic: isPublic),
-    );
 
     if (parentFieldId == null) {
       query.where(personalDatabaseFields.parentFieldId.isNull());
@@ -59,11 +113,21 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
       query.where(personalDatabaseFields.parentFieldId.equals(parentFieldId));
     }
 
-    final count = await query
+    return query
         .map((row) => row.read(personalDatabaseFields.id.count()) ?? 0)
         .getSingle();
+  }
 
-    return count;
+  Future<int> getNextAssignedFieldSortOrder(String personId) async {
+    final query = selectOnly(personalDatabasePersonFields)
+      ..addColumns([personalDatabasePersonFields.fieldId.count()])
+      ..where(personalDatabasePersonFields.personId.equals(personId));
+
+    return query
+        .map(
+          (row) => row.read(personalDatabasePersonFields.fieldId.count()) ?? 0,
+        )
+        .getSingle();
   }
 
   Future<PersonalDatabaseField?> getFieldById(String fieldId) {
@@ -81,6 +145,27 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
     required String jsonValue,
     String? parentFieldId,
     int sortOrder = 0,
+  }) {
+    return createFieldAndAssignToPerson(
+      id: id,
+      personId: actorPersonId,
+      key: key,
+      type: type,
+      jsonValue: jsonValue,
+      parentFieldId: parentFieldId,
+      sortOrder: sortOrder,
+    );
+  }
+
+  Future<void> createFieldAndAssignToPerson({
+    required String id,
+    required String personId,
+    required String key,
+    required PersonalDatabaseValueType type,
+    required String jsonValue,
+    String? parentFieldId,
+    int sortOrder = 0,
+    int? assignmentSortOrder,
   }) async {
     final trimmedKey = key.trim();
     if (trimmedKey.isEmpty) {
@@ -91,7 +176,9 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
       type: type,
       jsonValue: jsonValue,
     );
-    final ownerPersonId = isPublic ? null : actorPersonId;
+
+    final resolvedAssignmentSortOrder =
+        assignmentSortOrder ?? await getNextAssignedFieldSortOrder(personId);
 
     await transaction(() async {
       await into(personalDatabaseFields).insert(
@@ -99,29 +186,27 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
           id: id,
           key: trimmedKey,
           valueType: type.dbKey,
-          isPublic: Value(isPublic),
-          ownerPersonId: Value(ownerPersonId),
+          isPublic: const Value(true),
+          ownerPersonId: const Value(null),
           parentFieldId: Value(parentFieldId),
           sortOrder: Value(sortOrder),
         ),
       );
 
-      if (isPublic) {
-        final personIds = await _getAllPersonIds();
-        await _upsertValuesForPeople(
-          fieldId: id,
-          personIds: personIds,
-          jsonValueByPersonId: {
-            for (final personId in personIds) personId: normalizedJsonValue,
-          },
-        );
-      } else {
-        await _upsertFieldValue(
-          fieldId: id,
-          personId: actorPersonId,
-          jsonValue: normalizedJsonValue,
-        );
-      }
+      await into(personalDatabasePersonFields).insertOnConflictUpdate(
+        PersonalDatabasePersonFieldsCompanion(
+          fieldId: Value(id),
+          personId: Value(personId),
+          sortOrder: Value(resolvedAssignmentSortOrder),
+          createdAt: Value(DateTime.now()),
+        ),
+      );
+
+      await _upsertFieldValue(
+        fieldId: id,
+        personId: personId,
+        jsonValue: normalizedJsonValue,
+      );
     });
   }
 
@@ -133,16 +218,24 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
     required bool isPublic,
     required String jsonValue,
   }) async {
+    await updatePropertyDefinition(fieldId: fieldId, key: key, type: type);
+    await updateFieldValueForPerson(
+      fieldId: fieldId,
+      personId: actorPersonId,
+      type: type,
+      jsonValue: jsonValue,
+    );
+  }
+
+  Future<void> updatePropertyDefinition({
+    required String fieldId,
+    required String key,
+    required PersonalDatabaseValueType type,
+  }) async {
     final trimmedKey = key.trim();
     if (trimmedKey.isEmpty) {
       return;
     }
-
-    final normalizedJsonValue = _normalizeJsonValue(
-      type: type,
-      jsonValue: jsonValue,
-    );
-    final ownerPersonId = isPublic ? null : actorPersonId;
 
     await transaction(() async {
       final existing = await getFieldById(fieldId);
@@ -150,17 +243,8 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
         return;
       }
 
-      if (!existing.isPublic && existing.ownerPersonId != actorPersonId) {
-        return;
-      }
-
-      final existingValues = await (select(
-        personalDatabaseValues,
-      )..where((table) => table.fieldId.equals(fieldId))).get();
-      final existingValueByPerson = {
-        for (final row in existingValues) row.personId: row.jsonValue,
-      };
-      final didChangeType = existing.valueType != type.dbKey;
+      final previousType = personalDatabaseValueTypeFromDb(existing.valueType);
+      final didChangeType = previousType != type;
 
       await (update(
         personalDatabaseFields,
@@ -168,47 +252,40 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
         PersonalDatabaseFieldsCompanion(
           key: Value(trimmedKey),
           valueType: Value(type.dbKey),
-          isPublic: Value(isPublic),
-          ownerPersonId: Value(ownerPersonId),
+          isPublic: const Value(true),
           updatedAt: Value(DateTime.now()),
         ),
       );
 
-      if (isPublic) {
-        final personIds = await _getAllPersonIds();
-        final jsonValueByPersonId = <String, String>{};
-        for (final personId in personIds) {
-          if (personId == actorPersonId) {
-            jsonValueByPersonId[personId] = normalizedJsonValue;
-            continue;
-          }
-
-          if (didChangeType) {
-            jsonValueByPersonId[personId] = type.defaultJsonValue;
-            continue;
-          }
-
-          jsonValueByPersonId[personId] =
-              existingValueByPerson[personId] ?? type.defaultJsonValue;
-        }
-
-        await _upsertValuesForPeople(
-          fieldId: fieldId,
-          personIds: personIds,
-          jsonValueByPersonId: jsonValueByPersonId,
-        );
-      } else {
-        await (delete(personalDatabaseValues)
-              ..where((table) => table.fieldId.equals(fieldId))
-              ..where((table) => table.personId.isNotValue(actorPersonId)))
-            .go();
-
-        await _upsertFieldValue(
-          fieldId: fieldId,
-          personId: actorPersonId,
-          jsonValue: normalizedJsonValue,
-        );
+      if (!didChangeType) {
+        return;
       }
+
+      final existingValues = await (select(
+        personalDatabaseValues,
+      )..where((table) => table.fieldId.equals(fieldId))).get();
+
+      await batch((batch) {
+        batch.insertAllOnConflictUpdate(
+          personalDatabaseValues,
+          existingValues
+              .map(
+                (row) => PersonalDatabaseValuesCompanion(
+                  fieldId: Value(row.fieldId),
+                  personId: Value(row.personId),
+                  jsonValue: Value(
+                    _normalizeJsonValueAfterTypeChange(
+                      previousType: previousType,
+                      newType: type,
+                      currentJsonValue: row.jsonValue,
+                    ),
+                  ),
+                  updatedAt: Value(DateTime.now()),
+                ),
+              )
+              .toList(growable: false),
+        );
+      });
     });
   }
 
@@ -225,7 +302,69 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
-  Future<void> deleteField(String fieldId) async {
+  Future<void> assignFieldToPerson({
+    required String fieldId,
+    required String personId,
+    String? jsonValue,
+  }) async {
+    final field = await getFieldById(fieldId);
+    if (field == null) {
+      return;
+    }
+
+    final existingAssignment =
+        await (select(personalDatabasePersonFields)
+              ..where((table) => table.fieldId.equals(fieldId))
+              ..where((table) => table.personId.equals(personId)))
+            .getSingleOrNull();
+    if (existingAssignment != null) {
+      return;
+    }
+
+    final type = personalDatabaseValueTypeFromDb(field.valueType);
+    final sortOrder = await getNextAssignedFieldSortOrder(personId);
+
+    await transaction(() async {
+      await into(personalDatabasePersonFields).insertOnConflictUpdate(
+        PersonalDatabasePersonFieldsCompanion(
+          fieldId: Value(fieldId),
+          personId: Value(personId),
+          sortOrder: Value(sortOrder),
+          createdAt: Value(DateTime.now()),
+        ),
+      );
+
+      await _upsertFieldValue(
+        fieldId: fieldId,
+        personId: personId,
+        jsonValue: jsonValue == null
+            ? type.defaultJsonValue
+            : _normalizeJsonValue(type: type, jsonValue: jsonValue),
+      );
+    });
+  }
+
+  Future<void> removeFieldFromPerson({
+    required String fieldId,
+    required String personId,
+  }) async {
+    await transaction(() async {
+      await (delete(personalDatabasePersonFields)
+            ..where((table) => table.fieldId.equals(fieldId))
+            ..where((table) => table.personId.equals(personId)))
+          .go();
+      await (delete(personalDatabaseValues)
+            ..where((table) => table.fieldId.equals(fieldId))
+            ..where((table) => table.personId.equals(personId)))
+          .go();
+    });
+  }
+
+  Future<void> deleteField(String fieldId) {
+    return deleteFieldDefinition(fieldId);
+  }
+
+  Future<void> deleteFieldDefinition(String fieldId) async {
     await transaction(() async {
       final fieldIds = await _collectDescendantFieldIds(fieldId);
       if (fieldIds.isEmpty) {
@@ -235,7 +374,9 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
       await (delete(
         personalDatabaseValues,
       )..where((table) => table.fieldId.isIn(fieldIds))).go();
-
+      await (delete(
+        personalDatabasePersonFields,
+      )..where((table) => table.fieldId.isIn(fieldIds))).go();
       await (delete(
         personalDatabaseFields,
       )..where((table) => table.id.isIn(fieldIds))).go();
@@ -272,49 +413,6 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
     return collected.toList(growable: false);
   }
 
-  Expression<bool> _scopeExpression({
-    required String actorPersonId,
-    required bool isPublic,
-  }) {
-    if (isPublic) {
-      return personalDatabaseFields.isPublic.equals(true);
-    }
-
-    return personalDatabaseFields.isPublic.equals(false) &
-        personalDatabaseFields.ownerPersonId.equals(actorPersonId);
-  }
-
-  Future<List<String>> _getAllPersonIds() async {
-    final allPeople = await select(people).get();
-    return allPeople.map((person) => person.id).toList(growable: false);
-  }
-
-  Future<void> _upsertValuesForPeople({
-    required String fieldId,
-    required List<String> personIds,
-    required Map<String, String> jsonValueByPersonId,
-  }) async {
-    if (personIds.isEmpty) {
-      return;
-    }
-
-    await batch((batch) {
-      batch.insertAllOnConflictUpdate(
-        personalDatabaseValues,
-        personIds
-            .map(
-              (personId) => PersonalDatabaseValuesCompanion(
-                fieldId: Value(fieldId),
-                personId: Value(personId),
-                jsonValue: Value(jsonValueByPersonId[personId] ?? 'null'),
-                updatedAt: Value(DateTime.now()),
-              ),
-            )
-            .toList(growable: false),
-      );
-    });
-  }
-
   Future<void> _upsertFieldValue({
     required String fieldId,
     required String personId,
@@ -330,31 +428,58 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  _FieldRow _fieldRowFromDefinition(PersonalDatabaseField field) {
+    final type = personalDatabaseValueTypeFromDb(field.valueType);
+    return _FieldRow(
+      id: field.id,
+      key: field.key,
+      type: type,
+      isPublic: true,
+      parentFieldId: field.parentFieldId,
+      sortOrder: field.sortOrder,
+      rawJsonValue: type.defaultJsonValue,
+    );
+  }
+
   List<PersonalDatabaseFieldNode> _buildFieldTree(
     List<TypedResult> rows,
+    $PersonalDatabasePersonFieldsTable personFieldsAlias,
     $PersonalDatabaseValuesTable valuesAlias,
+  ) {
+    final fieldRows = <String, _FieldRow>{};
+    for (final row in rows) {
+      final field = row.readTable(personalDatabaseFields);
+      final personField = row.readTable(personFieldsAlias);
+      final valueForPerson = row.readTableOrNull(valuesAlias);
+      final type = personalDatabaseValueTypeFromDb(field.valueType);
+      fieldRows[field.id] = _FieldRow(
+        id: field.id,
+        key: field.key,
+        type: type,
+        isPublic: true,
+        parentFieldId: field.parentFieldId,
+        sortOrder: personField.sortOrder,
+        rawJsonValue: valueForPerson?.jsonValue ?? type.defaultJsonValue,
+      );
+    }
+
+    return _buildFieldTreeFromRows(fieldRows.values);
+  }
+
+  List<PersonalDatabaseFieldNode> _buildFieldTreeFromDefinitions(
+    List<_FieldRow> rows,
+  ) {
+    return _buildFieldTreeFromRows(rows);
+  }
+
+  List<PersonalDatabaseFieldNode> _buildFieldTreeFromRows(
+    Iterable<_FieldRow> rows,
   ) {
     final fieldRows = <String, _FieldRow>{};
     final childrenByParentId = <String, List<_FieldRow>>{};
 
     for (final row in rows) {
-      final field = row.readTable(personalDatabaseFields);
-      final valueForPerson = row.readTableOrNull(valuesAlias);
-      final type = personalDatabaseValueTypeFromDb(field.valueType);
-      final resolvedJsonValue =
-          valueForPerson?.jsonValue ?? type.defaultJsonValue;
-
-      final record = _FieldRow(
-        id: field.id,
-        key: field.key,
-        type: type,
-        isPublic: field.isPublic,
-        parentFieldId: field.parentFieldId,
-        sortOrder: field.sortOrder,
-        rawJsonValue: resolvedJsonValue,
-      );
-
-      fieldRows[field.id] = record;
+      fieldRows[row.id] = row;
     }
 
     for (final row in fieldRows.values) {
@@ -408,6 +533,18 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
     return rootRows.map(buildNode).toList(growable: false);
   }
 
+  String _normalizeJsonValueAfterTypeChange({
+    required PersonalDatabaseValueType previousType,
+    required PersonalDatabaseValueType newType,
+    required String currentJsonValue,
+  }) {
+    final decodedValue = _decodeJsonValue(
+      type: previousType,
+      jsonValue: currentJsonValue,
+    );
+    return _encodeValue(type: newType, value: decodedValue);
+  }
+
   Object? _decodeJsonValue({
     required PersonalDatabaseValueType type,
     required String jsonValue,
@@ -427,6 +564,28 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
       PersonalDatabaseValueType.list => decoded is List ? decoded : const [],
       PersonalDatabaseValueType.object =>
         decoded is Map ? decoded : const <String, Object?>{},
+    };
+  }
+
+  String _encodeValue({
+    required PersonalDatabaseValueType type,
+    required Object? value,
+  }) {
+    return switch (type) {
+      PersonalDatabaseValueType.string => jsonEncode(
+        value == null ? '' : '$value',
+      ),
+      PersonalDatabaseValueType.number => jsonEncode(
+        value is num ? value : num.tryParse('${value ?? ''}') ?? 0,
+      ),
+      PersonalDatabaseValueType.boolean => jsonEncode(value == true),
+      PersonalDatabaseValueType.nullType => 'null',
+      PersonalDatabaseValueType.list => jsonEncode(
+        value is List<dynamic> ? value : const <Object?>[],
+      ),
+      PersonalDatabaseValueType.object => jsonEncode(
+        value is Map<String, dynamic> ? value : const <String, Object?>{},
+      ),
     };
   }
 

@@ -7,11 +7,16 @@ import 'package:trace/core/database/database.dart';
 import 'package:trace/core/utils/app_haptics.dart';
 import 'package:trace/core/utils/useful_extension.dart';
 import 'package:trace/features/people/data/models/todo_with_people.dart';
+import 'package:trace/features/people/presentation/pages/choose_property_page.dart';
 import 'package:trace/features/people/presentation/widgets/person_personal_database_tab.dart';
 import 'package:trace/features/people/providers/person_detail_provider.dart';
+import 'package:trace/features/people/providers/people_database_providers.dart';
+import 'package:trace/features/people/providers/personal_database_provider.dart';
 import 'package:trace/shared/widgets/add_todo_bottom_sheet.dart';
+import 'package:trace/shared/widgets/bottom_sheet_keyboard_inset.dart';
 import 'package:trace/shared/widgets/person_avatar.dart';
 import 'package:trace/shared/widgets/person_todo_item.dart';
+import 'package:trace/features/people/presentation/widgets/personal_database_field_sheet.dart';
 
 enum _PersonMenuAction { rename, delete }
 
@@ -53,6 +58,7 @@ class _PersonTodoPageState extends ConsumerState<PersonTodoPage>
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      requestFocus: false,
       showDragHandle: true,
       backgroundColor: context.cs.surface,
       builder: (_) => AddTodoBottomSheet(personId: widget.personId),
@@ -63,6 +69,7 @@ class _PersonTodoPageState extends ConsumerState<PersonTodoPage>
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      requestFocus: false,
       showDragHandle: true,
       backgroundColor: context.cs.surface,
       builder: (_) =>
@@ -102,6 +109,112 @@ class _PersonTodoPageState extends ConsumerState<PersonTodoPage>
       backgroundColor: context.cs.surface,
       builder: (_) => _DeletePersonSheet(person: person),
     );
+  }
+
+  Widget _buildAnimatedTodoFab() {
+    return AnimatedBuilder(
+      animation: _tabController.animation!,
+      child: FloatingActionButton(
+        heroTag: 'person-todo-add-fab-${widget.personId}',
+        onPressed: () {
+          AppHaptics.primaryAction();
+          _openAddTodoBottomSheet();
+        },
+        child: const Icon(Icons.add),
+      ),
+      builder: (context, child) {
+        final progress = _tabController.animation!.value.clamp(0.0, 1.0);
+        final visibility = 1.0 - progress;
+        final scale = 0.88 + (visibility * 0.12);
+
+        return IgnorePointer(
+          ignoring: visibility < 0.5,
+          child: Opacity(
+            opacity: visibility,
+            child: Transform.scale(scale: scale, child: child),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDatabaseFab() {
+    return FloatingActionButton(
+      heroTag: 'person-database-add-fab-${widget.personId}',
+      onPressed: _handleAddProperty,
+      child: const Icon(Icons.add_rounded),
+    );
+  }
+
+  Future<void> _handleAddProperty() async {
+    AppHaptics.primaryAction();
+    final dao = ref.read(personalDatabaseDaoProvider);
+    final library = await dao.getFieldLibrary();
+    final assignedFieldIds = await dao.getAssignedFieldIdsForPerson(
+      widget.personId,
+    );
+    if (!mounted) {
+      return;
+    }
+
+    final choice = await showChoosePropertyPage(
+      context: context,
+      properties: library
+          .map(
+            (field) => ChoosePropertyItem.fromFieldNode(
+              field,
+              isAssignedToCurrentPerson: assignedFieldIds.contains(field.id),
+            ),
+          )
+          .toList(growable: false),
+    );
+
+    if (!mounted || choice == null) {
+      return;
+    }
+
+    try {
+      switch (choice) {
+        case ChoosePropertySelected(:final item):
+          if (item.isAssignedToCurrentPerson) {
+            return;
+          }
+          await ref
+              .read(personalDatabaseActionsProvider)
+              .assignFieldToPerson(personId: widget.personId, fieldId: item.id);
+        case ChoosePropertyCreateNew():
+          await _createNewProperty();
+      }
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('personTodo.database.actionError'.tr())),
+      );
+    }
+  }
+
+  Future<void> _createNewProperty() async {
+    final result = await showPersonalDatabaseFieldSheet(
+      context: context,
+      title: 'personTodo.propertyChooser.createNewTitle'.tr(),
+      submitLabel: 'personTodo.database.sheet.create'.tr(),
+      showKeyInput: true,
+    );
+
+    if (!mounted || result == null || result.key == null) {
+      return;
+    }
+
+    await ref
+        .read(personalDatabaseActionsProvider)
+        .createPropertyAndAssignToPerson(
+          personId: widget.personId,
+          key: result.key!,
+          type: result.type,
+          value: result.value,
+        );
   }
 
   @override
@@ -204,15 +317,8 @@ class _PersonTodoPageState extends ConsumerState<PersonTodoPage>
             ),
           ),
           floatingActionButton: _tabController.index == 0
-              ? FloatingActionButton(
-                  heroTag: 'person-todo-add-fab-${widget.personId}',
-                  onPressed: () {
-                    AppHaptics.primaryAction();
-                    _openAddTodoBottomSheet();
-                  },
-                  child: const Icon(Icons.add),
-                )
-              : null,
+              ? _buildAnimatedTodoFab()
+              : _buildDatabaseFab(),
           body: SafeArea(
             child: TabBarView(
               controller: _tabController,
@@ -329,66 +435,58 @@ class _RenamePersonSheetState extends ConsumerState<_RenamePersonSheet> {
   @override
   Widget build(BuildContext context) {
     final trimmedName = _controller.text.trim();
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-
-    return SafeArea(
-      top: false,
-      child: AnimatedPadding(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        padding: EdgeInsets.only(bottom: bottomInset),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'personTodo.menu.renamePerson'.tr(),
-                style: context.tt.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
+    return BottomSheetKeyboardInset(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'personTodo.menu.renamePerson'.tr(),
+              style: context.tt.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 20),
+            _buildAvatarSection(context),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _controller,
+              focusNode: _nameFocusNode,
+              textInputAction: TextInputAction.done,
+              onChanged: (_) {
+                setState(() {});
+              },
+              onSubmitted: (_) => _submit(),
+              decoration: InputDecoration(
+                labelText: 'personTodo.renameDialog.nameLabel'.tr(),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                TextButton(
+                  onPressed: _isSubmitting
+                      ? null
+                      : () => Navigator.of(context).pop(),
+                  child: Text('personTodo.dialog.cancel'.tr()),
                 ),
-              ),
-              const SizedBox(height: 20),
-              _buildAvatarSection(context),
-              const SizedBox(height: 20),
-              TextField(
-                controller: _controller,
-                focusNode: _nameFocusNode,
-                textInputAction: TextInputAction.done,
-                onChanged: (_) {
-                  setState(() {});
-                },
-                onSubmitted: (_) => _submit(),
-                decoration: InputDecoration(
-                  labelText: 'personTodo.renameDialog.nameLabel'.tr(),
+                const Spacer(),
+                FilledButton(
+                  onPressed: trimmedName.isEmpty || _isSubmitting
+                      ? null
+                      : _submit,
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text('personTodo.dialog.save'.tr()),
                 ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  TextButton(
-                    onPressed: _isSubmitting
-                        ? null
-                        : () => Navigator.of(context).pop(),
-                    child: Text('personTodo.dialog.cancel'.tr()),
-                  ),
-                  const Spacer(),
-                  FilledButton(
-                    onPressed: trimmedName.isEmpty || _isSubmitting
-                        ? null
-                        : _submit,
-                    child: _isSubmitting
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text('personTodo.dialog.save'.tr()),
-                  ),
-                ],
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ),
       ),
     );

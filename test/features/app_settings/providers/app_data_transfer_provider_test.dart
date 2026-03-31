@@ -90,8 +90,13 @@ void main() {
           .buildBackupPayload();
 
       expect(payload['personalDatabaseFields'], isA<List<dynamic>>());
+      expect(payload['personalDatabasePersonFields'], isA<List<dynamic>>());
       expect(payload['personalDatabaseValues'], isA<List<dynamic>>());
       expect((payload['personalDatabaseFields'] as List<dynamic>).length, 1);
+      expect(
+        (payload['personalDatabasePersonFields'] as List<dynamic>).length,
+        1,
+      );
       expect((payload['personalDatabaseValues'] as List<dynamic>).length, 1);
       expect(payload['personAvatars'], hasLength(1));
       expect(payload['personAvatars'], containsPair('owner', isA<String>()));
@@ -164,8 +169,16 @@ void main() {
       final restoredFields = await targetDatabase.personalDatabaseDao
           .watchFieldTreeForPerson('owner')
           .first;
+      final restoredLibrary = await targetDatabase.personalDatabaseDao
+          .watchFieldLibrary()
+          .first;
+      final restoredAssignedIds = await targetDatabase.personalDatabaseDao
+          .watchAssignedFieldIdsForPerson('owner')
+          .first;
 
       expect(restoredFields, hasLength(1));
+      expect(restoredLibrary, hasLength(1));
+      expect(restoredAssignedIds, {restoredFields.single.id});
       expect(restoredFields.single.key, 'profile');
       expect(restoredFields.single.value, {'nickname': 'Cap'});
 

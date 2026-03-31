@@ -173,18 +173,57 @@ void main() {
       );
     });
 
-    test('supports public field schema with per-person values', () async {
-      await database.personalDatabaseDao.createField(
-        id: 'field-1',
-        actorPersonId: 'owner',
-        key: 'nickname',
+    test(
+      'creates properties in the global library and assigns to one person',
+      () async {
+        await database.personalDatabaseDao.createFieldAndAssignToPerson(
+          id: 'field-1',
+          personId: 'owner',
+          key: 'nickname',
+          type: PersonalDatabaseValueType.string,
+          jsonValue: '"Captain"',
+        );
+
+        final libraryFields = await database.personalDatabaseDao
+            .watchFieldLibrary()
+            .first;
+        final rawDefinition = await database.personalDatabaseDao.getFieldById(
+          'field-1',
+        );
+        final ownerFields = await database.personalDatabaseDao
+            .watchFieldTreeForPerson('owner')
+            .first;
+        final friendFields = await database.personalDatabaseDao
+            .watchFieldTreeForPerson('friend-a')
+            .first;
+
+        expect(libraryFields, hasLength(1));
+        expect(libraryFields.single.key, 'nickname');
+        expect(rawDefinition, isNotNull);
+        expect(rawDefinition!.ownerPersonId, isNull);
+        expect(ownerFields, hasLength(1));
+        expect(ownerFields.single.key, 'nickname');
+        expect(ownerFields.single.value, 'Captain');
+        expect(friendFields, isEmpty);
+      },
+    );
+
+    test('can assign an existing property to another person', () async {
+      await database.personalDatabaseDao.createFieldAndAssignToPerson(
+        id: 'field-2',
+        personId: 'owner',
+        key: 'secretNote',
         type: PersonalDatabaseValueType.string,
-        isPublic: true,
-        jsonValue: '"Captain"',
+        jsonValue: '"Only owner"',
+      );
+
+      await database.personalDatabaseDao.assignFieldToPerson(
+        fieldId: 'field-2',
+        personId: 'friend-a',
       );
 
       await database.personalDatabaseDao.updateFieldValueForPerson(
-        fieldId: 'field-1',
+        fieldId: 'field-2',
         personId: 'friend-a',
         type: PersonalDatabaseValueType.string,
         jsonValue: '"Buddy"',
@@ -197,41 +236,50 @@ void main() {
           .watchFieldTreeForPerson('friend-a')
           .first;
 
-      expect(ownerFields, hasLength(1));
-      expect(ownerFields.single.key, 'nickname');
-      expect(ownerFields.single.value, 'Captain');
-
-      expect(friendFields, hasLength(1));
-      expect(friendFields.single.key, 'nickname');
-      expect(friendFields.single.value, 'Buddy');
+      expect(ownerFields.map((field) => field.value), ['Only owner']);
+      expect(friendFields.map((field) => field.value), ['Buddy']);
     });
 
-    test('supports private field visibility and deletion', () async {
-      await database.personalDatabaseDao.createField(
-        id: 'field-2',
-        actorPersonId: 'owner',
-        key: 'secretNote',
-        type: PersonalDatabaseValueType.string,
-        isPublic: false,
-        jsonValue: '"Only owner"',
-      );
+    test(
+      'keeps existing person values stable when definition type changes',
+      () async {
+        await database.personalDatabaseDao.createFieldAndAssignToPerson(
+          id: 'field-3',
+          personId: 'owner',
+          key: 'score',
+          type: PersonalDatabaseValueType.number,
+          jsonValue: '42',
+        );
 
-      final ownerFieldsBeforeDelete = await database.personalDatabaseDao
-          .watchFieldTreeForPerson('owner')
-          .first;
-      final friendFieldsBeforeDelete = await database.personalDatabaseDao
-          .watchFieldTreeForPerson('friend-a')
-          .first;
+        await database.personalDatabaseDao.assignFieldToPerson(
+          fieldId: 'field-3',
+          personId: 'friend-a',
+        );
+        await database.personalDatabaseDao.updateFieldValueForPerson(
+          fieldId: 'field-3',
+          personId: 'friend-a',
+          type: PersonalDatabaseValueType.number,
+          jsonValue: '7',
+        );
 
-      expect(ownerFieldsBeforeDelete.map((field) => field.key), ['secretNote']);
-      expect(friendFieldsBeforeDelete, isEmpty);
+        await database.personalDatabaseDao.updatePropertyDefinition(
+          fieldId: 'field-3',
+          key: 'scoreText',
+          type: PersonalDatabaseValueType.string,
+        );
 
-      await database.personalDatabaseDao.deleteField('field-2');
+        final ownerFields = await database.personalDatabaseDao
+            .watchFieldTreeForPerson('owner')
+            .first;
+        final friendFields = await database.personalDatabaseDao
+            .watchFieldTreeForPerson('friend-a')
+            .first;
 
-      final ownerFieldsAfterDelete = await database.personalDatabaseDao
-          .watchFieldTreeForPerson('owner')
-          .first;
-      expect(ownerFieldsAfterDelete, isEmpty);
-    });
+        expect(ownerFields.single.key, 'scoreText');
+        expect(ownerFields.single.value, '42');
+        expect(friendFields.single.key, 'scoreText');
+        expect(friendFields.single.value, '7');
+      },
+    );
   });
 }

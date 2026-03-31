@@ -12,6 +12,68 @@ void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
 
   group('PersonalDatabaseActions', () {
+    test('exposes global library and per-person assignment actions', () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+
+      await database.peopleDao.createPerson(
+        id: 'owner',
+        name: 'Owner',
+        colorValue: 0xFF111111,
+      );
+      await database.peopleDao.createPerson(
+        id: 'friend-a',
+        name: 'Friend A',
+        colorValue: 0xFF222222,
+      );
+
+      final container = ProviderContainer(
+        overrides: [appDatabaseProvider.overrideWithValue(database)],
+      );
+      addTearDown(container.dispose);
+
+      await container
+          .read(personalDatabaseActionsProvider)
+          .createPropertyAndAssignToPerson(
+            personId: 'owner',
+            key: 'status',
+            type: PersonalDatabaseValueType.string,
+            value: 'Active',
+          );
+
+      final createdFieldId =
+          (await database.personalDatabaseDao.watchFieldLibrary().first)
+              .single
+              .id;
+
+      await container
+          .read(personalDatabaseActionsProvider)
+          .assignFieldToPerson(personId: 'friend-a', fieldId: createdFieldId);
+
+      final library = await database.personalDatabaseDao
+          .watchFieldLibrary()
+          .first;
+      final ownerAssignedIds = await database.personalDatabaseDao
+          .watchAssignedFieldIdsForPerson('owner')
+          .first;
+      final friendAssignedIds = await database.personalDatabaseDao
+          .watchAssignedFieldIdsForPerson('friend-a')
+          .first;
+      final ownerFields = await database.personalDatabaseDao
+          .watchFieldTreeForPerson('owner')
+          .first;
+      final friendFields = await database.personalDatabaseDao
+          .watchFieldTreeForPerson('friend-a')
+          .first;
+
+      expect(library, hasLength(1));
+      expect(library.single.key, 'status');
+      expect(ownerAssignedIds, {library.single.id});
+      expect(friendAssignedIds, {library.single.id});
+      expect(ownerFields.single.value, 'Active');
+      expect(friendFields.single.value, '');
+    });
+
     test('renameObjectKey rejects duplicate sibling keys', () async {
       final database = AppDatabase(NativeDatabase.memory());
       addTearDown(database.close);

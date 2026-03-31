@@ -7,6 +7,7 @@ import 'package:trace/core/utils/useful_extension.dart';
 import 'package:trace/features/people/data/models/todo_with_people.dart';
 import 'package:trace/features/people/providers/person_detail_provider.dart';
 import 'package:trace/features/people/providers/people_provider.dart';
+import 'package:trace/shared/widgets/bottom_sheet_keyboard_inset.dart';
 import 'package:trace/shared/widgets/person_avatar.dart';
 import 'package:trace/shared/widgets/todo_people_picker_sheet.dart';
 
@@ -27,6 +28,7 @@ class AddTodoBottomSheet extends ConsumerStatefulWidget {
 class _AddTodoBottomSheetState extends ConsumerState<AddTodoBottomSheet> {
   late final TextEditingController _titleController;
   late final TextEditingController _noteController;
+  late final FocusNode _titleFocusNode;
 
   late bool _showNoteField;
   late bool _isStarred;
@@ -42,37 +44,47 @@ class _AddTodoBottomSheetState extends ConsumerState<AddTodoBottomSheet> {
     final initialTodo = widget.initialTodo?.todo;
     _titleController = TextEditingController(text: initialTodo?.title ?? '');
     _noteController = TextEditingController(text: initialTodo?.note ?? '');
+    _titleFocusNode = FocusNode();
     _showNoteField = (initialTodo?.note?.trim().isNotEmpty ?? false);
     _isStarred = initialTodo?.starred ?? false;
     _dueAt = initialTodo?.dueAt;
     _selectedParticipantIds = {
       ...?widget.initialTodo?.relatedPeople.map((person) => person.id),
     };
+
+    if (!_isEditing) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _titleFocusNode.requestFocus();
+        }
+      });
+    }
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _noteController.dispose();
+    _titleFocusNode.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final canSave = _titleController.text.trim().isNotEmpty && !_isSaving;
     final peopleAsync = ref.watch(peopleProvider);
 
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(24, 12, 24, bottomInset + 24),
+    return BottomSheetKeyboardInset(
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+      child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TextField(
               controller: _titleController,
+              focusNode: _titleFocusNode,
+              autofocus: !_isEditing,
               textInputAction: TextInputAction.next,
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(

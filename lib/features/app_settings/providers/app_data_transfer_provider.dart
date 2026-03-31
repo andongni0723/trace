@@ -22,8 +22,8 @@ final appDataTransferProvider = Provider<AppDataTransferService>((ref) {
 const _backupAppId = 'trace';
 const _legacyBackupAppIds = {'people_todolist'};
 const _backupType = 'app_backup';
-const _backupVersion = 4;
-const _supportedBackupVersions = {1, 2, 3, 4};
+const _backupVersion = 5;
+const _supportedBackupVersions = {1, 2, 3, 4, 5};
 
 class AppDataTransferService {
   AppDataTransferService(this._ref);
@@ -90,6 +90,9 @@ class AppDataTransferService {
     final personalDatabaseFields = await database
         .select(database.personalDatabaseFields)
         .get();
+    final personalDatabasePersonFields = await database
+        .select(database.personalDatabasePersonFields)
+        .get();
     final personalDatabaseValues = await database
         .select(database.personalDatabaseValues)
         .get();
@@ -122,6 +125,9 @@ class AppDataTransferService {
       'personalDatabaseFields': personalDatabaseFields
           .map((field) => field.toJson())
           .toList(growable: false),
+      'personalDatabasePersonFields': personalDatabasePersonFields
+          .map((item) => item.toJson())
+          .toList(growable: false),
       'personalDatabaseValues': personalDatabaseValues
           .map((value) => value.toJson())
           .toList(growable: false),
@@ -137,6 +143,8 @@ class AppDataTransferService {
         (rawJson['todoParticipants'] as List<dynamic>? ?? const []);
     final personalDatabaseFieldsJson =
         (rawJson['personalDatabaseFields'] as List<dynamic>? ?? const []);
+    final personalDatabasePersonFieldsJson =
+        (rawJson['personalDatabasePersonFields'] as List<dynamic>? ?? const []);
     final personalDatabaseValuesJson =
         (rawJson['personalDatabaseValues'] as List<dynamic>? ?? const []);
     final personAvatarsJson = rawJson['personAvatars'] as Map<String, dynamic>?;
@@ -193,10 +201,30 @@ class AppDataTransferService {
           ),
         )
         .toList(growable: false);
+    final personalDatabasePersonFields =
+        personalDatabasePersonFieldsJson.isEmpty
+        ? personalDatabaseValues
+              .map(
+                (value) => PersonalDatabasePersonField(
+                  fieldId: value.fieldId,
+                  personId: value.personId,
+                  sortOrder: 0,
+                  createdAt: value.updatedAt,
+                ),
+              )
+              .toList(growable: false)
+        : personalDatabasePersonFieldsJson
+              .map(
+                (item) => PersonalDatabasePersonField.fromJson(
+                  Map<String, dynamic>.from(item as Map),
+                ),
+              )
+              .toList(growable: false);
 
     try {
       await database.transaction(() async {
         await database.delete(database.personalDatabaseValues).go();
+        await database.delete(database.personalDatabasePersonFields).go();
         await database.delete(database.personalDatabaseFields).go();
         await database.delete(database.todoParticipants).go();
         await database.delete(database.todos).go();
@@ -216,6 +244,12 @@ class AppDataTransferService {
             batch.insertAll(
               database.personalDatabaseFields,
               personalDatabaseFields,
+            );
+          }
+          if (personalDatabasePersonFields.isNotEmpty) {
+            batch.insertAll(
+              database.personalDatabasePersonFields,
+              personalDatabasePersonFields,
             );
           }
           if (personalDatabaseValues.isNotEmpty) {
@@ -283,6 +317,8 @@ class AppDataTransferService {
         rawJson['todoParticipants'] is List<dynamic> &&
         (rawJson['personalDatabaseFields'] == null ||
             rawJson['personalDatabaseFields'] is List<dynamic>) &&
+        (rawJson['personalDatabasePersonFields'] == null ||
+            rawJson['personalDatabasePersonFields'] is List<dynamic>) &&
         (rawJson['personalDatabaseValues'] == null ||
             rawJson['personalDatabaseValues'] is List<dynamic>);
 

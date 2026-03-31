@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:trace/core/utils/app_haptics.dart';
 import 'package:trace/core/utils/useful_extension.dart';
 import 'package:trace/features/people/providers/people_provider.dart';
+import 'package:trace/shared/widgets/bottom_sheet_keyboard_inset.dart';
 import 'package:trace/shared/widgets/person_avatar.dart';
 
 const List<Color> _avatarColors = [
@@ -44,13 +45,11 @@ class _AddFriendBottomSheetState extends ConsumerState<AddFriendBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final canCreate = _nameController.text.trim().isNotEmpty && !_isSubmitting;
 
-    return SafeArea(
-      top: false,
+    return BottomSheetKeyboardInset(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
       child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(24, 8, 24, bottomInset + 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

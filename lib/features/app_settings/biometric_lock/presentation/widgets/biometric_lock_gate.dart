@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:trace/core/utils/useful_extension.dart';
 
+import 'app_opening_animation_overlay.dart';
 import '../../domain/biometric_lock_policy.dart';
 import '../../domain/biometric_lock_state.dart';
 import '../../providers/biometric_lock_provider.dart';
@@ -21,6 +22,8 @@ class BiometricLockGate extends ConsumerStatefulWidget {
 class _BiometricLockGateState extends ConsumerState<BiometricLockGate>
     with WidgetsBindingObserver {
   bool _isBootstrapping = true;
+  bool _showOpeningAnimation = false;
+  bool _hasPlayedOpeningAnimation = false;
 
   @override
   void initState() {
@@ -68,14 +71,45 @@ class _BiometricLockGateState extends ConsumerState<BiometricLockGate>
 
     setState(() {
       _isBootstrapping = false;
+      _showOpeningAnimation = _shouldPlayOpeningAnimation();
+      _hasPlayedOpeningAnimation = _showOpeningAnimation;
     });
   }
 
   Future<void> _authenticate(BiometricLockTrigger trigger) {
-    return ref.read(biometricLockStateProvider.notifier).handleLifecycleTrigger(
-      trigger,
-      localizedReason: 'appSettings.fingerprint.systemPrompt'.tr(),
-    );
+    return ref
+        .read(biometricLockStateProvider.notifier)
+        .handleLifecycleTrigger(
+          trigger,
+          localizedReason: 'appSettings.fingerprint.systemPrompt'.tr(),
+        );
+  }
+
+  bool _shouldPlayOpeningAnimation() {
+    if (_hasPlayedOpeningAnimation) {
+      return false;
+    }
+
+    final state = ref.read(biometricLockStateProvider).asData?.value;
+    if (state == null) {
+      return false;
+    }
+
+    if (!state.settings.enabled) {
+      return true;
+    }
+
+    return state.sessionUnlocked && !state.isAuthenticating;
+  }
+
+  void _handleOpeningAnimationCompleted() {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _showOpeningAnimation = false;
+    });
   }
 
   @override
@@ -88,7 +122,18 @@ class _BiometricLockGateState extends ConsumerState<BiometricLockGate>
             ((state?.isAuthenticating ?? false) || (state?.isLocked ?? false)));
 
     if (!shouldBlock) {
-      return widget.child;
+      if (!_showOpeningAnimation) {
+        return widget.child;
+      }
+
+      return Stack(
+        children: [
+          widget.child,
+          AppOpeningAnimationOverlay(
+            onCompleted: _handleOpeningAnimationCompleted,
+          ),
+        ],
+      );
     }
 
     return Stack(
@@ -99,9 +144,8 @@ class _BiometricLockGateState extends ConsumerState<BiometricLockGate>
             isBootstrapping: _isBootstrapping,
             state: state,
             onRetry: () => _authenticate(BiometricLockTrigger.appResumed),
-            onDisable: () => ref
-                .read(biometricLockStateProvider.notifier)
-                .setEnabled(false),
+            onDisable: () =>
+                ref.read(biometricLockStateProvider.notifier).setEnabled(false),
           ),
         ),
       ],
@@ -127,7 +171,8 @@ class _BiometricLockOverlay extends StatelessWidget {
     final isAuthenticating = state?.isAuthenticating ?? false;
     final canAuthenticate = state?.canAuthenticate ?? false;
     final isEnabled = state?.settings.enabled ?? false;
-    final showDisableAction = isEnabled && !canAuthenticate && !isAuthenticating;
+    final showDisableAction =
+        isEnabled && !canAuthenticate && !isAuthenticating;
     final showRetryAction = isEnabled && canAuthenticate && !isAuthenticating;
     final message = _message(context);
 
@@ -200,7 +245,8 @@ class _BiometricLockOverlay extends StatelessWidget {
       return 'appSettings.fingerprint.lockChecking'.tr();
     }
 
-    if ((state?.settings.enabled ?? false) && !(state?.canAuthenticate ?? false)) {
+    if ((state?.settings.enabled ?? false) &&
+        !(state?.canAuthenticate ?? false)) {
       return 'appSettings.fingerprint.unavailable'.tr();
     }
 

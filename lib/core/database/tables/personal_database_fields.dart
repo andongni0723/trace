@@ -11,7 +11,7 @@ class PersonalDatabaseFields extends Table {
 
   TextColumn get valueType => text().withLength(min: 1, max: 20)();
 
-  BoolColumn get isPublic => boolean().withDefault(const Constant(false))();
+  BoolColumn get isPublic => boolean().withDefault(const Constant(true))();
 
   TextColumn get ownerPersonId =>
       text().nullable().references(People, #id, onDelete: KeyAction.cascade)();

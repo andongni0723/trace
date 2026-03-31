@@ -11,6 +11,15 @@ appSettings.themeMode.title,主題,Theme
 appSettings.themeMode.system,跟隨系統,System
 appSettings.themeMode.light,淺色,Light
 appSettings.themeMode.dark,深色,Dark
+appSettings.themeSeed.title,主題色,Theme color
+appSettings.themeSeed.subtitle,選擇 app 的主色調。,Choose the app accent color.
+appSettings.themeSeed.label,顏色,Color
+appSettings.themeSeed.classicDeepPurple,經典深紫,Classic deep purple
+appSettings.themeSeed.violet,紫羅蘭,Violet
+appSettings.themeSeed.teal,藍綠,Teal
+appSettings.themeSeed.coral,珊瑚,Coral
+appSettings.themeSeed.amber,琥珀,Amber
+appSettings.themeSeed.berry,莓果,Berry
 appSettings.comingSoon,即將推出,Coming soon
 appSettings.checkUpdate.title,檢查更新,Check for updates
 appSettings.checkUpdate.subtitle,檢查 GitHub Release 是否有新版本。,Check GitHub Releases for a newer version.
@@ -92,9 +101,9 @@ personTodo.avatar.remove,移除圖片,Remove image
 personTodo.tabs.todoList,待辦清單,To-do list
 personTodo.tabs.database,資料庫,Database
 personTodo.database.title,個人資料庫,Personal database
-personTodo.database.addField,新增欄位,Add field
-personTodo.database.emptyTitle,還沒有欄位,No fields yet
-personTodo.database.emptyBody,建立欄位來記錄這個人的個人資料與情境資訊。,Create fields to store this person's context and notes.
+personTodo.database.addField,選擇屬性,Choose property
+personTodo.database.emptyTitle,還沒有屬性,No properties yet
+personTodo.database.emptyBody,從屬性庫選擇或建立屬性，開始記錄這個人的資料與情境資訊。,Choose or create a property from the library to start storing this person's context.
 personTodo.database.loadError,讀取個人資料庫失敗。,Unable to load the personal database.
 personTodo.database.type.string,字串,String
 personTodo.database.type.number,數字,Number
@@ -108,37 +117,46 @@ personTodo.database.fieldType.boolean,布林,Boolean
 personTodo.database.fieldType.object,物件,Object
 personTodo.database.fieldType.list,陣列,List
 personTodo.database.fieldType.null,空值,Null
-personTodo.database.scope.private,私人,Private
-personTodo.database.scope.public,公開,Public
-personTodo.database.action.addChild,新增子欄位,Add child
+personTodo.database.action.addChild,新增子屬性,Add child property
 personTodo.database.action.edit,編輯,Edit
 personTodo.database.action.delete,刪除,Delete
 personTodo.database.menu.more,更多操作,More actions
 personTodo.database.actionError,個人資料庫更新失敗。,Unable to update the personal database.
-personTodo.database.deleteDialog.title,刪除欄位,Delete field
-personTodo.database.deleteDialog.body,確定要刪除欄位「{key}」嗎？,Delete field "{key}"?
+personTodo.database.deleteDialog.title,刪除屬性,Delete property
+personTodo.database.deleteDialog.body,確定要刪除屬性「{key}」嗎？,Delete property "{key}"?
 personTodo.database.deleteDialog.cancel,取消,Cancel
 personTodo.database.deleteDialog.delete,刪除,Delete
-personTodo.database.sheet.addTitle,新增欄位,Add field
-personTodo.database.sheet.createTitle,新增欄位,Create field
+personTodo.database.removeDialog.title,移除此屬性,Remove property
+personTodo.database.removeDialog.body,要把屬性「{key}」從這個人的資料中移除嗎？,Remove property "{key}" from this person?
+personTodo.database.removeDialog.cancel,取消,Cancel
+personTodo.database.removeDialog.remove,移除,Remove
+personTodo.database.sheet.addTitle,建立屬性,Create property
+personTodo.database.sheet.createTitle,建立屬性,Create property
 personTodo.database.sheet.create,建立,Create
-personTodo.database.sheet.editTitle,編輯欄位,Edit field
+personTodo.database.sheet.editTitle,編輯屬性,Edit property
 personTodo.database.sheet.update,更新,Update
-personTodo.database.sheet.addChildTitle,新增子欄位,Add child field
+personTodo.database.sheet.addChildTitle,新增子屬性,Add child property
 personTodo.database.sheet.key,Key,Key
 personTodo.database.sheet.value,Value,Value
 personTodo.database.sheet.type,Type,Type
 personTodo.database.sheet.save,儲存,Save
-personTodo.database.sheet.scopePrivate,私人,Private
-personTodo.database.sheet.scopePublic,公開,Public
 personTodo.database.sheet.boolTrue,true,true
 personTodo.database.sheet.boolFalse,false,false
 personTodo.database.sheet.nullValue,此欄位值為 null。,This field value is null.
-personTodo.database.sheet.objectHint,Object 內容請用新增子欄位管理。,Use add child to manage object entries.
+personTodo.database.sheet.objectHint,Object 內容請用新增子屬性管理。,Use add child property to manage object entries.
 personTodo.database.sheet.keyRequired,請輸入 key。,Key is required.
 personTodo.database.sheet.invalidNumber,數字格式不正確。,Invalid number format.
 personTodo.database.sheet.invalidObject,請輸入有效的 JSON object。,Enter a valid JSON object.
 personTodo.database.sheet.invalidList,請輸入有效的 JSON list。,Enter a valid JSON list.
+personTodo.propertyChooser.title,選擇屬性,Choose property
+personTodo.propertyChooser.subtitle,從屬性庫挑選一個要加入這個人的項目，或建立新的屬性。,Pick a property from the library, or create a new one.
+personTodo.propertyChooser.searchHint,搜尋屬性,Search properties
+personTodo.propertyChooser.libraryLabel,屬性庫,Property library
+personTodo.propertyChooser.createNew,建立新屬性,Create new property
+personTodo.propertyChooser.createNewTitle,建立新屬性,Create new property
+personTodo.propertyChooser.emptyTitle,尚未有屬性,No properties yet
+personTodo.propertyChooser.emptyBody,先建立第一個屬性，之後就能重複加入不同人物。,Create the first property and reuse it across people.
+personTodo.propertyChooser.added,已加入此人,Added
 personTodo.menu.more,更多操作,More actions
 personTodo.menu.renamePerson,重新命名人物,Rename person
 personTodo.menu.deletePerson,刪除人物,Delete person

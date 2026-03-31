@@ -43,12 +43,25 @@ class AppSettingsPage extends ConsumerWidget {
         children: [
           _SectionLabel(label: 'appSettings.section.appearance'.tr()),
           _SettingsTile(
-            position: _SettingsTilePosition.single,
+            position: _SettingsTilePosition.first,
             title: 'appSettings.themeMode.title'.tr(),
             subtitle: _themeModeLabel(appSettings.themeMode).tr(),
             leading: const Icon(Icons.palette_outlined),
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => _showThemeDialog(context, ref, appSettings.themeMode),
+          ),
+          const SizedBox(height: 4),
+          _ThemeSeedTile(
+            themeSeed: appSettings.themeSeed,
+            onSelected: (themeSeed) async {
+              if (themeSeed == appSettings.themeSeed) {
+                return;
+              }
+              AppHaptics.selection();
+              await ref
+                  .read(appSettingsActionsProvider)
+                  .setThemeSeed(themeSeed);
+            },
           ),
           const SizedBox(height: 8),
           _SectionLabel(label: 'appSettings.section.app'.tr()),
@@ -464,6 +477,137 @@ class _FrequencyTile extends StatelessWidget {
   }
 }
 
+class _ThemeSeedTile extends StatelessWidget {
+  const _ThemeSeedTile({required this.themeSeed, required this.onSelected});
+
+  final AppThemeSeed themeSeed;
+  final ValueChanged<AppThemeSeed> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: context.cs.surfaceContainerLow,
+      borderRadius: _tileBorderRadiusFor(_SettingsTilePosition.last),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.color_lens_outlined),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'appSettings.themeSeed.title'.tr(),
+                        style: context.tt.titleMedium,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'appSettings.themeSeed.subtitle'.tr(),
+                        style: context.tt.bodySmall?.copyWith(
+                          color: context.cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.only(left: 40),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    'appSettings.themeSeed.label'.tr(),
+                    style: context.tt.labelLarge?.copyWith(
+                      color: context.cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: AppThemeSeed.values
+                          .map(
+                            (seed) => _ThemeSeedButton(
+                              themeSeed: seed,
+                              selected: seed == themeSeed,
+                              onTap: () => onSelected(seed),
+                            ),
+                          )
+                          .toList(growable: false),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ThemeSeedButton extends StatelessWidget {
+  const _ThemeSeedButton({
+    required this.themeSeed,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final AppThemeSeed themeSeed;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final seedColor = _themeSeedColor(themeSeed);
+
+    return Tooltip(
+      message: _themeSeedLabel(themeSeed).tr(),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: seedColor,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: selected
+                  ? context.cs.onSurface
+                  : context.cs.outlineVariant,
+              width: selected ? 3 : 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: context.cs.shadow.withValues(alpha: 0.10),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: selected
+              ? const Icon(Icons.check_rounded, color: Colors.white, size: 18)
+              : null,
+        ),
+      ),
+    );
+  }
+}
+
 class _FrequencyOptionTile extends StatelessWidget {
   const _FrequencyOptionTile({
     required this.position,
@@ -525,6 +669,28 @@ String _themeModeLabel(AppThemeMode themeMode) {
     AppThemeMode.system => 'appSettings.themeMode.system',
     AppThemeMode.light => 'appSettings.themeMode.light',
     AppThemeMode.dark => 'appSettings.themeMode.dark',
+  };
+}
+
+String _themeSeedLabel(AppThemeSeed themeSeed) {
+  return switch (themeSeed) {
+    AppThemeSeed.classicDeepPurple => 'appSettings.themeSeed.classicDeepPurple',
+    AppThemeSeed.violet => 'appSettings.themeSeed.violet',
+    AppThemeSeed.teal => 'appSettings.themeSeed.teal',
+    AppThemeSeed.coral => 'appSettings.themeSeed.coral',
+    AppThemeSeed.amber => 'appSettings.themeSeed.amber',
+    AppThemeSeed.berry => 'appSettings.themeSeed.berry',
+  };
+}
+
+Color _themeSeedColor(AppThemeSeed themeSeed) {
+  return switch (themeSeed) {
+    AppThemeSeed.classicDeepPurple => Colors.deepPurple,
+    AppThemeSeed.violet => const Color(0xFF6750A4),
+    AppThemeSeed.teal => const Color(0xFF006A6A),
+    AppThemeSeed.coral => const Color(0xFFB3261E),
+    AppThemeSeed.amber => const Color(0xFF8C5000),
+    AppThemeSeed.berry => const Color(0xFF904A72),
   };
 }
 

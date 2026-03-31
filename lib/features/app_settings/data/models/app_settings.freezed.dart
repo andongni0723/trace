@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$AppSettings {
 
- AppThemeMode get themeMode;
+ AppThemeMode get themeMode; AppThemeSeed get themeSeed;
 /// Create a copy of AppSettings
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $AppSettingsCopyWith<AppSettings> get copyWith => _$AppSettingsCopyWithImpl<AppS
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AppSettings&&(identical(other.themeMode, themeMode) || other.themeMode == themeMode));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AppSettings&&(identical(other.themeMode, themeMode) || other.themeMode == themeMode)&&(identical(other.themeSeed, themeSeed) || other.themeSeed == themeSeed));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,themeMode);
+int get hashCode => Object.hash(runtimeType,themeMode,themeSeed);
 
 @override
 String toString() {
-  return 'AppSettings(themeMode: $themeMode)';
+  return 'AppSettings(themeMode: $themeMode, themeSeed: $themeSeed)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $AppSettingsCopyWith<$Res>  {
   factory $AppSettingsCopyWith(AppSettings value, $Res Function(AppSettings) _then) = _$AppSettingsCopyWithImpl;
 @useResult
 $Res call({
- AppThemeMode themeMode
+ AppThemeMode themeMode, AppThemeSeed themeSeed
 });
 
 
@@ -62,10 +62,11 @@ class _$AppSettingsCopyWithImpl<$Res>
 
 /// Create a copy of AppSettings
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? themeMode = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? themeMode = null,Object? themeSeed = null,}) {
   return _then(_self.copyWith(
 themeMode: null == themeMode ? _self.themeMode : themeMode // ignore: cast_nullable_to_non_nullable
-as AppThemeMode,
+as AppThemeMode,themeSeed: null == themeSeed ? _self.themeSeed : themeSeed // ignore: cast_nullable_to_non_nullable
+as AppThemeSeed,
   ));
 }
 
@@ -150,10 +151,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( AppThemeMode themeMode)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( AppThemeMode themeMode,  AppThemeSeed themeSeed)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AppSettings() when $default != null:
-return $default(_that.themeMode);case _:
+return $default(_that.themeMode,_that.themeSeed);case _:
   return orElse();
 
 }
@@ -171,10 +172,10 @@ return $default(_that.themeMode);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( AppThemeMode themeMode)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( AppThemeMode themeMode,  AppThemeSeed themeSeed)  $default,) {final _that = this;
 switch (_that) {
 case _AppSettings():
-return $default(_that.themeMode);case _:
+return $default(_that.themeMode,_that.themeSeed);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -191,10 +192,10 @@ return $default(_that.themeMode);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( AppThemeMode themeMode)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( AppThemeMode themeMode,  AppThemeSeed themeSeed)?  $default,) {final _that = this;
 switch (_that) {
 case _AppSettings() when $default != null:
-return $default(_that.themeMode);case _:
+return $default(_that.themeMode,_that.themeSeed);case _:
   return null;
 
 }
@@ -206,10 +207,11 @@ return $default(_that.themeMode);case _:
 
 
 class _AppSettings implements AppSettings {
-  const _AppSettings({this.themeMode = AppThemeMode.dark});
+  const _AppSettings({this.themeMode = AppThemeMode.dark, this.themeSeed = AppThemeSeed.classicDeepPurple});
   
 
 @override@JsonKey() final  AppThemeMode themeMode;
+@override@JsonKey() final  AppThemeSeed themeSeed;
 
 /// Create a copy of AppSettings
 /// with the given fields replaced by the non-null parameter values.
@@ -221,16 +223,16 @@ _$AppSettingsCopyWith<_AppSettings> get copyWith => __$AppSettingsCopyWithImpl<_
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AppSettings&&(identical(other.themeMode, themeMode) || other.themeMode == themeMode));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AppSettings&&(identical(other.themeMode, themeMode) || other.themeMode == themeMode)&&(identical(other.themeSeed, themeSeed) || other.themeSeed == themeSeed));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,themeMode);
+int get hashCode => Object.hash(runtimeType,themeMode,themeSeed);
 
 @override
 String toString() {
-  return 'AppSettings(themeMode: $themeMode)';
+  return 'AppSettings(themeMode: $themeMode, themeSeed: $themeSeed)';
 }
 
 
@@ -241,7 +243,7 @@ abstract mixin class _$AppSettingsCopyWith<$Res> implements $AppSettingsCopyWith
   factory _$AppSettingsCopyWith(_AppSettings value, $Res Function(_AppSettings) _then) = __$AppSettingsCopyWithImpl;
 @override @useResult
 $Res call({
- AppThemeMode themeMode
+ AppThemeMode themeMode, AppThemeSeed themeSeed
 });
 
 
@@ -258,10 +260,11 @@ class __$AppSettingsCopyWithImpl<$Res>
 
 /// Create a copy of AppSettings
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? themeMode = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? themeMode = null,Object? themeSeed = null,}) {
   return _then(_AppSettings(
 themeMode: null == themeMode ? _self.themeMode : themeMode // ignore: cast_nullable_to_non_nullable
-as AppThemeMode,
+as AppThemeMode,themeSeed: null == themeSeed ? _self.themeSeed : themeSeed // ignore: cast_nullable_to_non_nullable
+as AppThemeSeed,
   ));
 }
 

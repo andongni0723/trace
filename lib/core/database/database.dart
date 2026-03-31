@@ -10,6 +10,7 @@ import '../../features/people/data/daos/personal_database_dao.dart';
 import '../../features/people/data/daos/todos_dao.dart';
 import 'tables/people.dart';
 import 'tables/personal_database_fields.dart';
+import 'tables/personal_database_person_fields.dart';
 import 'tables/personal_database_values.dart';
 import 'tables/todo_participants.dart';
 import 'tables/todos.dart';
@@ -22,6 +23,7 @@ part 'database.g.dart';
     Todos,
     TodoParticipants,
     PersonalDatabaseFields,
+    PersonalDatabasePersonFields,
     PersonalDatabaseValues,
   ],
   daos: [PeopleDao, TodosDao, PersonalDatabaseDao],
@@ -30,7 +32,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -45,6 +47,28 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 4) {
         await migrator.addColumn(people, people.avatarPath);
+      }
+      if (from < 5) {
+        await migrator.createTable(personalDatabasePersonFields);
+        await customStatement('''
+          INSERT OR IGNORE INTO personal_database_person_fields (
+            field_id,
+            person_id,
+            sort_order,
+            created_at
+          )
+          SELECT
+            field_id,
+            person_id,
+            0,
+            updated_at
+          FROM personal_database_values
+        ''');
+        await customStatement('''
+          UPDATE personal_database_fields
+          SET is_public = 1,
+              owner_person_id = NULL
+        ''');
       }
     },
     beforeOpen: (details) async {

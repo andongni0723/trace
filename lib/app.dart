@@ -21,6 +21,7 @@ class App extends ConsumerWidget {
           data: (settings) => settings,
           orElse: () => const AppSettings(),
         );
+    final seedColor = _seedColorOf(appSettings.themeSeed);
 
     return MaterialApp.router(
       title: 'Snap Ledger',
@@ -31,14 +32,14 @@ class App extends ConsumerWidget {
       scaffoldMessengerKey: scaffoldMessengerKey,
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: seedColor),
         brightness: Brightness.light,
         fontFamily: AppTypography.fontFamily,
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
+          seedColor: seedColor,
           brightness: Brightness.dark,
         ),
         brightness: Brightness.dark,
@@ -58,5 +59,16 @@ ThemeMode _themeModeOf(AppThemeMode themeMode) {
     AppThemeMode.system => ThemeMode.system,
     AppThemeMode.light => ThemeMode.light,
     AppThemeMode.dark => ThemeMode.dark,
+  };
+}
+
+Color _seedColorOf(AppThemeSeed themeSeed) {
+  return switch (themeSeed) {
+    AppThemeSeed.classicDeepPurple => Colors.deepPurple,
+    AppThemeSeed.violet => const Color(0xFF6750A4),
+    AppThemeSeed.teal => const Color(0xFF006A6A),
+    AppThemeSeed.coral => const Color(0xFFB3261E),
+    AppThemeSeed.amber => const Color(0xFF8C5000),
+    AppThemeSeed.berry => const Color(0xFF904A72),
   };
 }

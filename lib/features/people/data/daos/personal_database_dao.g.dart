@@ -7,6 +7,8 @@ mixin _$PersonalDatabaseDaoMixin on DatabaseAccessor<AppDatabase> {
   $PeopleTable get people => attachedDatabase.people;
   $PersonalDatabaseFieldsTable get personalDatabaseFields =>
       attachedDatabase.personalDatabaseFields;
+  $PersonalDatabasePersonFieldsTable get personalDatabasePersonFields =>
+      attachedDatabase.personalDatabasePersonFields;
   $PersonalDatabaseValuesTable get personalDatabaseValues =>
       attachedDatabase.personalDatabaseValues;
 }

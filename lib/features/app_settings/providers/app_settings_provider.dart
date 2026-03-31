@@ -49,6 +49,20 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
       return repository.save(nextSettings);
     });
   }
+
+  Future<void> setThemeSeed(AppThemeSeed themeSeed) async {
+    final currentSettings = state.maybeWhen(
+      data: (settings) => settings,
+      orElse: () => const AppSettings(),
+    );
+    final nextSettings = currentSettings.copyWith(themeSeed: themeSeed);
+
+    state = AsyncData(nextSettings);
+    state = await AsyncValue.guard(() async {
+      final repository = await _repository;
+      return repository.save(nextSettings);
+    });
+  }
 }
 
 class AppSettingsActions {
@@ -58,5 +72,9 @@ class AppSettingsActions {
 
   Future<void> setThemeMode(AppThemeMode themeMode) {
     return _ref.read(appSettingsProvider.notifier).setThemeMode(themeMode);
+  }
+
+  Future<void> setThemeSeed(AppThemeSeed themeSeed) {
+    return _ref.read(appSettingsProvider.notifier).setThemeSeed(themeSeed);
   }
 }

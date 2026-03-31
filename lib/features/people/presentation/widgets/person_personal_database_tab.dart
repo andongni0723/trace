@@ -42,28 +42,13 @@ class _PersonPersonalDatabaseTabState
         final fieldsById = {for (final field in fields) field.id: field};
         final rows = _buildRows(fields);
 
-        return Stack(
-          children: [
-            PersonalDatabaseEditor(
-              rows: rows,
-              padding: widget.padding.copyWith(
-                bottom: widget.padding.bottom + 88,
-              ),
-              onPressedValue: (row) => _onPressedValue(row, fieldsById),
-              onPressedAction: (row, action) {
-                _onPressedAction(row, action, fieldsById);
-              },
-            ),
-            PositionedDirectional(
-              end: 20,
-              bottom: 20,
-              child: FloatingActionButton(
-                heroTag: 'person-database-add-fab-${widget.personId}',
-                onPressed: _handleAddRootField,
-                child: const Icon(Icons.add_rounded),
-              ),
-            ),
-          ],
+        return PersonalDatabaseEditor(
+          rows: rows,
+          padding: widget.padding,
+          onPressedValue: (row) => _onPressedValue(row, fieldsById),
+          onPressedAction: (row, action) {
+            _onPressedAction(row, action, fieldsById);
+          },
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -210,38 +195,6 @@ class _PersonPersonalDatabaseTabState
     }
   }
 
-  Future<void> _handleAddRootField() async {
-    AppHaptics.primaryAction();
-    final result = await showPersonalDatabaseFieldSheet(
-      context: context,
-      title: 'personTodo.database.sheet.addTitle'.tr(),
-      submitLabel: 'personTodo.database.sheet.create'.tr(),
-      showKeyInput: true,
-      showScopeInput: true,
-    );
-
-    if (!mounted ||
-        result == null ||
-        result.key == null ||
-        result.scope == null) {
-      return;
-    }
-
-    try {
-      await ref
-          .read(personalDatabaseActionsProvider)
-          .createField(
-            actorPersonId: widget.personId,
-            key: result.key!,
-            type: result.type,
-            isPublic: result.scope == PersonalDatabaseFieldScope.public,
-            value: result.value,
-          );
-    } catch (_) {
-      _showError();
-    }
-  }
-
   Future<void> _addChild(
     PersonalDatabaseEditorRowData row,
     Map<String, PersonalDatabaseFieldNode> fieldsById,
@@ -261,7 +214,6 @@ class _PersonPersonalDatabaseTabState
       title: 'personTodo.database.sheet.addChildTitle'.tr(),
       submitLabel: 'personTodo.database.sheet.create'.tr(),
       showKeyInput: row.valueType == PersonalDatabaseValueType.object,
-      showScopeInput: false,
     );
     if (!mounted || result == null) {
       return;
@@ -309,11 +261,7 @@ class _PersonPersonalDatabaseTabState
       title: 'personTodo.database.sheet.editTitle'.tr(),
       submitLabel: 'personTodo.database.sheet.update'.tr(),
       showKeyInput: canEditKey,
-      showScopeInput: isRoot,
       initialKey: initialKey,
-      initialScope: rootField.isPublic
-          ? PersonalDatabaseFieldScope.public
-          : PersonalDatabaseFieldScope.private,
       initialType: isRoot ? rootField.type : row.valueType,
       initialValue: row.rawValue,
     );
@@ -325,12 +273,11 @@ class _PersonPersonalDatabaseTabState
     try {
       final actions = ref.read(personalDatabaseActionsProvider);
       if (isRoot) {
-        await actions.updateField(
-          actorPersonId: widget.personId,
+        await actions.updatePropertyAndValueForPerson(
+          personId: widget.personId,
           fieldId: rootField.id,
           key: result.key ?? rootField.key,
           type: result.type,
-          isPublic: result.scope == PersonalDatabaseFieldScope.public,
           value: result.value,
         );
         return;
@@ -372,24 +319,38 @@ class _PersonPersonalDatabaseTabState
     }
 
     AppHaptics.primaryAction();
+    final isRoot = row.path.isEmpty;
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('personTodo.database.deleteDialog.title'.tr()),
+          title: Text(
+            isRoot
+                ? 'personTodo.database.removeDialog.title'.tr()
+                : 'personTodo.database.deleteDialog.title'.tr(),
+          ),
           content: Text(
-            'personTodo.database.deleteDialog.body'.tr(
-              namedArgs: {'key': row.keyLabel},
-            ),
+            (isRoot
+                    ? 'personTodo.database.removeDialog.body'
+                    : 'personTodo.database.deleteDialog.body')
+                .tr(namedArgs: {'key': row.keyLabel}),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: Text('personTodo.database.deleteDialog.cancel'.tr()),
+              child: Text(
+                isRoot
+                    ? 'personTodo.database.removeDialog.cancel'.tr()
+                    : 'personTodo.database.deleteDialog.cancel'.tr(),
+              ),
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: Text('personTodo.database.deleteDialog.delete'.tr()),
+              child: Text(
+                isRoot
+                    ? 'personTodo.database.removeDialog.remove'.tr()
+                    : 'personTodo.database.deleteDialog.delete'.tr(),
+              ),
             ),
           ],
         );
@@ -402,8 +363,11 @@ class _PersonPersonalDatabaseTabState
 
     try {
       final actions = ref.read(personalDatabaseActionsProvider);
-      if (row.path.isEmpty) {
-        await actions.deleteField(rootField.id);
+      if (isRoot) {
+        await actions.removeFieldFromPerson(
+          personId: widget.personId,
+          fieldId: rootField.id,
+        );
         _expandedNodeIds.removeWhere(
           (nodeId) => nodeId.startsWith('${rootField.id}:'),
         );
