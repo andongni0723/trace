@@ -2,9 +2,9 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trace/features/people/data/models/personal_database_mention.dart';
+import 'package:trace/features/people/data/models/personal_database_mention_suggestion.dart';
 import 'package:trace/features/people/data/models/personal_database_value_type.dart';
 import 'package:trace/features/people/presentation/widgets/personal_database_field_sheet.dart';
-import 'package:trace/features/people/presentation/widgets/personal_database_mention_input.dart';
 
 class _PersonalDatabaseFieldSheetTestAssetLoader extends AssetLoader {
   const _PersonalDatabaseFieldSheetTestAssetLoader();
