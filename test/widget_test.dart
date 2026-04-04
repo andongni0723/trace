@@ -12,10 +12,19 @@ class TestAssetLoader extends AssetLoader {
 
   static const Map<String, dynamic> _zhTw = {
     'app': {'title': 'Snap Ledger'},
+    'appShell': {
+      'drawer': {'openMenu': '開啟選單'},
+    },
     'messages': {
-      'todoTitle': '代辦事項',
       'newMessage': '新增訊息',
       'searchHint': '搜尋訊息',
+      'selection': {
+        'count': '已選取 {count} 項',
+        'close': '結束選取',
+        'group': '建立群組',
+        'selectPerson': '選取 {name}',
+        'deselectPerson': '取消選取 {name}',
+      },
       'people': {
         'cardPreview': '點一下查看這個人的待辦清單。',
         'empty': '還沒有朋友，點右下角新增第一位。',
@@ -110,7 +119,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.text('代辦事項'), findsOneWidget);
+    expect(find.byType(SearchBar), findsOneWidget);
     expect(find.text('搜尋訊息'), findsOneWidget);
     expect(find.text('全部'), findsOneWidget);
     expect(find.text('未讀'), findsNothing);

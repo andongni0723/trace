@@ -11,9 +11,11 @@ class _MessagesHomeTestAssetLoader extends AssetLoader {
   const _MessagesHomeTestAssetLoader();
 
   static const Map<String, dynamic> _zhTw = {
+    'appShell': {
+      'drawer': {'openMenu': '開啟選單'},
+    },
     'appSettings': {'comingSoon': '即將推出'},
     'messages': {
-      'todoTitle': '代辦事項',
       'searchHint': '搜尋訊息',
       'tabs': {'all': '全部', 'unread': '未讀', 'groups': '群組'},
       'selection': {
@@ -197,7 +199,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('已選取 1 項'), findsNothing);
-    expect(find.text('代辦事項'), findsOneWidget);
+    expect(find.byType(SearchBar), findsOneWidget);
+    expect(find.byKey(const Key('messages-home-selection-back')), findsNothing);
     expect(
       find.byKey(const Key('conversation-card-checkmark-maya')),
       findsNothing,
@@ -248,7 +251,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(router.routeInformationProvider.value.uri.toString(), '/');
-    expect(find.text('代辦事項'), findsOneWidget);
+    expect(find.byType(SearchBar), findsOneWidget);
     expect(find.text('已選取 1 項'), findsNothing);
   });
 }
