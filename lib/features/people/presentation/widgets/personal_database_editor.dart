@@ -9,6 +9,7 @@ enum PersonalDatabaseEditorAction { addChild, edit, delete }
 class PersonalDatabaseEditorRowData {
   const PersonalDatabaseEditorRowData({
     required this.nodeId,
+    required this.fieldId,
     required this.rootFieldId,
     required this.path,
     required this.keyLabel,
@@ -18,11 +19,13 @@ class PersonalDatabaseEditorRowData {
     required this.depth,
     required this.isExpanded,
     required this.isContainer,
+    required this.isDefinitionBacked,
     required this.parentIsList,
     this.valueSegments = const [],
   });
 
   final String nodeId;
+  final String fieldId;
   final String rootFieldId;
   final List<Object> path;
   final String keyLabel;
@@ -32,6 +35,7 @@ class PersonalDatabaseEditorRowData {
   final int depth;
   final bool isExpanded;
   final bool isContainer;
+  final bool isDefinitionBacked;
   final bool parentIsList;
   final List<PersonalDatabaseEditorValueSegment> valueSegments;
 }

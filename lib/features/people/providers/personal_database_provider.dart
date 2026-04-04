@@ -66,6 +66,7 @@ class PersonalDatabaseActions {
       personId: actorPersonId,
       key: key,
       type: type,
+      isPublic: isPublic,
       value: value,
       parentFieldId: parentFieldId,
     );
@@ -111,6 +112,7 @@ class PersonalDatabaseActions {
     required String personId,
     required String key,
     required PersonalDatabaseValueType type,
+    bool isPublic = true,
     required Object? value,
     String? parentFieldId,
   }) async {
@@ -132,6 +134,8 @@ class PersonalDatabaseActions {
       personId: personId,
       key: trimmedKey,
       type: type,
+      isPublic: isPublic,
+      ownerPersonId: isPublic ? null : personId,
       jsonValue: _encodeValue(type: type, value: value),
       parentFieldId: parentFieldId,
       sortOrder: sortOrder,
@@ -159,6 +163,15 @@ class PersonalDatabaseActions {
     return _ref
         .read(personalDatabaseDaoProvider)
         .removeFieldFromPerson(fieldId: fieldId, personId: personId);
+  }
+
+  Future<void> removeChildPropertyFromPerson({
+    required String personId,
+    required String fieldId,
+  }) {
+    return _ref
+        .read(personalDatabaseDaoProvider)
+        .removeFieldSubtreeFromPerson(fieldId: fieldId, personId: personId);
   }
 
   Future<void> updatePropertyDefinition({
@@ -303,6 +316,112 @@ class PersonalDatabaseActions {
     await updateFieldValue(personId: personId, field: field, value: root);
   }
 
+  Future<String?> createChildPropertyForPerson({
+    required String personId,
+    required PersonalDatabaseFieldNode parentField,
+    required String key,
+    required PersonalDatabaseValueType type,
+    required Object? value,
+  }) async {
+    final trimmedKey = key.trim();
+    if (trimmedKey.isEmpty) {
+      return null;
+    }
+
+    final dao = _ref.read(personalDatabaseDaoProvider);
+    final parentDefinition = await dao.getFieldById(parentField.id);
+    if (parentDefinition == null) {
+      return null;
+    }
+
+    final existingChild = await dao.getChildFieldByKey(
+      parentFieldId: parentField.id,
+      key: trimmedKey,
+    );
+
+    if (existingChild != null) {
+      final assignedFieldIds = await dao.getAssignedFieldIdsForPerson(personId);
+      if (assignedFieldIds.contains(existingChild.id)) {
+        throw StateError('Duplicate object key: $trimmedKey');
+      }
+
+      final existingType = personalDatabaseValueTypeFromDb(
+        existingChild.valueType,
+      );
+      await dao.assignFieldToPerson(
+        fieldId: existingChild.id,
+        personId: personId,
+        jsonValue: _encodeValue(type: existingType, value: value),
+      );
+      await ensureObjectSubtreeDefinitionsForField(
+        personId: personId,
+        fieldId: existingChild.id,
+        rawValueOverride: value,
+      );
+      return existingChild.id;
+    }
+
+    final sortOrder = await dao.getNextFieldLibrarySortOrder(
+      parentFieldId: parentField.id,
+    );
+    final assignmentSortOrder = await dao.getNextAssignedFieldSortOrder(
+      personId,
+    );
+    final fieldId = _uuid.v4();
+
+    await dao.createFieldAndAssignToPerson(
+      id: fieldId,
+      personId: personId,
+      key: trimmedKey,
+      type: type,
+      isPublic: parentDefinition.isPublic,
+      ownerPersonId: parentDefinition.ownerPersonId,
+      jsonValue: _encodeValue(type: type, value: value),
+      parentFieldId: parentField.id,
+      sortOrder: sortOrder,
+      assignmentSortOrder: assignmentSortOrder,
+    );
+
+    await ensureObjectSubtreeDefinitionsForField(
+      personId: personId,
+      fieldId: fieldId,
+      rawValueOverride: value,
+    );
+    return fieldId;
+  }
+
+  Future<void> ensureObjectSubtreeDefinitions({
+    required String personId,
+  }) async {
+    final fieldTree = await _ref
+        .read(personalDatabaseDaoProvider)
+        .getFieldTreeForPerson(personId);
+
+    for (final field in fieldTree) {
+      await _ensureObjectSubtreeDefinitionsForNode(
+        personId: personId,
+        field: field,
+      );
+    }
+  }
+
+  Future<void> ensureObjectSubtreeDefinitionsForField({
+    required String personId,
+    required String fieldId,
+    Object? rawValueOverride,
+  }) async {
+    final field = await _findField(personId: personId, fieldId: fieldId);
+    if (field == null) {
+      return;
+    }
+
+    await _ensureObjectSubtreeDefinitionsForNode(
+      personId: personId,
+      field: field,
+      rawValueOverride: rawValueOverride,
+    );
+  }
+
   Future<void> deleteNode({
     required String personId,
     required PersonalDatabaseFieldNode field,
@@ -332,14 +451,91 @@ class PersonalDatabaseActions {
     await updateFieldValue(personId: personId, field: field, value: root);
   }
 
+  Future<void> _ensureObjectSubtreeDefinitionsForNode({
+    required String personId,
+    required PersonalDatabaseFieldNode field,
+    Object? rawValueOverride,
+  }) async {
+    if (field.type == PersonalDatabaseValueType.object) {
+      final rawMap = _asStringKeyedMap(rawValueOverride ?? field.value);
+      if (rawMap.isNotEmpty) {
+        final childrenByKey = {
+          for (final child in field.children) child.key: child,
+        };
+        final dao = _ref.read(personalDatabaseDaoProvider);
+
+        for (final entry in rawMap.entries) {
+          var childNode = childrenByKey[entry.key];
+          if (childNode == null) {
+            final existingDefinition = await dao.getChildFieldByKey(
+              parentFieldId: field.id,
+              key: entry.key,
+            );
+            if (existingDefinition != null) {
+              final existingType = personalDatabaseValueTypeFromDb(
+                existingDefinition.valueType,
+              );
+              await dao.assignFieldToPerson(
+                fieldId: existingDefinition.id,
+                personId: personId,
+                jsonValue: _encodeValue(type: existingType, value: entry.value),
+              );
+              childNode = await _findField(
+                personId: personId,
+                fieldId: existingDefinition.id,
+              );
+            } else {
+              final createdFieldId = await createChildPropertyForPerson(
+                personId: personId,
+                parentField: field,
+                key: entry.key,
+                type: personalDatabaseValueTypeFromValue(entry.value),
+                value: entry.value,
+              );
+              if (createdFieldId != null) {
+                childNode = await _findField(
+                  personId: personId,
+                  fieldId: createdFieldId,
+                );
+              }
+            }
+          }
+
+          if (childNode != null) {
+            await _ensureObjectSubtreeDefinitionsForNode(
+              personId: personId,
+              field: childNode,
+              rawValueOverride: entry.value,
+            );
+          }
+        }
+
+        await _ref
+            .read(personalDatabaseDaoProvider)
+            .updateFieldValueForPerson(
+              fieldId: field.id,
+              personId: personId,
+              type: PersonalDatabaseValueType.object,
+              jsonValue: PersonalDatabaseValueType.object.defaultJsonValue,
+            );
+      }
+    }
+
+    for (final child in field.children) {
+      await _ensureObjectSubtreeDefinitionsForNode(
+        personId: personId,
+        field: child,
+      );
+    }
+  }
+
   Future<PersonalDatabaseFieldNode?> _findField({
     required String personId,
     required String fieldId,
   }) async {
     final fieldTree = await _ref
         .read(personalDatabaseDaoProvider)
-        .watchFieldTreeForPerson(personId)
-        .first;
+        .getFieldTreeForPerson(personId);
 
     PersonalDatabaseFieldNode? visit(List<PersonalDatabaseFieldNode> nodes) {
       for (final node in nodes) {
@@ -362,6 +558,16 @@ class PersonalDatabaseActions {
       return null;
     }
     return jsonDecode(jsonEncode(value));
+  }
+
+  Map<String, Object?> _asStringKeyedMap(Object? value) {
+    if (value is Map<String, dynamic>) {
+      return Map<String, Object?>.from(value);
+    }
+    if (value is Map) {
+      return {for (final entry in value.entries) '${entry.key}': entry.value};
+    }
+    return const <String, Object?>{};
   }
 
   Object? _readNodeByPath({required Object? root, required List<Object> path}) {

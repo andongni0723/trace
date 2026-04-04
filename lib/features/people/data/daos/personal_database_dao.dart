@@ -24,14 +24,27 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
     with _$PersonalDatabaseDaoMixin {
   PersonalDatabaseDao(super.db);
 
-  Selectable<PersonalDatabaseField> _orderedFieldLibraryQuery() {
+  Selectable<PersonalDatabaseField> _orderedFieldLibraryForPersonQuery(
+    String personId,
+  ) {
     return (select(personalDatabaseFields)
-      ..where((table) => table.parentFieldId.isNull())
+      ..where(
+        (table) =>
+            table.isPublic.equals(true) | table.ownerPersonId.equals(personId),
+      )
       ..orderBy([
         (table) => OrderingTerm.asc(table.sortOrder),
         (table) => OrderingTerm.asc(table.createdAt),
         (table) => OrderingTerm.asc(table.key),
       ]));
+  }
+
+  Selectable<PersonalDatabaseField> _orderedFieldLibraryQuery() {
+    return (select(personalDatabaseFields)..orderBy([
+      (table) => OrderingTerm.asc(table.sortOrder),
+      (table) => OrderingTerm.asc(table.createdAt),
+      (table) => OrderingTerm.asc(table.key),
+    ]));
   }
 
   Stream<List<PersonalDatabaseFieldNode>> watchFieldLibrary() {
@@ -49,6 +62,25 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  Stream<List<PersonalDatabaseFieldNode>> watchFieldLibraryForPerson(
+    String personId,
+  ) {
+    return _orderedFieldLibraryForPersonQuery(personId).watch().map(
+      (fields) => _buildFieldTreeFromDefinitions(
+        fields.map(_fieldRowFromDefinition).toList(growable: false),
+      ),
+    );
+  }
+
+  Future<List<PersonalDatabaseFieldNode>> getFieldLibraryForPerson(
+    String personId,
+  ) async {
+    final fields = await _orderedFieldLibraryForPersonQuery(personId).get();
+    return _buildFieldTreeFromDefinitions(
+      fields.map(_fieldRowFromDefinition).toList(growable: false),
+    );
+  }
+
   Stream<Set<String>> watchAssignedFieldIdsForPerson(String personId) {
     return (select(personalDatabasePersonFields)
           ..where((table) => table.personId.equals(personId)))
@@ -57,9 +89,9 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
   }
 
   Future<Set<String>> getAssignedFieldIdsForPerson(String personId) async {
-    final rows = await (select(personalDatabasePersonFields)
-          ..where((table) => table.personId.equals(personId)))
-        .get();
+    final rows = await (select(
+      personalDatabasePersonFields,
+    )..where((table) => table.personId.equals(personId))).get();
     return rows.map((row) => row.fieldId).toSet();
   }
 
@@ -93,6 +125,37 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
     return query.watch().map(
       (rows) => _buildFieldTree(rows, personFieldsAlias, valuesAlias),
     );
+  }
+
+  Future<List<PersonalDatabaseFieldNode>> getFieldTreeForPerson(
+    String personId,
+  ) async {
+    final personFieldsAlias = alias(
+      personalDatabasePersonFields,
+      'assigned_fields_for_person',
+    );
+    final valuesAlias = alias(personalDatabaseValues, 'values_for_person');
+    final query =
+        select(personalDatabaseFields).join([
+          innerJoin(
+            personFieldsAlias,
+            personFieldsAlias.fieldId.equalsExp(personalDatabaseFields.id) &
+                personFieldsAlias.personId.equals(personId),
+          ),
+          leftOuterJoin(
+            valuesAlias,
+            valuesAlias.fieldId.equalsExp(personalDatabaseFields.id) &
+                valuesAlias.personId.equals(personId),
+          ),
+        ])..orderBy([
+          OrderingTerm.asc(personFieldsAlias.sortOrder),
+          OrderingTerm.asc(personalDatabaseFields.sortOrder),
+          OrderingTerm.asc(personalDatabaseFields.createdAt),
+          OrderingTerm.asc(personalDatabaseFields.key),
+        ]);
+
+    final rows = await query.get();
+    return _buildFieldTree(rows, personFieldsAlias, valuesAlias);
   }
 
   Future<int> getNextSortOrder({
@@ -151,6 +214,8 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
       personId: actorPersonId,
       key: key,
       type: type,
+      isPublic: isPublic,
+      ownerPersonId: isPublic ? null : actorPersonId,
       jsonValue: jsonValue,
       parentFieldId: parentFieldId,
       sortOrder: sortOrder,
@@ -163,6 +228,8 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
     required String key,
     required PersonalDatabaseValueType type,
     required String jsonValue,
+    bool isPublic = true,
+    String? ownerPersonId,
     String? parentFieldId,
     int sortOrder = 0,
     int? assignmentSortOrder,
@@ -186,8 +253,8 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
           id: id,
           key: trimmedKey,
           valueType: type.dbKey,
-          isPublic: const Value(true),
-          ownerPersonId: const Value(null),
+          isPublic: Value(isPublic),
+          ownerPersonId: Value(isPublic ? null : ownerPersonId),
           parentFieldId: Value(parentFieldId),
           sortOrder: Value(sortOrder),
         ),
@@ -252,7 +319,6 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
         PersonalDatabaseFieldsCompanion(
           key: Value(trimmedKey),
           valueType: Value(type.dbKey),
-          isPublic: const Value(true),
           updatedAt: Value(DateTime.now()),
         ),
       );
@@ -360,6 +426,27 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
+  Future<void> removeFieldSubtreeFromPerson({
+    required String fieldId,
+    required String personId,
+  }) async {
+    final fieldIds = await _collectDescendantFieldIds(fieldId);
+    if (fieldIds.isEmpty) {
+      return;
+    }
+
+    await transaction(() async {
+      await (delete(personalDatabasePersonFields)
+            ..where((table) => table.personId.equals(personId))
+            ..where((table) => table.fieldId.isIn(fieldIds)))
+          .go();
+      await (delete(personalDatabaseValues)
+            ..where((table) => table.personId.equals(personId))
+            ..where((table) => table.fieldId.isIn(fieldIds)))
+          .go();
+    });
+  }
+
   Future<void> deleteField(String fieldId) {
     return deleteFieldDefinition(fieldId);
   }
@@ -413,6 +500,16 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
     return collected.toList(growable: false);
   }
 
+  Future<PersonalDatabaseField?> getChildFieldByKey({
+    required String parentFieldId,
+    required String key,
+  }) {
+    return (select(personalDatabaseFields)
+          ..where((table) => table.parentFieldId.equals(parentFieldId))
+          ..where((table) => table.key.equals(key.trim())))
+        .getSingleOrNull();
+  }
+
   Future<void> _upsertFieldValue({
     required String fieldId,
     required String personId,
@@ -434,7 +531,7 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
       id: field.id,
       key: field.key,
       type: type,
-      isPublic: true,
+      isPublic: field.isPublic,
       parentFieldId: field.parentFieldId,
       sortOrder: field.sortOrder,
       rawJsonValue: type.defaultJsonValue,
@@ -456,9 +553,11 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
         id: field.id,
         key: field.key,
         type: type,
-        isPublic: true,
+        isPublic: field.isPublic,
         parentFieldId: field.parentFieldId,
-        sortOrder: personField.sortOrder,
+        sortOrder: field.parentFieldId == null
+            ? personField.sortOrder
+            : field.sortOrder,
         rawJsonValue: valueForPerson?.jsonValue ?? type.defaultJsonValue,
       );
     }

@@ -1,3 +1,18 @@
+## v1.3.0
+更新內容:
+- 修正個人資料庫中人物標記功能在人物數量較多時無法完整顯示所有人物的問題。
+- 新增屬性多選功能，讓部分欄位可同時選擇多個值。
+- 新增 app 側邊欄並更新首頁介面，提升導覽與操作體驗。
+- 新增物件型別屬性的子屬性可加入屬性庫，並可重複套用到其他人物。
+- 在更新前記得備份資料，降低資料遺失風險.
+
+Updates:
+- Fixed a bug where people tagging in the personal database did not show the full people list when too many people were available.
+- Added multi-select support for properties so applicable fields can store multiple selected values.
+- Added an app side drawer and refreshed the home screen UI for clearer navigation and quicker access to key actions.
+- Added support for saving sub-properties from object-type properties into the property library so they can be reused across other people.
+- Remember to back up your data before updating to reduce the risk of data loss.
+
 ## v1.2.0
 更新內容:
 - 更新資料庫結構，擴充個人資料庫相關資料表與欄位結構，支援更完整的人物資料管理。

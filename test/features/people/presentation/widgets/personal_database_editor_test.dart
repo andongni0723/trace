@@ -46,6 +46,7 @@ void main() {
                   rows: const [
                     PersonalDatabaseEditorRowData(
                       nodeId: 'row-1',
+                      fieldId: 'field-1',
                       rootFieldId: 'field-1',
                       path: [],
                       keyLabel: '關係',
@@ -55,6 +56,7 @@ void main() {
                       depth: 0,
                       isExpanded: false,
                       isContainer: false,
+                      isDefinitionBacked: true,
                       parentIsList: false,
                       valueSegments: [
                         PersonalDatabaseEditorValueSegment(text: '"'),

@@ -113,7 +113,7 @@ void main() {
     expect(find.text('代辦事項'), findsOneWidget);
     expect(find.text('搜尋訊息'), findsOneWidget);
     expect(find.text('全部'), findsOneWidget);
-    expect(find.text('未讀'), findsOneWidget);
+    expect(find.text('未讀'), findsNothing);
     expect(find.text('群組'), findsOneWidget);
     expect(find.text('Maya Chen'), findsOneWidget);
     expect(find.text('Alex Johnson'), findsOneWidget);

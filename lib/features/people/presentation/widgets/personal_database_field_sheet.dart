@@ -7,6 +7,7 @@ import 'package:trace/shared/widgets/bottom_sheet_keyboard_inset.dart';
 import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/utils/useful_extension.dart';
 import '../../data/models/personal_database_mention.dart';
+import '../../data/models/personal_database_mention_suggestion.dart';
 import '../../data/models/personal_database_value_type.dart';
 import 'personal_database_mention_input.dart';
 

@@ -10,8 +10,8 @@ import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/utils/useful_extension.dart';
 import '../../data/models/personal_database_field_node.dart';
 import '../../data/models/personal_database_mention.dart';
+import '../../data/models/personal_database_mention_suggestion.dart';
 import '../../data/models/personal_database_value_type.dart';
-import '../widgets/personal_database_mention_input.dart';
 import '../../providers/people_provider.dart';
 import '../../providers/personal_database_provider.dart';
 import 'personal_database_editor.dart';
@@ -35,6 +35,22 @@ class PersonPersonalDatabaseTab extends ConsumerStatefulWidget {
 class _PersonPersonalDatabaseTabState
     extends ConsumerState<PersonPersonalDatabaseTab> {
   final Set<String> _expandedNodeIds = <String>{};
+  bool _didScheduleBackfill = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleNestedDefinitionBackfill();
+  }
+
+  @override
+  void didUpdateWidget(covariant PersonPersonalDatabaseTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.personId != widget.personId) {
+      _didScheduleBackfill = false;
+      _scheduleNestedDefinitionBackfill();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +62,7 @@ class _PersonPersonalDatabaseTabState
 
     return fieldsAsync.when(
       data: (fields) {
-        final fieldsById = {for (final field in fields) field.id: field};
+        final fieldsById = _fieldsById(fields);
         final peopleById = {
           for (final person
               in peopleAsync.asData?.value ?? const <PeopleData>[])
@@ -90,14 +106,10 @@ class _PersonPersonalDatabaseTabState
   }) {
     final rows = <PersonalDatabaseEditorRowData>[];
     for (final field in fields) {
-      _appendRows(
+      _appendFieldRows(
         rows: rows,
-        rootFieldId: field.id,
-        path: const [],
-        keyLabel: field.key,
-        value: field.value,
+        field: field,
         depth: 0,
-        parentIsList: false,
         peopleById: peopleById,
         mentionCodec: mentionCodec,
       );
@@ -105,8 +117,112 @@ class _PersonPersonalDatabaseTabState
     return rows;
   }
 
-  void _appendRows({
+  Map<String, PersonalDatabaseFieldNode> _fieldsById(
+    List<PersonalDatabaseFieldNode> fields,
+  ) {
+    final byId = <String, PersonalDatabaseFieldNode>{};
+
+    void visit(List<PersonalDatabaseFieldNode> nodes) {
+      for (final node in nodes) {
+        byId[node.id] = node;
+        if (node.children.isNotEmpty) {
+          visit(node.children);
+        }
+      }
+    }
+
+    visit(fields);
+    return byId;
+  }
+
+  void _scheduleNestedDefinitionBackfill() {
+    if (_didScheduleBackfill) {
+      return;
+    }
+    _didScheduleBackfill = true;
+
+    Future<void>.microtask(() async {
+      await ref
+          .read(personalDatabaseActionsProvider)
+          .ensureObjectSubtreeDefinitions(personId: widget.personId);
+    });
+  }
+
+  void _appendFieldRows({
     required List<PersonalDatabaseEditorRowData> rows,
+    required PersonalDatabaseFieldNode field,
+    required int depth,
+    required Map<String, PeopleData> peopleById,
+    required PersonalDatabaseMentionCodec mentionCodec,
+  }) {
+    final nodeId = _nodeId(rootFieldId: field.id, path: const []);
+    final isExpanded = _expandedNodeIds.contains(nodeId);
+    final isContainer =
+        field.type == PersonalDatabaseValueType.object ||
+        field.type == PersonalDatabaseValueType.list;
+
+    rows.add(
+      PersonalDatabaseEditorRowData(
+        nodeId: nodeId,
+        fieldId: field.id,
+        rootFieldId: field.id,
+        path: const [],
+        keyLabel: field.key,
+        valuePreview: _fieldValuePreview(field, mentionCodec: mentionCodec),
+        rawValue: field.value,
+        valueType: field.type,
+        depth: depth,
+        isExpanded: isExpanded,
+        isContainer: isContainer,
+        isDefinitionBacked: true,
+        parentIsList: false,
+        valueSegments: _valueSegments(
+          field.value,
+          peopleById: peopleById,
+          mentionCodec: mentionCodec,
+        ),
+      ),
+    );
+
+    if (!isContainer || !isExpanded) {
+      return;
+    }
+
+    if (field.type == PersonalDatabaseValueType.object) {
+      for (final child in field.children) {
+        _appendFieldRows(
+          rows: rows,
+          field: child,
+          depth: depth + 1,
+          peopleById: peopleById,
+          mentionCodec: mentionCodec,
+        );
+      }
+      return;
+    }
+
+    final listValue = field.value;
+    if (listValue is List<dynamic>) {
+      for (var index = 0; index < listValue.length; index++) {
+        _appendValueRows(
+          rows: rows,
+          fieldId: field.id,
+          rootFieldId: field.id,
+          path: [index],
+          keyLabel: '[$index]',
+          value: listValue[index],
+          depth: depth + 1,
+          parentIsList: true,
+          peopleById: peopleById,
+          mentionCodec: mentionCodec,
+        );
+      }
+    }
+  }
+
+  void _appendValueRows({
+    required List<PersonalDatabaseEditorRowData> rows,
+    required String fieldId,
     required String rootFieldId,
     required List<Object> path,
     required String keyLabel,
@@ -126,6 +242,7 @@ class _PersonPersonalDatabaseTabState
     rows.add(
       PersonalDatabaseEditorRowData(
         nodeId: nodeId,
+        fieldId: fieldId,
         rootFieldId: rootFieldId,
         path: path,
         keyLabel: keyLabel,
@@ -135,6 +252,7 @@ class _PersonPersonalDatabaseTabState
         depth: depth,
         isExpanded: isExpanded,
         isContainer: isContainer,
+        isDefinitionBacked: false,
         parentIsList: parentIsList,
         valueSegments: _valueSegments(
           value,
@@ -150,8 +268,9 @@ class _PersonPersonalDatabaseTabState
 
     if (value is Map<String, dynamic>) {
       for (final entry in value.entries) {
-        _appendRows(
+        _appendValueRows(
           rows: rows,
+          fieldId: fieldId,
           rootFieldId: rootFieldId,
           path: [...path, entry.key],
           keyLabel: entry.key,
@@ -167,8 +286,9 @@ class _PersonPersonalDatabaseTabState
 
     if (value is List<dynamic>) {
       for (var index = 0; index < value.length; index++) {
-        _appendRows(
+        _appendValueRows(
           rows: rows,
+          fieldId: fieldId,
           rootFieldId: rootFieldId,
           path: [...path, index],
           keyLabel: '[$index]',
@@ -236,8 +356,8 @@ class _PersonPersonalDatabaseTabState
       return;
     }
 
-    final rootField = fieldsById[row.rootFieldId];
-    if (rootField == null) {
+    final targetField = fieldsById[row.fieldId];
+    if (targetField == null) {
       return;
     }
 
@@ -256,17 +376,27 @@ class _PersonPersonalDatabaseTabState
     }
 
     try {
-      await ref
-          .read(personalDatabaseActionsProvider)
-          .addChildNode(
-            personId: widget.personId,
-            field: rootField,
-            parentPath: row.path,
-            key: row.valueType == PersonalDatabaseValueType.object
-                ? result.key
-                : null,
-            value: result.value,
-          );
+      final actions = ref.read(personalDatabaseActionsProvider);
+      if (row.isDefinitionBacked &&
+          row.valueType == PersonalDatabaseValueType.object) {
+        await actions.createChildPropertyForPerson(
+          personId: widget.personId,
+          parentField: targetField,
+          key: result.key ?? '',
+          type: result.type,
+          value: result.value,
+        );
+      } else {
+        await actions.addChildNode(
+          personId: widget.personId,
+          field: targetField,
+          parentPath: row.path,
+          key: row.valueType == PersonalDatabaseValueType.object
+              ? result.key
+              : null,
+          value: result.value,
+        );
+      }
 
       if (!_expandedNodeIds.contains(row.nodeId) && mounted) {
         _toggleExpand(row);
@@ -280,16 +410,19 @@ class _PersonPersonalDatabaseTabState
     PersonalDatabaseEditorRowData row,
     Map<String, PersonalDatabaseFieldNode> fieldsById,
   ) async {
-    final rootField = fieldsById[row.rootFieldId];
-    if (rootField == null) {
+    final targetField = fieldsById[row.fieldId];
+    if (targetField == null) {
       return;
     }
 
-    final isRoot = row.path.isEmpty;
-    final canEditKey = !row.parentIsList;
-    final initialKey = isRoot
-        ? rootField.key
-        : (row.path.last is String ? row.path.last as String : null);
+    final isDefinitionBacked = row.isDefinitionBacked;
+    final isRoot = isDefinitionBacked ? row.depth == 0 : row.path.isEmpty;
+    final canEditKey = isDefinitionBacked || !row.parentIsList;
+    final initialKey = isDefinitionBacked
+        ? targetField.key
+        : (isRoot
+              ? targetField.key
+              : (row.path.last is String ? row.path.last as String : null));
 
     AppHaptics.primaryAction();
     final mentionSuggestions = _mentionSuggestions();
@@ -299,8 +432,10 @@ class _PersonPersonalDatabaseTabState
       submitLabel: 'personTodo.database.sheet.update'.tr(),
       showKeyInput: canEditKey,
       initialKey: initialKey,
-      initialType: isRoot ? rootField.type : row.valueType,
-      initialValue: row.rawValue,
+      initialType: targetField.type,
+      initialValue: targetField.type == PersonalDatabaseValueType.object
+          ? const <String, Object?>{}
+          : row.rawValue,
       mentionSuggestions: mentionSuggestions,
       mentionCodec: ref.read(personalDatabaseMentionCodecProvider),
     );
@@ -311,13 +446,25 @@ class _PersonPersonalDatabaseTabState
 
     try {
       final actions = ref.read(personalDatabaseActionsProvider);
-      if (isRoot) {
+      if (isDefinitionBacked) {
+        final hasDefinitionChildren = targetField.children.isNotEmpty;
+        final nextType =
+            hasDefinitionChildren &&
+                targetField.type == PersonalDatabaseValueType.object
+            ? targetField.type
+            : result.type;
+        final nextValue =
+            hasDefinitionChildren &&
+                nextType == PersonalDatabaseValueType.object
+            ? targetField.value
+            : result.value;
+
         await actions.updatePropertyAndValueForPerson(
           personId: widget.personId,
-          fieldId: rootField.id,
-          key: result.key ?? rootField.key,
-          type: result.type,
-          value: result.value,
+          fieldId: targetField.id,
+          key: result.key ?? targetField.key,
+          type: nextType,
+          value: nextValue,
         );
         return;
       }
@@ -329,7 +476,7 @@ class _PersonPersonalDatabaseTabState
         if (newKey.isNotEmpty && newKey != oldKey) {
           await actions.renameObjectKey(
             personId: widget.personId,
-            field: rootField,
+            field: targetField,
             path: row.path,
             newKey: newKey,
           );
@@ -339,7 +486,7 @@ class _PersonPersonalDatabaseTabState
 
       await actions.updateNodeValue(
         personId: widget.personId,
-        field: rootField,
+        field: targetField,
         path: targetPath,
         value: result.value,
       );
@@ -352,13 +499,21 @@ class _PersonPersonalDatabaseTabState
     PersonalDatabaseEditorRowData row,
     Map<String, PersonalDatabaseFieldNode> fieldsById,
   ) async {
-    final rootField = fieldsById[row.rootFieldId];
-    if (rootField == null) {
+    final targetField = fieldsById[row.fieldId];
+    if (targetField == null) {
+      return;
+    }
+
+    if (row.isDefinitionBacked &&
+        targetField.type == PersonalDatabaseValueType.object &&
+        _hasVisibleDescendants(targetField)) {
+      AppHaptics.selection();
+      await _showCannotDeleteObjectDialog(row.keyLabel);
       return;
     }
 
     AppHaptics.primaryAction();
-    final isRoot = row.path.isEmpty;
+    final isRoot = row.isDefinitionBacked ? row.depth == 0 : row.path.isEmpty;
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -405,10 +560,22 @@ class _PersonPersonalDatabaseTabState
       if (isRoot) {
         await actions.removeFieldFromPerson(
           personId: widget.personId,
-          fieldId: rootField.id,
+          fieldId: targetField.id,
         );
         _expandedNodeIds.removeWhere(
-          (nodeId) => nodeId.startsWith('${rootField.id}:'),
+          (nodeId) => nodeId.startsWith('${targetField.id}:'),
+        );
+        AppHaptics.confirm();
+        return;
+      }
+
+      if (row.isDefinitionBacked) {
+        await actions.removeChildPropertyFromPerson(
+          personId: widget.personId,
+          fieldId: targetField.id,
+        );
+        _expandedNodeIds.removeWhere(
+          (nodeId) => nodeId.startsWith('${targetField.id}:'),
         );
         AppHaptics.confirm();
         return;
@@ -416,7 +583,7 @@ class _PersonPersonalDatabaseTabState
 
       await actions.deleteNode(
         personId: widget.personId,
-        field: rootField,
+        field: targetField,
         path: row.path,
       );
       _expandedNodeIds.remove(row.nodeId);
@@ -424,6 +591,44 @@ class _PersonPersonalDatabaseTabState
     } catch (_) {
       _showError();
     }
+  }
+
+  bool _hasVisibleDescendants(PersonalDatabaseFieldNode field) {
+    if (field.children.isNotEmpty) {
+      return true;
+    }
+
+    for (final child in field.children) {
+      if (_hasVisibleDescendants(child)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  Future<void> _showCannotDeleteObjectDialog(String keyLabel) {
+    return showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('personTodo.database.cannotDeleteDialog.title'.tr()),
+          content: Text(
+            'personTodo.database.cannotDeleteDialog.body'.tr(
+              namedArgs: {'key': keyLabel},
+            ),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'personTodo.database.cannotDeleteDialog.confirm'.tr(),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _showError() {
@@ -482,6 +687,16 @@ PersonalDatabaseValueType _valueTypeFromValue(Object? value) {
     return PersonalDatabaseValueType.object;
   }
   return PersonalDatabaseValueType.string;
+}
+
+String _fieldValuePreview(
+  PersonalDatabaseFieldNode field, {
+  required PersonalDatabaseMentionCodec mentionCodec,
+}) {
+  if (field.type == PersonalDatabaseValueType.object) {
+    return '{${field.children.length}}';
+  }
+  return _valuePreview(field.value, mentionCodec: mentionCodec);
 }
 
 String _valuePreview(

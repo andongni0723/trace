@@ -1,20 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:trace/core/utils/useful_extension.dart';
+import 'package:trace/features/people/data/models/personal_database_mention_suggestion.dart';
 import 'package:trace/shared/widgets/person_avatar.dart';
-
-class PersonalDatabaseMentionSuggestion {
-  const PersonalDatabaseMentionSuggestion({
-    required this.id,
-    required this.name,
-    required this.colorValue,
-    this.avatarPath,
-  });
-
-  final String id;
-  final String name;
-  final int colorValue;
-  final String? avatarPath;
-}
 
 typedef PersonalDatabaseMentionSuggestionSelected = void Function(
   PersonalDatabaseMentionSuggestion suggestion,
@@ -235,7 +222,7 @@ class _PersonalDatabaseMentionTextFieldState
       return suggestion.name.toLowerCase().contains(query);
     }).toList(growable: false);
 
-    return suggestions.take(6).toList(growable: false);
+    return suggestions;
   }
 
   void _handleSuggestionSelected(PersonalDatabaseMentionSuggestion suggestion) {

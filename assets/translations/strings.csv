@@ -2,6 +2,11 @@ key,zh_TW,en
 app.title,Snap Ledger,Snap Ledger
 appShell.navigation.list,清單,List
 appShell.navigation.database,資料庫,Database
+appShell.drawer.openMenu,開啟側邊選單,Open navigation menu
+appShell.drawer.mainPage,主頁,Main page
+appShell.drawer.manageDatabaseProperties,管理資料庫屬性,Manage database properties
+appShell.drawer.settings,設定,Settings
+appShell.drawer.feedback,意見回饋,Feedback
 appSettings.title,設定,Settings
 appSettings.section.appearance,外觀,Appearance
 appSettings.section.app,App,App
@@ -73,10 +78,15 @@ messages.addFriend.title,新增朋友,Add friend
 messages.addFriend.create,建立,Create
 messages.addFriend.nameLabel,姓名,Name
 messages.addFriend.avatarColorLabel,頭像顏色,Avatar color
-messages.searchHint,搜尋訊息,Search messages
+messages.searchHint,搜尋人物,Search people
 messages.tabs.all,全部,All
 messages.tabs.unread,未讀,Unread
 messages.tabs.groups,群組,Groups
+messages.selection.count,已選取 {count} 項,{count} selected
+messages.selection.close,結束選取,Exit selection
+messages.selection.group,建立群組,Create group
+messages.selection.selectPerson,選取 {name},Select {name}
+messages.selection.deselectPerson,取消選取 {name},Deselect {name}
 messages.people.cardPreview,點一下查看這個人的待辦清單。,Tap to open this person's to-do list.
 messages.people.empty,還沒有朋友，點右下角新增第一位。,No friends yet. Add your first one from the button.
 messages.people.noSearchResult,找不到符合搜尋的人。,No matching people found.
@@ -130,6 +140,9 @@ personTodo.database.removeDialog.title,移除此屬性,Remove property
 personTodo.database.removeDialog.body,要把屬性「{key}」從這個人的資料中移除嗎？,Remove property "{key}" from this person?
 personTodo.database.removeDialog.cancel,取消,Cancel
 personTodo.database.removeDialog.remove,移除,Remove
+personTodo.database.cannotDeleteDialog.title,無法移除,Can not remove
+personTodo.database.cannotDeleteDialog.body,屬性「{key}」還有未隱藏的子屬性，請先隱藏所有子屬性後再移除。這裡的移除只會對這個人隱藏，不會真的刪掉屬性定義。,Property "{key}" still has visible child properties. Hide all child properties before removing it. Removing here only hides it for this person and does not delete the property definition.
+personTodo.database.cannotDeleteDialog.confirm,知道了,OK
 personTodo.database.sheet.addTitle,建立屬性,Create property
 personTodo.database.sheet.createTitle,建立屬性,Create property
 personTodo.database.sheet.create,建立,Create
@@ -152,6 +165,7 @@ personTodo.propertyChooser.title,選擇屬性,Choose property
 personTodo.propertyChooser.subtitle,從屬性庫挑選一個要加入這個人的項目，或建立新的屬性。,Pick a property from the library, or create a new one.
 personTodo.propertyChooser.searchHint,搜尋屬性,Search properties
 personTodo.propertyChooser.libraryLabel,屬性庫,Property library
+personTodo.propertyChooser.apply,加入 {count} 個屬性,Add {count} properties
 personTodo.propertyChooser.createNew,建立新屬性,Create new property
 personTodo.propertyChooser.createNewTitle,建立新屬性,Create new property
 personTodo.propertyChooser.emptyTitle,尚未有屬性,No properties yet
@@ -168,7 +182,7 @@ personTodo.propertyChooser.deleteDialog.body,確定要刪除屬性「{key}」嗎
 personTodo.propertyChooser.deleteDialog.cancel,取消,Cancel
 personTodo.propertyChooser.deleteDialog.delete,刪除,Delete
 personTodo.menu.more,更多操作,More actions
-personTodo.menu.renamePerson,重新命名人物,Rename person
+personTodo.menu.renamePerson,編輯人物,Edit person
 personTodo.menu.deletePerson,刪除人物,Delete person
 personTodo.renameDialog.nameLabel,人物名稱,Person name
 personTodo.deleteDialog.message,確定要刪除「{name}」嗎？這個人的待辦與資料也會一起刪除。,Delete "{name}"? This person's todos and data will also be removed.

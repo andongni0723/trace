@@ -15,6 +15,7 @@ class _ChoosePropertyTestAssetLoader extends AssetLoader {
         'subtitle': '從屬性庫挑選一個要加入這個人的項目，或建立新的屬性。',
         'searchHint': '搜尋屬性',
         'libraryLabel': '屬性庫',
+        'apply': '加入 {count} 個屬性',
         'createNew': '＋ 建立新屬性',
         'createNewTitle': '建立新屬性',
         'emptyTitle': '尚未有屬性',
@@ -107,67 +108,483 @@ void main() {
     expect(find.text('從屬性庫挑選一個要加入這個人的項目，或建立新的屬性。'), findsNothing);
   });
 
-  testWidgets('renders compact property row with type label and state icon', (
+  testWidgets(
+    'renders filled type tag on the left and checkbox selection state',
+    (tester) async {
+      await _pumpChooserPage(
+        tester,
+        properties: const [
+          ChoosePropertyItem(
+            id: 'assigned',
+            title: 'Assigned title',
+            subtitle: 'String',
+            valueType: PersonalDatabaseValueType.string,
+            rawValue: 'Alpha',
+            valuePreview: 'Alpha preview',
+            isAssignedToCurrentPerson: true,
+          ),
+          ChoosePropertyItem(
+            id: 'available',
+            title: 'Available title',
+            subtitle: 'Boolean',
+            valueType: PersonalDatabaseValueType.boolean,
+            rawValue: true,
+            valuePreview: 'Boolean preview',
+          ),
+        ],
+      );
+
+      expect(find.byIcon(Icons.short_text_rounded), findsNothing);
+      expect(find.byIcon(Icons.toggle_on_rounded), findsNothing);
+      expect(find.text('已加入此人'), findsNothing);
+      expect(find.text('Alpha preview'), findsNothing);
+      expect(find.text('Boolean preview'), findsNothing);
+      expect(find.text('String'), findsOneWidget);
+      expect(find.text('Boolean'), findsOneWidget);
+
+      final assignedInkWell = tester.widget<InkWell>(
+        find
+            .ancestor(
+              of: find.text('Assigned title'),
+              matching: find.byType(InkWell),
+            )
+            .first,
+      );
+      final availableInkWell = tester.widget<InkWell>(
+        find
+            .ancestor(
+              of: find.text('Available title'),
+              matching: find.byType(InkWell),
+            )
+            .first,
+      );
+      expect(assignedInkWell.onTap, isNull);
+      expect(availableInkWell.onTap, isNotNull);
+
+      final assignedTagFinder = find.byKey(
+        const ValueKey('choose-property-type-tag-assigned'),
+      );
+      final availableTagFinder = find.byKey(
+        const ValueKey('choose-property-type-tag-available'),
+      );
+      expect(assignedTagFinder, findsOneWidget);
+      expect(availableTagFinder, findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('choose-property-expand-available')),
+        findsNothing,
+      );
+
+      final assignedTagLeft = tester.getTopLeft(assignedTagFinder).dx;
+      final assignedTitleLeft = tester
+          .getTopLeft(find.text('Assigned title'))
+          .dx;
+      final availableTagLeft = tester.getTopLeft(availableTagFinder).dx;
+      final availableTitleLeft = tester
+          .getTopLeft(find.text('Available title'))
+          .dx;
+      expect(assignedTagLeft, lessThan(assignedTitleLeft));
+      expect(availableTagLeft, lessThan(availableTitleLeft));
+
+      final assignedCheckbox = tester.widget<Checkbox>(
+        find.byKey(const ValueKey('choose-property-checkbox-assigned')),
+      );
+      final availableCheckbox = tester.widget<Checkbox>(
+        find.byKey(const ValueKey('choose-property-checkbox-available')),
+      );
+      expect(assignedCheckbox.value, isTrue);
+      expect(assignedCheckbox.onChanged, isNull);
+      expect(availableCheckbox.value, isFalse);
+      expect(availableCheckbox.onChanged, isNotNull);
+    },
+  );
+
+  testWidgets('can multi-select properties and submit them together', (
+    tester,
+  ) async {
+    ChoosePropertyResult? result;
+    var launched = false;
+
+    await tester.pumpWidget(
+      EasyLocalization(
+        supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+        path: 'unused',
+        assetLoader: const _ChoosePropertyTestAssetLoader(),
+        fallbackLocale: const Locale('zh', 'TW'),
+        startLocale: const Locale('zh', 'TW'),
+        child: Builder(
+          builder: (context) {
+            return MaterialApp(
+              supportedLocales: context.supportedLocales,
+              localizationsDelegates: context.localizationDelegates,
+              locale: context.locale,
+              home: StatefulBuilder(
+                builder: (context, _) {
+                  if (!launched) {
+                    launched = true;
+                    Future<void>.microtask(() async {
+                      result = await showChoosePropertyPage(
+                        context: context,
+                        properties: const [
+                          ChoosePropertyItem(
+                            id: 'alpha',
+                            title: 'Alpha',
+                            subtitle: 'String',
+                            valueType: PersonalDatabaseValueType.string,
+                            rawValue: 'A',
+                            valuePreview: 'Preview A',
+                          ),
+                          ChoosePropertyItem(
+                            id: 'beta',
+                            title: 'Beta',
+                            subtitle: 'Number',
+                            valueType: PersonalDatabaseValueType.number,
+                            rawValue: 1,
+                            valuePreview: 'Preview B',
+                          ),
+                        ],
+                      );
+                    });
+                  }
+                  return const Scaffold(body: SizedBox.shrink());
+                },
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('加入 0 個屬性'), findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(find.byType(FilledButton).last).onPressed,
+      isNull,
+    );
+
+    await tester.tap(find.text('Alpha'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Beta'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('加入 2 個屬性'), findsOneWidget);
+
+    await tester.tap(find.text('加入 2 個屬性'));
+    await tester.pumpAndSettle();
+
+    expect(result, isA<ChoosePropertySelected>());
+    final selected = result as ChoosePropertySelected;
+    expect(selected.items.map((item) => item.id), ['alpha', 'beta']);
+  });
+
+  testWidgets(
+    'shows class subproperties by default and selecting parent selects all descendants',
+    (tester) async {
+      ChoosePropertyResult? result;
+      var launched = false;
+
+      await tester.pumpWidget(
+        EasyLocalization(
+          supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+          path: 'unused',
+          assetLoader: const _ChoosePropertyTestAssetLoader(),
+          fallbackLocale: const Locale('zh', 'TW'),
+          startLocale: const Locale('zh', 'TW'),
+          child: Builder(
+            builder: (context) {
+              return MaterialApp(
+                supportedLocales: context.supportedLocales,
+                localizationsDelegates: context.localizationDelegates,
+                locale: context.locale,
+                home: StatefulBuilder(
+                  builder: (context, _) {
+                    if (!launched) {
+                      launched = true;
+                      Future<void>.microtask(() async {
+                        result = await showChoosePropertyPage(
+                          context: context,
+                          properties: const [
+                            ChoosePropertyItem(
+                              id: 'profile',
+                              title: 'Profile',
+                              subtitle: 'Object',
+                              valueType: PersonalDatabaseValueType.object,
+                              rawValue: <String, Object?>{},
+                              valuePreview: '{0}',
+                              children: [
+                                ChoosePropertyItem(
+                                  id: 'nickname',
+                                  parentId: 'profile',
+                                  title: 'Nickname',
+                                  subtitle: 'String',
+                                  valueType: PersonalDatabaseValueType.string,
+                                  rawValue: '',
+                                  valuePreview: '""',
+                                ),
+                                ChoosePropertyItem(
+                                  id: 'details',
+                                  parentId: 'profile',
+                                  title: 'Details',
+                                  subtitle: 'Object',
+                                  valueType: PersonalDatabaseValueType.object,
+                                  rawValue: <String, Object?>{},
+                                  valuePreview: '{0}',
+                                  children: [
+                                    ChoosePropertyItem(
+                                      id: 'age',
+                                      parentId: 'details',
+                                      title: 'Age',
+                                      subtitle: 'Number',
+                                      valueType:
+                                          PersonalDatabaseValueType.number,
+                                      rawValue: 0,
+                                      valuePreview: '0',
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ],
+                        );
+                      });
+                    }
+                    return const Scaffold(body: SizedBox.shrink());
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nickname'), findsOneWidget);
+      expect(find.text('Details'), findsOneWidget);
+      expect(find.text('Age'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('choose-property-expand-profile')),
+        findsNothing,
+      );
+
+      await tester.tap(find.text('Profile'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('加入 4 個屬性'), findsOneWidget);
+
+      final profileCheckbox = tester.widget<Checkbox>(
+        find.byKey(const ValueKey('choose-property-checkbox-profile')),
+      );
+      final nicknameCheckbox = tester.widget<Checkbox>(
+        find.byKey(const ValueKey('choose-property-checkbox-nickname')),
+      );
+      final detailsCheckbox = tester.widget<Checkbox>(
+        find.byKey(const ValueKey('choose-property-checkbox-details')),
+      );
+      final ageCheckbox = tester.widget<Checkbox>(
+        find.byKey(const ValueKey('choose-property-checkbox-age')),
+      );
+
+      expect(profileCheckbox.tristate, isTrue);
+      expect(profileCheckbox.value, isTrue);
+      expect(nicknameCheckbox.value, isTrue);
+      expect(detailsCheckbox.value, isTrue);
+      expect(ageCheckbox.value, isTrue);
+
+      await tester.tap(find.text('加入 4 個屬性'));
+      await tester.pumpAndSettle();
+
+      expect(result, isA<ChoosePropertySelected>());
+      final selected = result as ChoosePropertySelected;
+      expect(selected.items.map((item) => item.id), [
+        'profile',
+        'nickname',
+        'details',
+        'age',
+      ]);
+    },
+  );
+
+  testWidgets('selecting a sub class selects its children and parents', (
+    tester,
+  ) async {
+    ChoosePropertyResult? result;
+    var launched = false;
+
+    await tester.pumpWidget(
+      EasyLocalization(
+        supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+        path: 'unused',
+        assetLoader: const _ChoosePropertyTestAssetLoader(),
+        fallbackLocale: const Locale('zh', 'TW'),
+        startLocale: const Locale('zh', 'TW'),
+        child: Builder(
+          builder: (context) {
+            return MaterialApp(
+              supportedLocales: context.supportedLocales,
+              localizationsDelegates: context.localizationDelegates,
+              locale: context.locale,
+              home: StatefulBuilder(
+                builder: (context, _) {
+                  if (!launched) {
+                    launched = true;
+                    Future<void>.microtask(() async {
+                      result = await showChoosePropertyPage(
+                        context: context,
+                        properties: const [
+                          ChoosePropertyItem(
+                            id: 'profile',
+                            title: 'Profile',
+                            subtitle: 'Object',
+                            valueType: PersonalDatabaseValueType.object,
+                            rawValue: <String, Object?>{},
+                            valuePreview: '{0}',
+                            children: [
+                              ChoosePropertyItem(
+                                id: 'details',
+                                parentId: 'profile',
+                                title: 'Details',
+                                subtitle: 'Object',
+                                valueType: PersonalDatabaseValueType.object,
+                                rawValue: <String, Object?>{},
+                                valuePreview: '{0}',
+                                children: [
+                                  ChoosePropertyItem(
+                                    id: 'age',
+                                    parentId: 'details',
+                                    title: 'Age',
+                                    subtitle: 'Number',
+                                    valueType: PersonalDatabaseValueType.number,
+                                    rawValue: 0,
+                                    valuePreview: '0',
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ],
+                      );
+                    });
+                  }
+                  return const Scaffold(body: SizedBox.shrink());
+                },
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Details'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('加入 3 個屬性'), findsOneWidget);
+
+    final profileCheckbox = tester.widget<Checkbox>(
+      find.byKey(const ValueKey('choose-property-checkbox-profile')),
+    );
+    final detailsCheckbox = tester.widget<Checkbox>(
+      find.byKey(const ValueKey('choose-property-checkbox-details')),
+    );
+
+    expect(profileCheckbox.value, isTrue);
+    expect(detailsCheckbox.value, isTrue);
+
+    await tester.tap(find.text('加入 3 個屬性'));
+    await tester.pumpAndSettle();
+
+    expect(result, isA<ChoosePropertySelected>());
+    final selected = result as ChoosePropertySelected;
+    expect(selected.items.map((item) => item.id), [
+      'profile',
+      'details',
+      'age',
+    ]);
+  });
+
+  testWidgets('renaming a nested property updates the visible tree', (
     tester,
   ) async {
     await _pumpChooserPage(
       tester,
       properties: const [
         ChoosePropertyItem(
-          id: 'assigned',
-          title: 'Assigned title',
-          subtitle: 'String',
-          valueType: PersonalDatabaseValueType.string,
-          rawValue: 'Alpha',
-          valuePreview: 'Alpha preview',
-          isAssignedToCurrentPerson: true,
-        ),
-        ChoosePropertyItem(
-          id: 'available',
-          title: 'Available title',
-          subtitle: 'Boolean',
-          valueType: PersonalDatabaseValueType.boolean,
-          rawValue: true,
-          valuePreview: 'Boolean preview',
+          id: 'profile',
+          title: 'Profile',
+          subtitle: 'Object',
+          valueType: PersonalDatabaseValueType.object,
+          rawValue: <String, Object?>{},
+          valuePreview: '{0}',
+          children: [
+            ChoosePropertyItem(
+              id: 'nickname',
+              parentId: 'profile',
+              title: 'Nickname',
+              subtitle: 'String',
+              valueType: PersonalDatabaseValueType.string,
+              rawValue: '',
+              valuePreview: '""',
+            ),
+          ],
         ),
       ],
+      onRenameProperty: (item, newTitle) async =>
+          item.copyWith(title: newTitle),
     );
 
-    expect(find.byIcon(Icons.short_text_rounded), findsNothing);
-    expect(find.byIcon(Icons.toggle_on_rounded), findsNothing);
-    expect(find.text('已加入此人'), findsNothing);
-    expect(find.text('Alpha preview'), findsNothing);
-    expect(find.text('Boolean preview'), findsNothing);
-    expect(find.text('String'), findsOneWidget);
-    expect(find.text('Boolean'), findsOneWidget);
+    await tester.longPress(find.text('Nickname'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('編輯 key 名稱'));
+    await tester.pumpAndSettle();
 
-    final assignedInkWell = tester.widget<InkWell>(
-      find
-          .ancestor(
-            of: find.text('Assigned title'),
-            matching: find.byType(InkWell),
-          )
-          .first,
-    );
-    final availableInkWell = tester.widget<InkWell>(
-      find
-          .ancestor(
-            of: find.text('Available title'),
-            matching: find.byType(InkWell),
-          )
-          .first,
-    );
-    expect(assignedInkWell.onTap, isNull);
-    expect(availableInkWell.onTap, isNotNull);
+    await tester.enterText(find.byType(TextField).last, 'Display name');
+    await tester.tap(find.text('儲存'));
+    await tester.pumpAndSettle();
 
-    final assignedIcon = tester.widget<Icon>(
-      find.byKey(const ValueKey('choose-property-icon-assigned')),
+    expect(find.text('Display name'), findsOneWidget);
+    expect(find.text('Nickname'), findsNothing);
+  });
+
+  testWidgets('deleting a nested property removes it from the visible tree', (
+    tester,
+  ) async {
+    await _pumpChooserPage(
+      tester,
+      properties: const [
+        ChoosePropertyItem(
+          id: 'profile',
+          title: 'Profile',
+          subtitle: 'Object',
+          valueType: PersonalDatabaseValueType.object,
+          rawValue: <String, Object?>{},
+          valuePreview: '{0}',
+          children: [
+            ChoosePropertyItem(
+              id: 'nickname',
+              parentId: 'profile',
+              title: 'Nickname',
+              subtitle: 'String',
+              valueType: PersonalDatabaseValueType.string,
+              rawValue: '',
+              valuePreview: '""',
+            ),
+          ],
+        ),
+      ],
+      onDeleteProperty: (_) async {},
     );
-    final availableIcon = tester.widget<Icon>(
-      find.byKey(const ValueKey('choose-property-icon-available')),
-    );
-    expect(assignedIcon.icon, Icons.check_circle_rounded);
-    expect(availableIcon.icon, Icons.arrow_forward_ios_rounded);
+
+    await tester.longPress(find.text('Nickname'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('刪除屬性'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('刪除'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nickname'), findsNothing);
+    expect(find.text('Profile'), findsOneWidget);
   });
 
   testWidgets(

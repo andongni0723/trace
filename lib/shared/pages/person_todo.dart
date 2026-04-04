@@ -7,9 +7,9 @@ import 'package:trace/core/database/database.dart';
 import 'package:trace/core/utils/app_haptics.dart';
 import 'package:trace/core/utils/useful_extension.dart';
 import 'package:trace/features/people/data/models/todo_with_people.dart';
+import 'package:trace/features/people/data/models/personal_database_mention_suggestion.dart';
 import 'package:trace/features/people/presentation/pages/choose_property_page.dart';
 import 'package:trace/features/people/presentation/widgets/person_personal_database_tab.dart';
-import 'package:trace/features/people/presentation/widgets/personal_database_mention_input.dart';
 import 'package:trace/features/people/providers/person_detail_provider.dart';
 import 'package:trace/features/people/providers/people_provider.dart';
 import 'package:trace/features/people/providers/people_database_providers.dart';
@@ -177,8 +177,11 @@ class _PersonTodoPageState extends ConsumerState<PersonTodoPage>
 
   Future<void> _handleAddProperty() async {
     AppHaptics.primaryAction();
+    await ref
+        .read(personalDatabaseActionsProvider)
+        .ensureObjectSubtreeDefinitions(personId: widget.personId);
     final dao = ref.read(personalDatabaseDaoProvider);
-    final library = await dao.getFieldLibrary();
+    final library = await dao.getFieldLibraryForPerson(widget.personId);
     final assignedFieldIds = await dao.getAssignedFieldIdsForPerson(
       widget.personId,
     );
@@ -192,7 +195,7 @@ class _PersonTodoPageState extends ConsumerState<PersonTodoPage>
           .map(
             (field) => ChoosePropertyItem.fromFieldNode(
               field,
-              isAssignedToCurrentPerson: assignedFieldIds.contains(field.id),
+              assignedFieldIds: assignedFieldIds,
             ),
           )
           .toList(growable: false),
@@ -219,13 +222,17 @@ class _PersonTodoPageState extends ConsumerState<PersonTodoPage>
 
     try {
       switch (choice) {
-        case ChoosePropertySelected(:final item):
-          if (item.isAssignedToCurrentPerson) {
-            return;
+        case ChoosePropertySelected(:final items):
+          final actions = ref.read(personalDatabaseActionsProvider);
+          for (final item in items) {
+            if (item.isAssignedToCurrentPerson) {
+              continue;
+            }
+            await actions.assignFieldToPerson(
+              personId: widget.personId,
+              fieldId: item.id,
+            );
           }
-          await ref
-              .read(personalDatabaseActionsProvider)
-              .assignFieldToPerson(personId: widget.personId, fieldId: item.id);
         case ChoosePropertyCreateNew():
           await _createNewProperty();
       }

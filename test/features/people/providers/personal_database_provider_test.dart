@@ -172,5 +172,361 @@ void main() {
               .single;
       expect(reloadedField.value, {'nickname': 'Cap'});
     });
+
+    test(
+      'createChildPropertyForPerson rejects duplicate assigned child keys',
+      () async {
+        final database = AppDatabase(NativeDatabase.memory());
+        addTearDown(database.close);
+
+        await database.peopleDao.createPerson(
+          id: 'owner',
+          name: 'Owner',
+          colorValue: 0xFF111111,
+        );
+        await database.personalDatabaseDao.createField(
+          id: 'field-profile',
+          actorPersonId: 'owner',
+          key: 'profile',
+          type: PersonalDatabaseValueType.object,
+          isPublic: true,
+          jsonValue: '{}',
+        );
+
+        final container = ProviderContainer(
+          overrides: [appDatabaseProvider.overrideWithValue(database)],
+        );
+        addTearDown(container.dispose);
+
+        final profile =
+            (await database.personalDatabaseDao
+                    .watchFieldTreeForPerson('owner')
+                    .first)
+                .single;
+
+        await container
+            .read(personalDatabaseActionsProvider)
+            .createChildPropertyForPerson(
+              personId: 'owner',
+              parentField: profile,
+              key: 'nickname',
+              type: PersonalDatabaseValueType.string,
+              value: 'Cap',
+            );
+
+        final reloadedProfile = await database.personalDatabaseDao
+            .getFieldTreeForPerson('owner');
+
+        await expectLater(
+          () => container
+              .read(personalDatabaseActionsProvider)
+              .createChildPropertyForPerson(
+                personId: 'owner',
+                parentField: reloadedProfile.single,
+                key: 'nickname',
+                type: PersonalDatabaseValueType.string,
+                value: 'Captain',
+              ),
+          throwsA(isA<StateError>()),
+        );
+
+        final ownerFields = await database.personalDatabaseDao
+            .getFieldTreeForPerson('owner');
+        expect(ownerFields.single.children.single.key, 'nickname');
+        expect(ownerFields.single.children.single.value, 'Cap');
+      },
+    );
+
+    test(
+      'ensureObjectSubtreeDefinitions backfills legacy object keys',
+      () async {
+        final database = AppDatabase(NativeDatabase.memory());
+        addTearDown(database.close);
+
+        await database.peopleDao.createPerson(
+          id: 'owner',
+          name: 'Owner',
+          colorValue: 0xFF111111,
+        );
+
+        await database.personalDatabaseDao.createField(
+          id: 'field-profile',
+          actorPersonId: 'owner',
+          key: 'profile',
+          type: PersonalDatabaseValueType.object,
+          isPublic: true,
+          jsonValue: '{"nickname":"Cap","details":{"age":30}}',
+        );
+
+        final container = ProviderContainer(
+          overrides: [appDatabaseProvider.overrideWithValue(database)],
+        );
+        addTearDown(container.dispose);
+
+        await container
+            .read(personalDatabaseActionsProvider)
+            .ensureObjectSubtreeDefinitions(personId: 'owner');
+
+        final library = await database.personalDatabaseDao
+            .watchFieldLibrary()
+            .first;
+        final ownerFields = await database.personalDatabaseDao
+            .watchFieldTreeForPerson('owner')
+            .first;
+
+        expect(library, hasLength(1));
+        expect(ownerFields, hasLength(1));
+
+        final libraryProfile = library.single;
+        final ownerProfile = ownerFields.single;
+
+        expect(libraryProfile.children.map((child) => child.key), [
+          'nickname',
+          'details',
+        ]);
+        expect(
+          libraryProfile.children
+              .firstWhere((child) => child.key == 'details')
+              .children
+              .single
+              .key,
+          'age',
+        );
+        expect(ownerProfile.children.map((child) => child.key), [
+          'nickname',
+          'details',
+        ]);
+        expect(
+          ownerProfile.children
+              .firstWhere((child) => child.key == 'nickname')
+              .value,
+          'Cap',
+        );
+        expect(
+          ownerProfile.children
+              .firstWhere((child) => child.key == 'details')
+              .children
+              .single
+              .value,
+          30,
+        );
+      },
+    );
+
+    test(
+      'removeChildPropertyFromPerson hides subtree but keeps definitions',
+      () async {
+        final database = AppDatabase(NativeDatabase.memory());
+        addTearDown(database.close);
+
+        await database.peopleDao.createPerson(
+          id: 'owner',
+          name: 'Owner',
+          colorValue: 0xFF111111,
+        );
+        await database.personalDatabaseDao.createField(
+          id: 'field-profile',
+          actorPersonId: 'owner',
+          key: 'profile',
+          type: PersonalDatabaseValueType.object,
+          isPublic: true,
+          jsonValue: '{}',
+        );
+
+        final container = ProviderContainer(
+          overrides: [appDatabaseProvider.overrideWithValue(database)],
+        );
+        addTearDown(container.dispose);
+
+        final profile =
+            (await database.personalDatabaseDao
+                    .watchFieldTreeForPerson('owner')
+                    .first)
+                .single;
+
+        final childId = await container
+            .read(personalDatabaseActionsProvider)
+            .createChildPropertyForPerson(
+              personId: 'owner',
+              parentField: profile,
+              key: 'nickname',
+              type: PersonalDatabaseValueType.string,
+              value: 'Cap',
+            );
+
+        expect(childId, isNotNull);
+
+        await container
+            .read(personalDatabaseActionsProvider)
+            .removeChildPropertyFromPerson(
+              personId: 'owner',
+              fieldId: childId!,
+            );
+
+        final library = await database.personalDatabaseDao
+            .watchFieldLibrary()
+            .first;
+        final ownerFields = await database.personalDatabaseDao
+            .watchFieldTreeForPerson('owner')
+            .first;
+
+        expect(library.single.children.single.key, 'nickname');
+        expect(ownerFields.single.children, isEmpty);
+      },
+    );
+
+    test(
+      'nested child scope follows parent visibility in chooser library',
+      () async {
+        final database = AppDatabase(NativeDatabase.memory());
+        addTearDown(database.close);
+
+        await database.peopleDao.createPerson(
+          id: 'owner',
+          name: 'Owner',
+          colorValue: 0xFF111111,
+        );
+        await database.peopleDao.createPerson(
+          id: 'friend-a',
+          name: 'Friend A',
+          colorValue: 0xFF222222,
+        );
+
+        final container = ProviderContainer(
+          overrides: [appDatabaseProvider.overrideWithValue(database)],
+        );
+        addTearDown(container.dispose);
+
+        await database.personalDatabaseDao.createField(
+          id: 'field-public',
+          actorPersonId: 'owner',
+          key: 'publicProfile',
+          type: PersonalDatabaseValueType.object,
+          isPublic: true,
+          jsonValue: '{}',
+        );
+        await database.personalDatabaseDao.createField(
+          id: 'field-private',
+          actorPersonId: 'owner',
+          key: 'privateProfile',
+          type: PersonalDatabaseValueType.object,
+          isPublic: false,
+          jsonValue: '{}',
+        );
+
+        final ownerFields = await database.personalDatabaseDao
+            .getFieldTreeForPerson('owner');
+
+        final publicParent = ownerFields.firstWhere(
+          (field) => field.id == 'field-public',
+        );
+        final privateParent = ownerFields.firstWhere(
+          (field) => field.id == 'field-private',
+        );
+
+        await container
+            .read(personalDatabaseActionsProvider)
+            .createChildPropertyForPerson(
+              personId: 'owner',
+              parentField: publicParent,
+              key: 'nickname',
+              type: PersonalDatabaseValueType.string,
+              value: 'Cap',
+            );
+        await container
+            .read(personalDatabaseActionsProvider)
+            .createChildPropertyForPerson(
+              personId: 'owner',
+              parentField: privateParent,
+              key: 'secret',
+              type: PersonalDatabaseValueType.string,
+              value: 'Only owner',
+            );
+
+        final ownerLibrary = await database.personalDatabaseDao
+            .getFieldLibraryForPerson('owner');
+        final friendLibrary = await database.personalDatabaseDao
+            .getFieldLibraryForPerson('friend-a');
+
+        expect(
+          ownerLibrary.map((field) => field.key),
+          containsAll(['publicProfile', 'privateProfile']),
+        );
+        expect(
+          ownerLibrary
+              .firstWhere((field) => field.key == 'privateProfile')
+              .children
+              .single
+              .key,
+          'secret',
+        );
+        expect(
+          friendLibrary.map((field) => field.key),
+          contains('publicProfile'),
+        );
+        expect(
+          friendLibrary.map((field) => field.key),
+          isNot(contains('privateProfile')),
+        );
+        expect(
+          friendLibrary
+              .singleWhere((field) => field.key == 'publicProfile')
+              .children
+              .single
+              .key,
+          'nickname',
+        );
+      },
+    );
+
+    test(
+      'ensureObjectSubtreeDefinitions does not restore hidden child assignments',
+      () async {
+        final database = AppDatabase(NativeDatabase.memory());
+        addTearDown(database.close);
+
+        await database.peopleDao.createPerson(
+          id: 'owner',
+          name: 'Owner',
+          colorValue: 0xFF111111,
+        );
+
+        await database.personalDatabaseDao.createField(
+          id: 'field-profile',
+          actorPersonId: 'owner',
+          key: 'profile',
+          type: PersonalDatabaseValueType.object,
+          isPublic: true,
+          jsonValue: '{"nickname":"Cap"}',
+        );
+
+        final container = ProviderContainer(
+          overrides: [appDatabaseProvider.overrideWithValue(database)],
+        );
+        addTearDown(container.dispose);
+
+        await container
+            .read(personalDatabaseActionsProvider)
+            .ensureObjectSubtreeDefinitions(personId: 'owner');
+
+        final ownerFieldsAfterBackfill = await database.personalDatabaseDao
+            .getFieldTreeForPerson('owner');
+        final childId = ownerFieldsAfterBackfill.single.children.single.id;
+
+        await container
+            .read(personalDatabaseActionsProvider)
+            .removeChildPropertyFromPerson(personId: 'owner', fieldId: childId);
+
+        await container
+            .read(personalDatabaseActionsProvider)
+            .ensureObjectSubtreeDefinitions(personId: 'owner');
+
+        final ownerFields = await database.personalDatabaseDao
+            .getFieldTreeForPerson('owner');
+
+        expect(ownerFields.single.children, isEmpty);
+        expect(ownerFields.single.value, const <String, Object?>{});
+      },
+    );
   });
 }
