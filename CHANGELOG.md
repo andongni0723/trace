@@ -1,3 +1,21 @@
+## v1.4.0
+
+更新內容:
+- 新增管理資料庫屬性頁，可從側邊欄進入，支援建立根屬性與子屬性、搜尋、重新命名、變更類型、刪除與拖曳排序。
+- 擴充 personal database 屬性管理邏輯，加入欄位定義建立與移動能力，並阻擋仍被人物使用的屬性刪除、移到自己的子層級，或跨可見性範圍移動。
+- 調整人物 personal database 編輯流程，既有屬性編輯時改為只更新值，並補強物件子屬性顯示、選取與相關測試。
+- 新增人物頭像選取與裁切流程，建立或編輯人物時可從相簿挑圖後裁成圓形頭像，並補上 Android / iOS 所需設定。
+- 擴充 app 設定，新增更多主題色與開場動畫開關，並改善生物辨識解鎖後的開場動畫與操作回饋。
+- 更新 GitHub Actions 工作流程名稱為 Trace。
+
+Updates:
+- Added a database property manager page in the navigation drawer with root and child property creation, search, rename, retype, delete, and drag reordering.
+- Expanded personal database property management with definition creation and move logic, while blocking deletes for assigned properties, moves into descendants, and cross-scope moves.
+- Updated personal database editing so existing properties only change their value during edit flows, and strengthened object subproperty visibility, selection flows, and related tests.
+- Added avatar picking and circular cropping for people creation and editing, along with the required Android and iOS configuration.
+- Expanded app settings with more theme seeds and an opening animation toggle, and refined post-biometric opening animation and interaction feedback.
+- Renamed the GitHub Actions workflow labels to Trace.
+
 ## v1.3.2
 更新內容:
 - 修正個人資料庫中人物標記功能在人物數量較多時無法完整顯示所有人物的問題。

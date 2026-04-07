@@ -449,7 +449,7 @@ void main() {
     },
   );
 
-  testWidgets('editing object property type persists the submitted value', (
+  testWidgets('editing personal database property only updates value', (
     tester,
   ) async {
     final database = AppDatabase(NativeDatabase.memory());
@@ -461,11 +461,11 @@ void main() {
       colorValue: 0xFF111111,
     );
     await database.personalDatabaseDao.createFieldAndAssignToPerson(
-      id: 'field-profile',
+      id: 'field-nickname',
       personId: 'owner',
-      key: '資料',
-      type: PersonalDatabaseValueType.object,
-      jsonValue: '{}',
+      key: '暱稱',
+      type: PersonalDatabaseValueType.string,
+      jsonValue: '"Old value"',
     );
 
     await tester.pumpWidget(
@@ -501,25 +501,103 @@ void main() {
     await tester.tap(find.text('編輯'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(DropdownMenu<PersonalDatabaseValueType>));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('數字').last);
-    await tester.pumpAndSettle();
+    expect(find.text('Key'), findsOneWidget);
+    expect(find.text('Type'), findsOneWidget);
+    expect(find.text('暱稱'), findsWidgets);
+    expect(find.text('字串'), findsOneWidget);
+    expect(find.byType(DropdownMenu<PersonalDatabaseValueType>), findsNothing);
 
-    await tester.enterText(find.byType(TextField).last, '42');
+    await tester.enterText(find.byType(TextField).first, 'New value');
     await tester.tap(find.text('更新'));
     await tester.pumpAndSettle();
 
     final ownerFields = await database.personalDatabaseDao
         .getFieldTreeForPerson('owner');
-    expect(ownerFields.single.type, PersonalDatabaseValueType.number);
-    expect(ownerFields.single.value, 42);
+    expect(ownerFields.single.key, '暱稱');
+    expect(ownerFields.single.type, PersonalDatabaseValueType.string);
+    expect(ownerFields.single.value, 'New value');
 
     await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 1));
     await tester.pump(const Duration(milliseconds: 1));
   });
+
+  testWidgets(
+    'editing list child uses child value type instead of root list type',
+    (tester) async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+
+      await database.peopleDao.createPerson(
+        id: 'owner',
+        name: 'Owner',
+        colorValue: 0xFF111111,
+      );
+      await database.personalDatabaseDao.createFieldAndAssignToPerson(
+        id: 'field-tags',
+        personId: 'owner',
+        key: '標籤',
+        type: PersonalDatabaseValueType.list,
+        jsonValue: '["Old item"]',
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [appDatabaseProvider.overrideWithValue(database)],
+          child: EasyLocalization(
+            supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+            path: 'unused',
+            assetLoader: const _PersonTodoTestAssetLoader(),
+            fallbackLocale: const Locale('zh', 'TW'),
+            startLocale: const Locale('zh', 'TW'),
+            child: Builder(
+              builder: (context) {
+                return MaterialApp(
+                  supportedLocales: context.supportedLocales,
+                  localizationsDelegates: context.localizationDelegates,
+                  locale: context.locale,
+                  home: const Scaffold(
+                    body: PersonPersonalDatabaseTab(personId: 'owner'),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('[1]'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.more_vert_rounded).at(1));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('編輯'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byType(DropdownMenu<PersonalDatabaseValueType>),
+        findsOneWidget,
+      );
+      expect(find.text('字串'), findsWidgets);
+
+      await tester.enterText(find.byType(TextField).last, 'New item');
+      await tester.tap(find.text('更新'));
+      await tester.pumpAndSettle();
+
+      final ownerFields = await database.personalDatabaseDao
+          .getFieldTreeForPerson('owner');
+      expect(ownerFields.single.value, ['New item']);
+
+      await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1));
+      await tester.pump(const Duration(milliseconds: 1));
+    },
+  );
 
   testWidgets('self mention does not push another person route', (
     tester,

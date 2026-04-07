@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:trace/core/utils/app_haptics.dart';
 import 'package:trace/core/utils/useful_extension.dart';
 import 'package:trace/features/people/data/models/personal_database_mention_suggestion.dart';
 import 'package:trace/shared/widgets/person_avatar.dart';
 
-typedef PersonalDatabaseMentionSuggestionSelected = void Function(
-  PersonalDatabaseMentionSuggestion suggestion,
-);
+typedef PersonalDatabaseMentionSuggestionSelected =
+    void Function(PersonalDatabaseMentionSuggestion suggestion);
 
 class PersonalDatabaseMentionTextField extends StatefulWidget {
   const PersonalDatabaseMentionTextField({
@@ -96,7 +96,9 @@ class _PersonalDatabaseMentionTextFieldState
                     onSelected: _handleSuggestionSelected,
                   ),
                 )
-              : const SizedBox.shrink(key: ValueKey('personal-database-mention-empty')),
+              : const SizedBox.shrink(
+                  key: ValueKey('personal-database-mention-empty'),
+                ),
         ),
         TextField(
           controller: widget.controller,
@@ -105,7 +107,8 @@ class _PersonalDatabaseMentionTextFieldState
           maxLines: widget.maxLines,
           keyboardType: widget.keyboardType,
           style: widget.style,
-          decoration: widget.decoration ??
+          decoration:
+              widget.decoration ??
               InputDecoration(
                 labelText: widget.labelText,
                 filled: true,
@@ -144,7 +147,9 @@ class _PersonalDatabaseMentionTextFieldState
 
   void _recalculateMentionState() {
     final selection = widget.controller.selection;
-    if (!widget.focusNode.hasFocus || !selection.isValid || !selection.isCollapsed) {
+    if (!widget.focusNode.hasFocus ||
+        !selection.isValid ||
+        !selection.isCollapsed) {
       if (_activeMention != null) {
         setState(() {
           _activeMention = null;
@@ -215,12 +220,14 @@ class _PersonalDatabaseMentionTextFieldState
     }
 
     final query = activeMention.query.trim().toLowerCase();
-    final suggestions = widget.suggestions.where((suggestion) {
-      if (query.isEmpty) {
-        return true;
-      }
-      return suggestion.name.toLowerCase().contains(query);
-    }).toList(growable: false);
+    final suggestions = widget.suggestions
+        .where((suggestion) {
+          if (query.isEmpty) {
+            return true;
+          }
+          return suggestion.name.toLowerCase().contains(query);
+        })
+        .toList(growable: false);
 
     return suggestions;
   }
@@ -231,6 +238,7 @@ class _PersonalDatabaseMentionTextFieldState
       return;
     }
 
+    AppHaptics.selection();
     final replacement = '@${suggestion.name}';
     final currentText = widget.controller.text;
     final updatedText = currentText.replaceRange(
@@ -296,10 +304,7 @@ class _MentionSuggestionPanel extends StatelessWidget {
 }
 
 class _MentionSuggestionTile extends StatelessWidget {
-  const _MentionSuggestionTile({
-    required this.suggestion,
-    required this.onTap,
-  });
+  const _MentionSuggestionTile({required this.suggestion, required this.onTap});
 
   final PersonalDatabaseMentionSuggestion suggestion;
   final VoidCallback onTap;
@@ -369,7 +374,16 @@ bool _isMentionBoundary(String character) {
   }
 
   return switch (character) {
-    '(' || '[' || '{' || ' ' || '\n' || '\t' || ',' || '.' || '-' || '>' => true,
+    '(' ||
+    '[' ||
+    '{' ||
+    ' ' ||
+    '\n' ||
+    '\t' ||
+    ',' ||
+    '.' ||
+    '-' ||
+    '>' => true,
     _ => false,
   };
 }

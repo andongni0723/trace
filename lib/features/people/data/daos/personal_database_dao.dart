@@ -199,6 +199,10 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
     )..where((table) => table.id.equals(fieldId))).getSingleOrNull();
   }
 
+  Future<List<PersonalDatabaseField>> getAllFieldDefinitions() {
+    return select(personalDatabaseFields).get();
+  }
+
   Future<void> createField({
     required String id,
     required String actorPersonId,
@@ -219,6 +223,33 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
       jsonValue: jsonValue,
       parentFieldId: parentFieldId,
       sortOrder: sortOrder,
+    );
+  }
+
+  Future<void> createFieldDefinition({
+    required String id,
+    required String key,
+    required PersonalDatabaseValueType type,
+    required bool isPublic,
+    String? ownerPersonId,
+    String? parentFieldId,
+    int sortOrder = 0,
+  }) async {
+    final trimmedKey = key.trim();
+    if (trimmedKey.isEmpty) {
+      return;
+    }
+
+    await into(personalDatabaseFields).insert(
+      PersonalDatabaseFieldsCompanion.insert(
+        id: id,
+        key: trimmedKey,
+        valueType: type.dbKey,
+        isPublic: Value(isPublic),
+        ownerPersonId: Value(isPublic ? null : ownerPersonId),
+        parentFieldId: Value(parentFieldId),
+        sortOrder: Value(sortOrder),
+      ),
     );
   }
 
@@ -447,6 +478,39 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
+  Future<bool> hasChildDefinitions(String fieldId) async {
+    final fieldIds = await _collectDescendantFieldIds(fieldId);
+    return fieldIds.length > 1;
+  }
+
+  Future<int> countAssignmentsForFieldSubtree(String fieldId) async {
+    final fieldIds = await _collectDescendantFieldIds(fieldId);
+    if (fieldIds.isEmpty) {
+      return 0;
+    }
+
+    final countExpression = personalDatabasePersonFields.fieldId.count();
+    final query = selectOnly(personalDatabasePersonFields)
+      ..addColumns([countExpression])
+      ..where(personalDatabasePersonFields.fieldId.isIn(fieldIds));
+
+    return query.map((row) => row.read(countExpression) ?? 0).getSingle();
+  }
+
+  Future<Set<String>> getAssignedPersonIdsForFieldSubtree(
+    String fieldId,
+  ) async {
+    final fieldIds = await _collectDescendantFieldIds(fieldId);
+    if (fieldIds.isEmpty) {
+      return const <String>{};
+    }
+
+    final rows = await (select(
+      personalDatabasePersonFields,
+    )..where((table) => table.fieldId.isIn(fieldIds))).get();
+    return rows.map((row) => row.personId).toSet();
+  }
+
   Future<void> deleteField(String fieldId) {
     return deleteFieldDefinition(fieldId);
   }
@@ -468,6 +532,138 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
         personalDatabaseFields,
       )..where((table) => table.id.isIn(fieldIds))).go();
     });
+  }
+
+  Future<void> moveFieldDefinition({
+    required String fieldId,
+    required String? newParentFieldId,
+    required int newSortOrder,
+  }) async {
+    await transaction(() async {
+      final allFields = await select(personalDatabaseFields).get();
+      final field = _fieldById(allFields, fieldId);
+      if (field == null) {
+        throw StateError('Field not found: $fieldId');
+      }
+
+      if (newParentFieldId == fieldId) {
+        throw StateError('A field cannot be moved into itself');
+      }
+
+      final descendantFieldIds = await _collectDescendantFieldIds(fieldId);
+      if (newParentFieldId != null &&
+          descendantFieldIds.contains(newParentFieldId)) {
+        throw StateError('A field cannot be moved into its descendant');
+      }
+
+      final newParent = newParentFieldId == null
+          ? null
+          : _fieldById(allFields, newParentFieldId);
+      if (newParentFieldId != null && newParent == null) {
+        throw StateError('Target parent not found: $newParentFieldId');
+      }
+
+      if (newParent != null &&
+          personalDatabaseValueTypeFromDb(newParent.valueType) !=
+              PersonalDatabaseValueType.object) {
+        throw StateError('Target parent must be an object property');
+      }
+
+      if (newParent != null) {
+        final isScopeMismatch =
+            field.isPublic != newParent.isPublic ||
+            (!field.isPublic && field.ownerPersonId != newParent.ownerPersonId);
+        if (isScopeMismatch) {
+          throw StateError('Cannot move across visibility scopes');
+        }
+      }
+
+      int compareRows(PersonalDatabaseField a, PersonalDatabaseField b) {
+        final sortCompare = a.sortOrder.compareTo(b.sortOrder);
+        if (sortCompare != 0) {
+          return sortCompare;
+        }
+        final createdAtCompare = a.createdAt.compareTo(b.createdAt);
+        if (createdAtCompare != 0) {
+          return createdAtCompare;
+        }
+        return a.key.compareTo(b.key);
+      }
+
+      final siblingsByParentId = <String?, List<PersonalDatabaseField>>{};
+      for (final current in allFields) {
+        siblingsByParentId.putIfAbsent(current.parentFieldId, () => []);
+        siblingsByParentId[current.parentFieldId]!.add(current);
+      }
+
+      for (final siblings in siblingsByParentId.values) {
+        siblings.sort(compareRows);
+      }
+
+      final oldParentId = field.parentFieldId;
+      final oldSiblings = [
+        ...siblingsByParentId[oldParentId] ?? const <PersonalDatabaseField>[],
+      ]..removeWhere((candidate) => candidate.id == fieldId);
+
+      final isSameParent = oldParentId == newParentFieldId;
+      final targetSiblings =
+          isSameParent
+                ? oldSiblings
+                : [
+                    ...siblingsByParentId[newParentFieldId] ??
+                        const <PersonalDatabaseField>[],
+                  ]
+            ..removeWhere((candidate) => candidate.id == fieldId);
+
+      final insertIndex = newSortOrder.clamp(0, targetSiblings.length);
+      targetSiblings.insert(insertIndex, field);
+
+      final now = DateTime.now();
+
+      await batch((batch) {
+        for (var index = 0; index < targetSiblings.length; index++) {
+          final current = targetSiblings[index];
+          batch.update(
+            personalDatabaseFields,
+            PersonalDatabaseFieldsCompanion(
+              parentFieldId: current.id == fieldId
+                  ? Value(newParentFieldId)
+                  : const Value.absent(),
+              sortOrder: Value(index),
+              updatedAt: Value(now),
+            ),
+            where: (table) => table.id.equals(current.id),
+          );
+        }
+
+        if (!isSameParent) {
+          for (var index = 0; index < oldSiblings.length; index++) {
+            final current = oldSiblings[index];
+            batch.update(
+              personalDatabaseFields,
+              PersonalDatabaseFieldsCompanion(
+                sortOrder: Value(index),
+                updatedAt: Value(now),
+              ),
+              where: (table) => table.id.equals(current.id),
+            );
+          }
+        }
+      });
+    });
+  }
+
+  Future<void> updateFieldAssignmentSortOrder({
+    required String personId,
+    required String fieldId,
+    required int sortOrder,
+  }) {
+    return (update(personalDatabasePersonFields)
+          ..where((table) => table.personId.equals(personId))
+          ..where((table) => table.fieldId.equals(fieldId)))
+        .write(
+          PersonalDatabasePersonFieldsCompanion(sortOrder: Value(sortOrder)),
+        );
   }
 
   Future<List<String>> _collectDescendantFieldIds(String fieldId) async {
@@ -498,6 +694,18 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
     }
 
     return collected.toList(growable: false);
+  }
+
+  PersonalDatabaseField? _fieldById(
+    List<PersonalDatabaseField> fields,
+    String fieldId,
+  ) {
+    for (final field in fields) {
+      if (field.id == fieldId) {
+        return field;
+      }
+    }
+    return null;
   }
 
   Future<PersonalDatabaseField?> getChildFieldByKey({

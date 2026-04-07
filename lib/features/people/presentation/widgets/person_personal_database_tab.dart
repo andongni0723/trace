@@ -416,13 +416,12 @@ class _PersonPersonalDatabaseTabState
     }
 
     final isDefinitionBacked = row.isDefinitionBacked;
-    final isRoot = isDefinitionBacked ? row.depth == 0 : row.path.isEmpty;
-    final canEditKey = isDefinitionBacked || !row.parentIsList;
-    final initialKey = isDefinitionBacked
-        ? targetField.key
-        : (isRoot
-              ? targetField.key
-              : (row.path.last is String ? row.path.last as String : null));
+    final canEditKey = !isDefinitionBacked && !row.parentIsList;
+    final initialKey = switch (row.path.lastOrNull) {
+      String key => key,
+      _ => null,
+    };
+    final initialType = isDefinitionBacked ? targetField.type : row.valueType;
 
     AppHaptics.primaryAction();
     final mentionSuggestions = _mentionSuggestions();
@@ -431,9 +430,15 @@ class _PersonPersonalDatabaseTabState
       title: 'personTodo.database.sheet.editTitle'.tr(),
       submitLabel: 'personTodo.database.sheet.update'.tr(),
       showKeyInput: canEditKey,
-      initialKey: initialKey,
-      initialType: targetField.type,
-      initialValue: targetField.type == PersonalDatabaseValueType.object
+      showTypeInput: !isDefinitionBacked,
+      readOnlyKeyText: isDefinitionBacked ? targetField.key : null,
+      readOnlyTypeText: isDefinitionBacked
+          ? targetField.type.localizationKey.tr()
+          : null,
+      initialKey: canEditKey ? initialKey : null,
+      initialType: initialType,
+      initialValue:
+          isDefinitionBacked && initialType == PersonalDatabaseValueType.object
           ? const <String, Object?>{}
           : row.rawValue,
       mentionSuggestions: mentionSuggestions,
@@ -448,22 +453,17 @@ class _PersonPersonalDatabaseTabState
       final actions = ref.read(personalDatabaseActionsProvider);
       if (isDefinitionBacked) {
         final hasDefinitionChildren = targetField.children.isNotEmpty;
-        final nextType =
-            hasDefinitionChildren &&
-                targetField.type == PersonalDatabaseValueType.object
-            ? targetField.type
-            : result.type;
         final nextValue =
             hasDefinitionChildren &&
-                nextType == PersonalDatabaseValueType.object
+                targetField.type == PersonalDatabaseValueType.object
             ? targetField.value
             : result.value;
 
         await actions.updatePropertyAndValueForPerson(
           personId: widget.personId,
           fieldId: targetField.id,
-          key: result.key ?? targetField.key,
-          type: nextType,
+          key: targetField.key,
+          type: targetField.type,
           value: nextValue,
         );
         return;

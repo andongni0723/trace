@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/utils/useful_extension.dart';
 import '../../data/models/personal_database_value_type.dart';
 
@@ -294,7 +295,10 @@ class _PersonalDatabaseEditorValueText extends StatelessWidget {
                 baseline: TextBaseline.alphabetic,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(4),
-                  onTap: () => onPressedMention(segment.personId!),
+                  onTap: () {
+                    AppHaptics.primaryAction();
+                    onPressedMention(segment.personId!);
+                  },
                   child: Text(
                     segment.text,
                     style: baseStyle?.copyWith(

@@ -1,10 +1,11 @@
 import 'package:easy_localization/easy_localization.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:trace/app.dart';
 import 'package:trace/core/utils/app_haptics.dart';
 import 'package:trace/core/utils/useful_extension.dart';
 import 'package:trace/features/people/providers/people_provider.dart';
+import 'package:trace/features/people/providers/people_database_providers.dart';
 import 'package:trace/shared/widgets/bottom_sheet_keyboard_inset.dart';
 import 'package:trace/shared/widgets/person_avatar.dart';
 
@@ -246,22 +247,26 @@ class _AddFriendBottomSheetState extends ConsumerState<AddFriendBottomSheet> {
 
   Future<void> _pickAvatarImage() async {
     AppHaptics.primaryAction();
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      allowMultiple: false,
-    );
-    if (result == null || !mounted) {
-      return;
-    }
+    try {
+      final pickedPath = await ref
+          .read(personAvatarPickerProvider)
+          .pickAndCropAvatar(toolbarTitle: 'personTodo.avatar.cropTitle'.tr());
+      if (pickedPath == null || !mounted) {
+        return;
+      }
 
-    final pickedPath = result.files.single.path;
-    if (pickedPath == null || pickedPath.isEmpty) {
-      return;
-    }
+      setState(() {
+        _selectedAvatarPath = pickedPath;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
 
-    setState(() {
-      _selectedAvatarPath = pickedPath;
-    });
+      App.scaffoldMessengerKey.currentState?.showSnackBar(
+        SnackBar(content: Text('personTodo.avatar.processError'.tr())),
+      );
+    }
   }
 
   Future<void> _handleCreatePressed() async {

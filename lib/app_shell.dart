@@ -69,13 +69,6 @@ class _AppShellDrawer extends StatelessWidget {
   static const _settingsDestinationIndex = 2;
   static const _feedbackDestinationIndex = 3;
 
-  void _showComingSoonSnackBar() {
-    final messenger = ScaffoldMessenger.of(shellContext);
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('appSettings.comingSoon'.tr())));
-  }
-
   void _openSettings(BuildContext drawerContext) {
     final router = GoRouter.of(shellContext);
     Navigator.of(drawerContext).pop();
@@ -107,9 +100,10 @@ class _AppShellDrawer extends StatelessWidget {
     router.go('/');
   }
 
-  void _handleComingSoonTap(BuildContext drawerContext) {
+  void _openManageDatabaseProperties(BuildContext drawerContext) {
+    final router = GoRouter.of(shellContext);
     Navigator.of(drawerContext).pop();
-    _showComingSoonSnackBar();
+    router.push('/manage-database-properties');
   }
 
   void _handleDestinationSelected(BuildContext context, int index) {
@@ -119,7 +113,7 @@ class _AppShellDrawer extends StatelessWidget {
       case _mainPageDestinationIndex:
         _openMainPage(context);
       case _manageDatabasePropertiesDestinationIndex:
-        _handleComingSoonTap(context);
+        _openManageDatabaseProperties(context);
       case _settingsDestinationIndex:
         _openSettings(context);
       case _feedbackDestinationIndex:

@@ -4,7 +4,19 @@ part 'app_settings.freezed.dart';
 
 enum AppThemeMode { system, light, dark }
 
-enum AppThemeSeed { classicDeepPurple, violet, teal, coral, amber, berry }
+enum AppThemeSeed {
+  classicDeepPurple,
+  violet,
+  blue,
+  teal,
+  green,
+  coral,
+  orange,
+  amber,
+  rose,
+  berry,
+  slate,
+}
 
 extension AppThemeModePreferenceX on AppThemeMode {
   static AppThemeMode fromPreference(String? value) {
@@ -22,10 +34,15 @@ extension AppThemeSeedPreferenceX on AppThemeSeed {
     return switch (value) {
       'classicDeepPurple' => AppThemeSeed.classicDeepPurple,
       'violet' => AppThemeSeed.violet,
+      'blue' => AppThemeSeed.blue,
       'teal' => AppThemeSeed.teal,
+      'green' => AppThemeSeed.green,
       'coral' => AppThemeSeed.coral,
+      'orange' => AppThemeSeed.orange,
       'amber' => AppThemeSeed.amber,
+      'rose' => AppThemeSeed.rose,
       'berry' => AppThemeSeed.berry,
+      'slate' => AppThemeSeed.slate,
       _ => AppThemeSeed.classicDeepPurple,
     };
   }
@@ -36,5 +53,6 @@ abstract class AppSettings with _$AppSettings {
   const factory AppSettings({
     @Default(AppThemeMode.dark) AppThemeMode themeMode,
     @Default(AppThemeSeed.classicDeepPurple) AppThemeSeed themeSeed,
+    @Default(true) bool openingAnimationEnabled,
   }) = _AppSettings;
 }

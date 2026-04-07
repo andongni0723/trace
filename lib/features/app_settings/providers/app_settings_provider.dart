@@ -63,6 +63,22 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
       return repository.save(nextSettings);
     });
   }
+
+  Future<void> setOpeningAnimationEnabled(bool enabled) async {
+    final currentSettings = state.maybeWhen(
+      data: (settings) => settings,
+      orElse: () => const AppSettings(),
+    );
+    final nextSettings = currentSettings.copyWith(
+      openingAnimationEnabled: enabled,
+    );
+
+    state = AsyncData(nextSettings);
+    state = await AsyncValue.guard(() async {
+      final repository = await _repository;
+      return repository.save(nextSettings);
+    });
+  }
 }
 
 class AppSettingsActions {
@@ -76,5 +92,11 @@ class AppSettingsActions {
 
   Future<void> setThemeSeed(AppThemeSeed themeSeed) {
     return _ref.read(appSettingsProvider.notifier).setThemeSeed(themeSeed);
+  }
+
+  Future<void> setOpeningAnimationEnabled(bool enabled) {
+    return _ref
+        .read(appSettingsProvider.notifier)
+        .setOpeningAnimationEnabled(enabled);
   }
 }

@@ -89,6 +89,68 @@ Future<PersonalDatabaseFieldSheetResult?> _openSheet(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  testWidgets('can hide value input and still submit default value', (
+    tester,
+  ) async {
+    PersonalDatabaseFieldSheetResult? result;
+
+    await tester.pumpWidget(
+      EasyLocalization(
+        supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+        path: 'unused',
+        assetLoader: const _PersonalDatabaseFieldSheetTestAssetLoader(),
+        fallbackLocale: const Locale('zh', 'TW'),
+        startLocale: const Locale('zh', 'TW'),
+        child: Builder(
+          builder: (localizationContext) {
+            return MaterialApp(
+              supportedLocales: localizationContext.supportedLocales,
+              localizationsDelegates: localizationContext.localizationDelegates,
+              locale: localizationContext.locale,
+              home: Builder(
+                builder: (materialContext) {
+                  return Scaffold(
+                    body: Center(
+                      child: FilledButton(
+                        onPressed: () async {
+                          result = await showPersonalDatabaseFieldSheet(
+                            context: materialContext,
+                            title: 'Create property',
+                            submitLabel: 'Create',
+                            showKeyInput: true,
+                            showValueInput: false,
+                            initialType: PersonalDatabaseValueType.number,
+                          );
+                        },
+                        child: const Text('Open'),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Value'), findsNothing);
+    expect(find.byType(TextField), findsNWidgets(2));
+
+    await tester.enterText(find.byType(TextField).first, '欄位');
+    await tester.tap(find.text('Create'));
+    await tester.pumpAndSettle();
+
+    expect(result, isNotNull);
+    expect(result!.key, '欄位');
+    expect(result!.type, PersonalDatabaseValueType.number);
+    expect(result!.value, 0);
+  });
+
   testWidgets('empty list input saves as empty list', (tester) async {
     final result = await _openSheet(
       tester,

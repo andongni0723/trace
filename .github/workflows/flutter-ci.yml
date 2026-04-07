@@ -1,4 +1,4 @@
-name: People Todolist Flutter CI
+name: Trace Flutter CI
 
 on:
   pull_request:

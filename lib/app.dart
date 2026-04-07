@@ -66,9 +66,14 @@ Color _seedColorOf(AppThemeSeed themeSeed) {
   return switch (themeSeed) {
     AppThemeSeed.classicDeepPurple => Colors.deepPurple,
     AppThemeSeed.violet => const Color(0xFF6750A4),
+    AppThemeSeed.blue => const Color(0xFF355F9D),
     AppThemeSeed.teal => const Color(0xFF006A6A),
+    AppThemeSeed.green => const Color(0xFF406836),
     AppThemeSeed.coral => const Color(0xFFB3261E),
+    AppThemeSeed.orange => const Color(0xFF9A4600),
     AppThemeSeed.amber => const Color(0xFF8C5000),
+    AppThemeSeed.rose => const Color(0xFFB03060),
     AppThemeSeed.berry => const Color(0xFF904A72),
+    AppThemeSeed.slate => const Color(0xFF5C5F77),
   };
 }

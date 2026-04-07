@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:trace/core/utils/app_haptics.dart';
 import 'package:trace/core/utils/useful_extension.dart';
 
 import 'app_opening_animation_overlay.dart';
 import '../../domain/biometric_lock_policy.dart';
 import '../../domain/biometric_lock_state.dart';
+import '../../../providers/app_settings_provider.dart';
 import '../../providers/biometric_lock_provider.dart';
 
 class BiometricLockGate extends ConsumerStatefulWidget {
@@ -23,7 +25,6 @@ class _BiometricLockGateState extends ConsumerState<BiometricLockGate>
     with WidgetsBindingObserver, LateInitMixin<BiometricLockGate> {
   bool _isBootstrapping = true;
   bool _showOpeningAnimation = false;
-  bool _hasPlayedOpeningAnimation = false;
 
   @override
   void initState() {
@@ -49,18 +50,24 @@ class _BiometricLockGateState extends ConsumerState<BiometricLockGate>
     }
 
     if (state == AppLifecycleState.resumed) {
-      unawaited(_authenticate(BiometricLockTrigger.appResumed));
+      unawaited(_handleAppResumed());
       return;
     }
 
     if (state == AppLifecycleState.hidden ||
         state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
+      if (_showOpeningAnimation) {
+        setState(() {
+          _showOpeningAnimation = false;
+        });
+      }
       unawaited(ref.read(biometricLockStateProvider.notifier).clearSession());
     }
   }
 
   Future<void> _bootstrap() async {
+    await ref.read(appSettingsProvider.future);
     await ref.read(biometricLockStateProvider.future);
     if (!mounted) {
       return;
@@ -74,7 +81,23 @@ class _BiometricLockGateState extends ConsumerState<BiometricLockGate>
     setState(() {
       _isBootstrapping = false;
       _showOpeningAnimation = _shouldPlayOpeningAnimation();
-      _hasPlayedOpeningAnimation = _showOpeningAnimation;
+    });
+  }
+
+  Future<void> _handleAppResumed() async {
+    await ref.read(appSettingsProvider.future);
+    await _authenticate(BiometricLockTrigger.appResumed);
+    if (!mounted) {
+      return;
+    }
+
+    final shouldShowOpeningAnimation = _shouldPlayOpeningAnimation();
+    if (_showOpeningAnimation == shouldShowOpeningAnimation) {
+      return;
+    }
+
+    setState(() {
+      _showOpeningAnimation = shouldShowOpeningAnimation;
     });
   }
 
@@ -88,7 +111,8 @@ class _BiometricLockGateState extends ConsumerState<BiometricLockGate>
   }
 
   bool _shouldPlayOpeningAnimation() {
-    if (_hasPlayedOpeningAnimation) {
+    final appSettings = ref.read(appSettingsProvider).asData?.value;
+    if (appSettings != null && !appSettings.openingAnimationEnabled) {
       return false;
     }
 
@@ -101,7 +125,7 @@ class _BiometricLockGateState extends ConsumerState<BiometricLockGate>
       return true;
     }
 
-    return state.sessionUnlocked && !state.isAuthenticating;
+    return state.sessionUnlocked && !state.isAuthenticating && !state.isLocked;
   }
 
   void _handleOpeningAnimationCompleted() {
@@ -116,6 +140,9 @@ class _BiometricLockGateState extends ConsumerState<BiometricLockGate>
 
   @override
   Widget build(BuildContext context) {
+    final openingAnimationEnabled =
+        ref.watch(appSettingsProvider).asData?.value.openingAnimationEnabled ??
+        true;
     final biometricLockState = ref.watch(biometricLockStateProvider);
     final state = biometricLockState.asData?.value;
     final shouldBlock =
@@ -124,7 +151,7 @@ class _BiometricLockGateState extends ConsumerState<BiometricLockGate>
             ((state?.isAuthenticating ?? false) || (state?.isLocked ?? false)));
 
     if (!shouldBlock) {
-      if (!_showOpeningAnimation) {
+      if (!_showOpeningAnimation || !openingAnimationEnabled) {
         return widget.child;
       }
 
@@ -224,13 +251,19 @@ class _BiometricLockOverlay extends StatelessWidget {
                     const CircularProgressIndicator(),
                   if (showRetryAction)
                     FilledButton.icon(
-                      onPressed: onRetry,
+                      onPressed: () {
+                        AppHaptics.primaryAction();
+                        onRetry();
+                      },
                       icon: const Icon(Icons.refresh_rounded),
                       label: Text('appSettings.fingerprint.lockRetry'.tr()),
                     ),
                   if (showDisableAction)
                     TextButton(
-                      onPressed: onDisable,
+                      onPressed: () {
+                        AppHaptics.selection();
+                        onDisable();
+                      },
                       child: Text('appSettings.fingerprint.turnOff'.tr()),
                     ),
                 ],

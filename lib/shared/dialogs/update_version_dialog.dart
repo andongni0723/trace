@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/utils/app_haptics.dart';
 import '../../core/utils/update_checker.dart';
 import '../../core/utils/useful_extension.dart';
 import '../../core/utils/utils_function.dart';
@@ -170,7 +171,10 @@ class _UpdateActionButton extends StatelessWidget {
         padding: EdgeInsets.zero,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       ),
-      onPressed: onPressed,
+      onPressed: () {
+        AppHaptics.primaryAction();
+        onPressed();
+      },
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         leading: Icon(icon),

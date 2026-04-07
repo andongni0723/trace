@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app_shell.dart';
 import '../../features/app_settings/presentation/pages/app_settings_page.dart';
+import '../../features/people/presentation/pages/manage_database_properties_page.dart';
 import '../../shared/pages/messages_home_page.dart';
 import '../../shared/pages/person_todo.dart';
 
@@ -36,6 +37,10 @@ final router = GoRouter(
     GoRoute(
       path: '/settings',
       builder: (context, state) => const AppSettingsPage(),
+    ),
+    GoRoute(
+      path: '/manage-database-properties',
+      builder: (context, state) => const ManageDatabasePropertiesPage(),
     ),
   ],
 );

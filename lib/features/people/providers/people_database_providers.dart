@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/database.dart';
 import '../data/daos/people_dao.dart';
 import '../data/daos/personal_database_dao.dart';
+import '../data/services/person_avatar_picker.dart';
 import '../data/services/person_avatar_storage.dart';
 import '../data/daos/todos_dao.dart';
 
@@ -26,4 +27,8 @@ final personalDatabaseDaoProvider = Provider<PersonalDatabaseDao>((ref) {
 
 final personAvatarStorageProvider = Provider<PersonAvatarStorage>((ref) {
   return PersonAvatarStorage();
+});
+
+final personAvatarPickerProvider = Provider<PersonAvatarPicker>((ref) {
+  return PersonAvatarPicker();
 });

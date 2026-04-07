@@ -1,4 +1,4 @@
-name: People Todolist Flutter Release
+name: Trace Flutter Release
 
 on:
   push:

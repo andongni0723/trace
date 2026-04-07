@@ -28,6 +28,10 @@ Future<PersonalDatabaseFieldSheetResult?> showPersonalDatabaseFieldSheet({
   required String title,
   required String submitLabel,
   required bool showKeyInput,
+  bool showTypeInput = true,
+  bool showValueInput = true,
+  String? readOnlyKeyText,
+  String? readOnlyTypeText,
   String? initialKey,
   PersonalDatabaseValueType initialType = PersonalDatabaseValueType.string,
   Object? initialValue,
@@ -46,6 +50,10 @@ Future<PersonalDatabaseFieldSheetResult?> showPersonalDatabaseFieldSheet({
       title: title,
       submitLabel: submitLabel,
       showKeyInput: showKeyInput,
+      showTypeInput: showTypeInput,
+      showValueInput: showValueInput,
+      readOnlyKeyText: readOnlyKeyText,
+      readOnlyTypeText: readOnlyTypeText,
       initialKey: initialKey,
       initialType: initialType,
       initialValue: initialValue,
@@ -61,6 +69,10 @@ class _PersonalDatabaseFieldSheet extends StatefulWidget {
     required this.title,
     required this.submitLabel,
     required this.showKeyInput,
+    required this.showTypeInput,
+    required this.showValueInput,
+    this.readOnlyKeyText,
+    this.readOnlyTypeText,
     required this.initialType,
     required this.mentionSuggestions,
     required this.mentionCodec,
@@ -72,6 +84,10 @@ class _PersonalDatabaseFieldSheet extends StatefulWidget {
   final String title;
   final String submitLabel;
   final bool showKeyInput;
+  final bool showTypeInput;
+  final bool showValueInput;
+  final String? readOnlyKeyText;
+  final String? readOnlyTypeText;
   final String? initialKey;
   final PersonalDatabaseValueType initialType;
   final Object? initialValue;
@@ -178,52 +194,68 @@ class _PersonalDatabaseFieldSheetState
               ),
             ),
             const SizedBox(height: 12),
+          ] else if (widget.readOnlyKeyText != null) ...[
+            _ReadOnlyMetadataField(
+              label: 'personTodo.database.sheet.key'.tr(),
+              value: widget.readOnlyKeyText!,
+            ),
+            const SizedBox(height: 12),
           ],
-          DropdownMenu<PersonalDatabaseValueType>(
-            initialSelection: _type,
-            width: double.infinity,
-            label: Text('personTodo.database.sheet.type'.tr()),
-            inputDecorationTheme: const InputDecorationTheme(
-              filled: true,
-              border: OutlineInputBorder(
-                borderSide: BorderSide.none,
-                borderRadius: BorderRadius.all(Radius.circular(16)),
+          if (widget.showTypeInput) ...[
+            DropdownMenu<PersonalDatabaseValueType>(
+              initialSelection: _type,
+              width: double.infinity,
+              label: Text('personTodo.database.sheet.type'.tr()),
+              inputDecorationTheme: const InputDecorationTheme(
+                filled: true,
+                border: OutlineInputBorder(
+                  borderSide: BorderSide.none,
+                  borderRadius: BorderRadius.all(Radius.circular(16)),
+                ),
               ),
-            ),
-            onSelected: (type) {
-              if (type == null) {
-                return;
-              }
-              AppHaptics.selection();
-              setState(() {
-                _type = type;
-                _replaceValueText(
-                  _defaultValueTextByType(type),
-                  clearMentions: true,
-                );
-                if (type == PersonalDatabaseValueType.boolean) {
-                  _boolValue = false;
+              onSelected: (type) {
+                if (type == null) {
+                  return;
                 }
-                _clearError();
-              });
-            },
-            dropdownMenuEntries: PersonalDatabaseValueType.values
-                .map(
-                  (type) => DropdownMenuEntry(
-                    value: type,
-                    label: type.localizationKey.tr(),
-                  ),
-                )
-                .toList(growable: false),
-          ),
-          const SizedBox(height: 12),
-          _buildValueInput(context),
-          if (_errorText != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              _errorText!,
-              style: context.tt.bodySmall?.copyWith(color: context.cs.error),
+                AppHaptics.selection();
+                setState(() {
+                  _type = type;
+                  _replaceValueText(
+                    _defaultValueTextByType(type),
+                    clearMentions: true,
+                  );
+                  if (type == PersonalDatabaseValueType.boolean) {
+                    _boolValue = false;
+                  }
+                  _clearError();
+                });
+              },
+              dropdownMenuEntries: PersonalDatabaseValueType.values
+                  .map(
+                    (type) => DropdownMenuEntry(
+                      value: type,
+                      label: type.localizationKey.tr(),
+                    ),
+                  )
+                  .toList(growable: false),
             ),
+            const SizedBox(height: 12),
+          ] else if (widget.readOnlyTypeText != null) ...[
+            _ReadOnlyMetadataField(
+              label: 'personTodo.database.sheet.type'.tr(),
+              value: widget.readOnlyTypeText!,
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (widget.showValueInput) ...[
+            _buildValueInput(context),
+            if (_errorText != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _errorText!,
+                style: context.tt.bodySmall?.copyWith(color: context.cs.error),
+              ),
+            ],
           ],
           const SizedBox(height: 20),
           SizedBox(
@@ -315,7 +347,7 @@ class _PersonalDatabaseFieldSheetState
       return;
     }
 
-    final parsedValue = _parseValue();
+    final parsedValue = widget.showValueInput ? _parseValue() : _defaultValue();
     if (parsedValue == null && _type != PersonalDatabaseValueType.nullType) {
       return;
     }
@@ -410,6 +442,9 @@ class _PersonalDatabaseFieldSheetState
   FocusNode? _initialFocusNode() {
     if (widget.showKeyInput) {
       return _keyFocusNode;
+    }
+    if (!widget.showValueInput) {
+      return null;
     }
     if (_type == PersonalDatabaseValueType.boolean ||
         _type == PersonalDatabaseValueType.nullType) {
@@ -534,6 +569,58 @@ class _PersonalDatabaseFieldSheetState
     ]..sort((left, right) => left.start.compareTo(right.start));
 
     widget.onMentionSelected?.call(suggestion);
+  }
+
+  Object? _defaultValue() {
+    switch (_type) {
+      case PersonalDatabaseValueType.string:
+        return '';
+      case PersonalDatabaseValueType.number:
+        return 0;
+      case PersonalDatabaseValueType.boolean:
+        return false;
+      case PersonalDatabaseValueType.nullType:
+        return null;
+      case PersonalDatabaseValueType.list:
+        return const <Object?>[];
+      case PersonalDatabaseValueType.object:
+        return const <String, Object?>{};
+    }
+  }
+}
+
+class _ReadOnlyMetadataField extends StatelessWidget {
+  const _ReadOnlyMetadataField({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      decoration: BoxDecoration(
+        color: context.cs.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: context.tt.labelMedium?.copyWith(
+              color: context.cs.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: context.tt.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
   }
 }
 

@@ -40,6 +40,8 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Allow access to choose a person avatar.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Use biometric authentication to unlock trace.</string>
 </dict>

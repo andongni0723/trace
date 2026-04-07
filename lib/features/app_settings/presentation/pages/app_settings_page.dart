@@ -66,11 +66,25 @@ class AppSettingsPage extends ConsumerWidget {
           const SizedBox(height: 8),
           _SectionLabel(label: 'appSettings.section.app'.tr()),
           _SettingsTile(
-            position: _SettingsTilePosition.single,
+            position: _SettingsTilePosition.first,
             title: 'appSettings.checkUpdate.title'.tr(),
             subtitle: 'appSettings.checkUpdate.subtitle'.tr(),
             leading: const Icon(Icons.system_update_alt_rounded),
             onTap: () => showUpdateVersionDialog(context),
+          ),
+          const SizedBox(height: 4),
+          _SettingsSwitchTile(
+            position: _SettingsTilePosition.last,
+            title: 'appSettings.openingAnimation.title'.tr(),
+            subtitle: 'appSettings.openingAnimation.subtitle'.tr(),
+            value: appSettings.openingAnimationEnabled,
+            leading: const Icon(Icons.movie_filter_outlined),
+            onChanged: (value) async {
+              AppHaptics.selection();
+              await ref
+                  .read(appSettingsActionsProvider)
+                  .setOpeningAnimationEnabled(value);
+            },
           ),
           const SizedBox(height: 8),
           _SectionLabel(label: 'appSettings.section.security'.tr()),
@@ -450,6 +464,40 @@ class _SettingsTile extends StatelessWidget {
   }
 }
 
+class _SettingsSwitchTile extends StatelessWidget {
+  const _SettingsSwitchTile({
+    required this.position,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.leading,
+    required this.onChanged,
+  });
+
+  final _SettingsTilePosition position;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final Widget leading;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: context.cs.surfaceContainerLow,
+      borderRadius: _tileBorderRadiusFor(position),
+      clipBehavior: Clip.antiAlias,
+      child: SwitchListTile(
+        value: value,
+        onChanged: onChanged,
+        secondary: leading,
+        title: Text(title),
+        subtitle: Text(subtitle),
+      ),
+    );
+  }
+}
+
 class _FrequencyTile extends StatelessWidget {
   const _FrequencyTile({
     required this.summary,
@@ -676,10 +724,15 @@ String _themeSeedLabel(AppThemeSeed themeSeed) {
   return switch (themeSeed) {
     AppThemeSeed.classicDeepPurple => 'appSettings.themeSeed.classicDeepPurple',
     AppThemeSeed.violet => 'appSettings.themeSeed.violet',
+    AppThemeSeed.blue => 'appSettings.themeSeed.blue',
     AppThemeSeed.teal => 'appSettings.themeSeed.teal',
+    AppThemeSeed.green => 'appSettings.themeSeed.green',
     AppThemeSeed.coral => 'appSettings.themeSeed.coral',
+    AppThemeSeed.orange => 'appSettings.themeSeed.orange',
     AppThemeSeed.amber => 'appSettings.themeSeed.amber',
+    AppThemeSeed.rose => 'appSettings.themeSeed.rose',
     AppThemeSeed.berry => 'appSettings.themeSeed.berry',
+    AppThemeSeed.slate => 'appSettings.themeSeed.slate',
   };
 }
 
@@ -687,10 +740,15 @@ Color _themeSeedColor(AppThemeSeed themeSeed) {
   return switch (themeSeed) {
     AppThemeSeed.classicDeepPurple => Colors.deepPurple,
     AppThemeSeed.violet => const Color(0xFF6750A4),
+    AppThemeSeed.blue => const Color(0xFF355F9D),
     AppThemeSeed.teal => const Color(0xFF006A6A),
+    AppThemeSeed.green => const Color(0xFF406836),
     AppThemeSeed.coral => const Color(0xFFB3261E),
+    AppThemeSeed.orange => const Color(0xFF9A4600),
     AppThemeSeed.amber => const Color(0xFF8C5000),
+    AppThemeSeed.rose => const Color(0xFFB03060),
     AppThemeSeed.berry => const Color(0xFF904A72),
+    AppThemeSeed.slate => const Color(0xFF5C5F77),
   };
 }
 

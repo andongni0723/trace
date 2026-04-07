@@ -1,8 +1,8 @@
 import 'package:easy_localization/easy_localization.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:trace/app.dart';
 import 'package:trace/core/database/database.dart';
 import 'package:trace/core/utils/app_haptics.dart';
 import 'package:trace/core/utils/useful_extension.dart';
@@ -648,22 +648,28 @@ class _RenamePersonSheetState extends ConsumerState<_RenamePersonSheet>
 
   Future<void> _pickAvatarImage() async {
     AppHaptics.primaryAction();
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      allowMultiple: false,
-    );
-    if (result == null || !mounted) {
-      return;
-    }
+    try {
+      final pickedPath = await ref
+          .read(personAvatarPickerProvider)
+          .pickAndCropAvatar(toolbarTitle: 'personTodo.avatar.cropTitle'.tr());
+      if (pickedPath == null || !mounted) {
+        return;
+      }
 
-    final pickedPath = result.files.single.path;
-    if (pickedPath == null || pickedPath.isEmpty) {
-      return;
-    }
+      setState(() {
+        _selectedAvatarPath = pickedPath;
+      });
+    } catch (e, s) {
+      if (!mounted) {
+        return;
+      }
 
-    setState(() {
-      _selectedAvatarPath = pickedPath;
-    });
+      debugPrint('[_pickAvatarImage Error]: $e');
+      debugPrintStack(stackTrace: s);
+      App.scaffoldMessengerKey.currentState?.showSnackBar(
+        SnackBar(content: Text('personTodo.avatar.processError'.tr())),
+      );
+    }
   }
 
   Future<void> _renamePerson(String trimmedName) async {

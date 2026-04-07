@@ -7,6 +7,87 @@ appShell.drawer.mainPage,主頁,Main page
 appShell.drawer.manageDatabaseProperties,管理資料庫屬性,Manage database properties
 appShell.drawer.settings,設定,Settings
 appShell.drawer.feedback,意見回饋,Feedback
+propertyManager.title,管理資料庫屬性,Manage database properties
+propertyManager.searchHint,搜尋屬性,Search properties
+propertyManager.libraryLabel,屬性庫,Property library
+propertyManager.loadError,讀取屬性庫失敗。,Failed to load the property library.
+propertyManager.emptyTitle,尚未有屬性,No properties yet
+propertyManager.emptyBody,先建立第一個屬性，之後就能在這裡調整順序與內容。,Create the first property, then manage its order and details here.
+propertyManager.reorderMode.toggle,調整順序,Reorder
+propertyManager.reorderMode.title,排序模式,Reorder mode
+propertyManager.reorderMode.body,長按屬性可進入排序模式，拖曳把手會在未來接上移動/重排邏輯。,Long-press a property to enter reorder mode. Drag handles will later connect to move/reparent logic.
+propertyManager.reorderMode.moveHint,移動位置,Move position
+propertyManager.reorderMode.exit,結束排序,Done
+propertyManager.action.rename,重新命名,Rename
+propertyManager.action.retype,變更型別,Retype
+propertyManager.action.move,移動位置,Move position
+propertyManager.action.delete,刪除,Delete
+propertyManager.renameDialog.title,重新命名屬性,Rename property
+propertyManager.renameDialog.label,屬性名稱,Property name
+propertyManager.renameDialog.cancel,取消,Cancel
+propertyManager.renameDialog.save,儲存,Save
+propertyManager.retypeDialog.title,變更屬性型別,Retype property
+propertyManager.retypeDialog.body,選擇新的型別後，後續由資料邏輯模組決定如何更新資料。,Choose a new type. The data logic module will handle persistence later.
+propertyManager.retypeBlocked.title,無法變更型別,Cannot retype
+propertyManager.retypeBlocked.body,屬性「{key}」還有子屬性，請先移除所有子屬性後再變更型別。,Property "{key}" still has child properties. Remove all children before retyping.
+propertyManager.retypeBlocked.short,object 有子屬性時不可變更型別。,Object properties with children cannot be retyped.
+propertyManager.retypeBlocked.confirm,知道了,OK
+propertyManager.deleteBlocked.title,無法刪除,Cannot delete
+propertyManager.deleteBlocked.body,屬性「{key}」仍在被人物使用，先移除所有引用後才能刪除。,Property "{key}" is still used by people. Remove all references before deleting.
+propertyManager.deleteBlocked.short,仍被人物使用，不能刪除。,This property is still in use and cannot be deleted.
+propertyManager.deleteBlocked.confirm,知道了,OK
+propertyManager.deleteDialog.title,刪除屬性,Delete property
+propertyManager.deleteDialog.body,確定要刪除屬性「{key}」嗎？,Delete property "{key}"?
+propertyManager.deleteDialog.cancel,取消,Cancel
+propertyManager.deleteDialog.delete,刪除,Delete
+databasePropertyManager.title,管理資料庫屬性,Manage database properties
+databasePropertyManager.searchHint,搜尋資料庫屬性,Search database properties
+databasePropertyManager.libraryLabel,全部屬性,All properties
+databasePropertyManager.emptyTitle,還沒有資料庫屬性,No database properties yet
+databasePropertyManager.emptyBody,建立屬性後，就能在這裡重新整理整個 property tree。,Create properties to manage the full property tree here.
+databasePropertyManager.emptySearchTitle,找不到符合的屬性,No matching properties
+databasePropertyManager.emptySearchBody,試著換個關鍵字搜尋。,Try a different search term.
+databasePropertyManager.objectChildren,{count} 個子屬性,{count} child properties
+databasePropertyManager.rootOption,主層級,Root level
+databasePropertyManager.fab.tooltip,建立根屬性,Create root property
+databasePropertyManager.action.rename,重新命名,Rename
+databasePropertyManager.action.addSubproperty,新增子屬性,Add subproperty
+databasePropertyManager.action.retype,變更類型,Change type
+databasePropertyManager.action.retypeHint,改變這個 property 的 value type。,Change the value type of this property.
+databasePropertyManager.action.retypeDisabled,這個物件還有子屬性，不能直接變更類型。,This object still has child properties and cannot be retyped.
+databasePropertyManager.action.delete,刪除屬性,Delete property
+databasePropertyManager.renameDialog.title,重新命名屬性,Rename property
+databasePropertyManager.renameDialog.label,屬性名稱,Property name
+databasePropertyManager.renameDialog.cancel,取消,Cancel
+databasePropertyManager.renameDialog.save,儲存,Save
+databasePropertyManager.retypeDialog.title,變更屬性型別,Change property type
+databasePropertyManager.retypeDialog.save,儲存,Save
+databasePropertyManager.createRootTitle,新增根屬性,Create root property
+databasePropertyManager.createRootSubmit,建立,Create
+databasePropertyManager.createSubTitle,新增子屬性,Create subproperty
+databasePropertyManager.createSubSubmit,建立,Create
+databasePropertyManager.deleteDialog.title,刪除屬性,Delete property
+databasePropertyManager.deleteDialog.body,確定要刪除屬性「{key}」嗎？,Delete property "{key}"?
+databasePropertyManager.deleteDialog.delete,刪除,Delete
+databasePropertyManager.sheet.createRootTitle,建立根屬性,Create root property
+databasePropertyManager.sheet.createChildTitle,建立子屬性,Create child property
+databasePropertyManager.drag.insertHere,放到這裡,Drop here
+databasePropertyManager.drag.rootTarget,拖曳到這裡移到主層級,Drop here to move to root
+databasePropertyManager.moveSheet.title,移動屬性,Move property
+databasePropertyManager.moveSheet.body,調整屬性「{key}」的位置或父層級。,Change the position or parent level of "{key}".
+databasePropertyManager.moveSheet.parent,父層級,Parent level
+databasePropertyManager.moveSheet.position,排序位置,Position
+databasePropertyManager.moveSheet.positionValue,第 {index} 個,Position {index}
+databasePropertyManager.moveSheet.save,套用移動,Apply move
+databasePropertyManager.error.confirm,知道了,OK
+databasePropertyManager.error.retypeBlockedTitle,無法變更類型,Cannot change type
+databasePropertyManager.error.retypeBlockedBody,這個 object property 還有子屬性，請先調整或移除子屬性後再變更類型。,This object property still has child properties. Update or remove them before changing its type.
+databasePropertyManager.error.deleteBlockedTitle,無法刪除屬性,Cannot delete property
+databasePropertyManager.error.deleteBlockedBody,還有人正在使用這個 property，所以現在不能刪除。,This property is still assigned to someone and cannot be deleted.
+databasePropertyManager.error.moveBlockedTitle,無法移動屬性,Cannot move property
+databasePropertyManager.error.moveTargetMustBeObjectBody,只能把 property 移到 object 類型底下。,A property can only be moved under an object property.
+databasePropertyManager.error.moveTargetCannotBeDescendantBody,不能把 property 移到自己的子層級底下。,A property cannot be moved into its own descendant.
+databasePropertyManager.error.moveScopeConflictBody,這個屬性不能直接移到這個層級底下，請換一個位置再試一次。,This property can't be moved directly under this level. Try a different position.
 appSettings.title,設定,Settings
 appSettings.section.appearance,外觀,Appearance
 appSettings.section.app,App,App
@@ -21,13 +102,20 @@ appSettings.themeSeed.subtitle,選擇 app 的主色調。,Choose the app accent 
 appSettings.themeSeed.label,顏色,Color
 appSettings.themeSeed.classicDeepPurple,經典深紫,Classic deep purple
 appSettings.themeSeed.violet,紫羅蘭,Violet
+appSettings.themeSeed.blue,靛藍,Indigo blue
 appSettings.themeSeed.teal,藍綠,Teal
+appSettings.themeSeed.green,森林綠,Forest green
 appSettings.themeSeed.coral,珊瑚,Coral
+appSettings.themeSeed.orange,暖橘,Warm orange
 appSettings.themeSeed.amber,琥珀,Amber
+appSettings.themeSeed.rose,玫瑰粉,Rose
 appSettings.themeSeed.berry,莓果,Berry
+appSettings.themeSeed.slate,石板灰,Slate
 appSettings.comingSoon,即將推出,Coming soon
 appSettings.checkUpdate.title,檢查更新,Check for updates
 appSettings.checkUpdate.subtitle,檢查 GitHub Release 是否有新版本。,Check GitHub Releases for a newer version.
+appSettings.openingAnimation.title,開場動畫,Opening animation
+appSettings.openingAnimation.subtitle,控制 app 開啟或重新進入前景時是否播放 Trace 開場動畫。,Control whether the Trace opening animation plays when the app opens or re-enters the foreground.
 appSettings.checkUpdate.availableTitle,發現新版本 {version},New version {version} available
 appSettings.checkUpdate.currentVersion,目前版本 {version},Current version {version}
 appSettings.checkUpdate.releaseNotes,版本說明,Release notes
@@ -108,6 +196,8 @@ personTodo.avatar.selected,已設定圖片,Image selected
 personTodo.avatar.select,選擇圖片,Choose image
 personTodo.avatar.change,更換圖片,Change image
 personTodo.avatar.remove,移除圖片,Remove image
+personTodo.avatar.cropTitle,裁切頭像,Crop avatar
+personTodo.avatar.processError,無法處理這張圖片，請換一張再試一次。,Unable to process this image. Try a different one.
 personTodo.tabs.todoList,待辦清單,To-do list
 personTodo.tabs.database,資料庫,Database
 personTodo.database.title,個人資料庫,Personal database

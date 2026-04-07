@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/database/database.dart';
 import '../data/models/personal_database_field_node.dart';
+import '../data/models/personal_database_management_error.dart';
 import '../data/models/personal_database_mention.dart';
 import '../data/models/personal_database_value_type.dart';
 import 'people_database_providers.dart';
@@ -38,6 +40,11 @@ final personalDatabaseAssignedFieldIdsProvider =
 final personalDatabaseMentionCodecProvider =
     Provider<PersonalDatabaseMentionCodec>((ref) {
       return const PersonalDatabaseMentionCodec();
+    });
+
+final personalDatabaseManagementLibraryProvider =
+    StreamProvider<List<PersonalDatabaseFieldNode>>((ref) {
+      return ref.watch(personalDatabaseDaoProvider).watchFieldLibrary();
     });
 
 final personalDatabaseActionsProvider = Provider<PersonalDatabaseActions>((
@@ -188,6 +195,171 @@ class PersonalDatabaseActions {
     return _ref
         .read(personalDatabaseDaoProvider)
         .deleteFieldDefinition(fieldId);
+  }
+
+  Future<void> updateManagedPropertyDefinition({
+    required String fieldId,
+    required String key,
+    required PersonalDatabaseValueType type,
+  }) async {
+    final library = await _ref
+        .read(personalDatabaseDaoProvider)
+        .getFieldLibrary();
+    final field = _findFieldInNodes(nodes: library, fieldId: fieldId);
+    if (field == null) {
+      return;
+    }
+
+    if (field.type == PersonalDatabaseValueType.object &&
+        field.children.isNotEmpty &&
+        type != PersonalDatabaseValueType.object) {
+      throw const PersonalDatabaseManagementException(
+        PersonalDatabaseManagementErrorCode.objectWithChildrenCannotRetype,
+      );
+    }
+
+    await updatePropertyDefinition(fieldId: fieldId, key: key, type: type);
+  }
+
+  Future<void> deleteManagedPropertyDefinition(String fieldId) async {
+    final assignmentCount = await _ref
+        .read(personalDatabaseDaoProvider)
+        .countAssignmentsForFieldSubtree(fieldId);
+    if (assignmentCount > 0) {
+      throw const PersonalDatabaseManagementException(
+        PersonalDatabaseManagementErrorCode.propertyInUseCannotDelete,
+      );
+    }
+
+    await deletePropertyDefinition(fieldId);
+  }
+
+  Future<String?> createManagedPropertyDefinition({
+    required String key,
+    required PersonalDatabaseValueType type,
+    String? parentFieldId,
+  }) async {
+    final trimmedKey = key.trim();
+    if (trimmedKey.isEmpty) {
+      return null;
+    }
+
+    final dao = _ref.read(personalDatabaseDaoProvider);
+    bool isPublic = true;
+    String? ownerPersonId;
+
+    if (parentFieldId != null) {
+      final parentDefinition = await dao.getFieldById(parentFieldId);
+      if (parentDefinition == null) {
+        return null;
+      }
+      isPublic = parentDefinition.isPublic;
+      ownerPersonId = parentDefinition.ownerPersonId;
+    }
+
+    final sortOrder = await dao.getNextFieldLibrarySortOrder(
+      parentFieldId: parentFieldId,
+    );
+    final fieldId = _uuid.v4();
+
+    await dao.createFieldDefinition(
+      id: fieldId,
+      key: trimmedKey,
+      type: type,
+      isPublic: isPublic,
+      ownerPersonId: ownerPersonId,
+      parentFieldId: parentFieldId,
+      sortOrder: sortOrder,
+    );
+
+    return fieldId;
+  }
+
+  Future<void> moveManagedProperty({
+    required String fieldId,
+    required String? newParentFieldId,
+    required int newIndex,
+  }) async {
+    final dao = _ref.read(personalDatabaseDaoProvider);
+    final fieldsBeforeMove = await dao.getAllFieldDefinitions();
+    final fieldsByIdBeforeMove = {
+      for (final field in fieldsBeforeMove) field.id: field,
+    };
+    final affectedPersonIds = await dao.getAssignedPersonIdsForFieldSubtree(
+      fieldId,
+    );
+    final oldAncestorIds = _ancestorIdsForField(
+      fieldId: fieldId,
+      fieldsById: fieldsByIdBeforeMove,
+    );
+    final library = await dao.getFieldLibrary();
+    final movingField = _findFieldInNodes(nodes: library, fieldId: fieldId);
+    if (movingField == null) {
+      return;
+    }
+
+    if (newParentFieldId != null) {
+      final targetParent = _findFieldInNodes(
+        nodes: library,
+        fieldId: newParentFieldId,
+      );
+      if (targetParent == null) {
+        return;
+      }
+      if (targetParent.type != PersonalDatabaseValueType.object) {
+        throw const PersonalDatabaseManagementException(
+          PersonalDatabaseManagementErrorCode.moveTargetMustBeObject,
+        );
+      }
+      if (targetParent.id == movingField.id ||
+          _containsField(movingField, targetParent.id)) {
+        throw const PersonalDatabaseManagementException(
+          PersonalDatabaseManagementErrorCode.moveTargetCannotBeDescendant,
+        );
+      }
+
+      final movingDefinition = await dao.getFieldById(fieldId);
+      final targetDefinition = await dao.getFieldById(newParentFieldId);
+      if (movingDefinition == null || targetDefinition == null) {
+        return;
+      }
+      if (movingDefinition.isPublic != targetDefinition.isPublic ||
+          movingDefinition.ownerPersonId != targetDefinition.ownerPersonId) {
+        throw const PersonalDatabaseManagementException(
+          PersonalDatabaseManagementErrorCode.moveScopeConflict,
+        );
+      }
+    }
+
+    await dao.moveFieldDefinition(
+      fieldId: fieldId,
+      newParentFieldId: newParentFieldId,
+      newSortOrder: newIndex,
+    );
+
+    final fieldsAfterMove = await dao.getAllFieldDefinitions();
+    final fieldsByIdAfterMove = {
+      for (final field in fieldsAfterMove) field.id: field,
+    };
+    final newAncestorIds = _ancestorIdsForField(
+      fieldId: fieldId,
+      fieldsById: fieldsByIdAfterMove,
+    );
+
+    await _ensureAncestorAssignmentsForSubtreeUsers(
+      personIds: affectedPersonIds,
+      ancestorIds: newAncestorIds,
+    );
+    await _removeStaleAncestorAssignments(
+      personIds: affectedPersonIds,
+      staleAncestorIds: oldAncestorIds
+          .where((ancestorId) => !newAncestorIds.contains(ancestorId))
+          .toList(growable: false),
+    );
+    await _syncRootAssignmentSortOrders(
+      personIds: affectedPersonIds,
+      fieldsById: fieldsByIdAfterMove,
+    );
   }
 
   Future<void> updatePropertyAndValueForPerson({
@@ -551,6 +723,148 @@ class PersonalDatabaseActions {
     }
 
     return visit(fieldTree);
+  }
+
+  PersonalDatabaseFieldNode? _findFieldInNodes({
+    required List<PersonalDatabaseFieldNode> nodes,
+    required String fieldId,
+  }) {
+    for (final node in nodes) {
+      if (node.id == fieldId) {
+        return node;
+      }
+      final child = _findFieldInNodes(nodes: node.children, fieldId: fieldId);
+      if (child != null) {
+        return child;
+      }
+    }
+    return null;
+  }
+
+  bool _containsField(PersonalDatabaseFieldNode root, String fieldId) {
+    for (final child in root.children) {
+      if (child.id == fieldId || _containsField(child, fieldId)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  List<String> _ancestorIdsForField({
+    required String fieldId,
+    required Map<String, PersonalDatabaseField> fieldsById,
+  }) {
+    final ancestorIds = <String>[];
+    var cursor = fieldsById[fieldId]?.parentFieldId;
+    while (cursor != null) {
+      ancestorIds.add(cursor);
+      cursor = fieldsById[cursor]?.parentFieldId;
+    }
+    return ancestorIds;
+  }
+
+  Future<void> _ensureAncestorAssignmentsForSubtreeUsers({
+    required Set<String> personIds,
+    required List<String> ancestorIds,
+  }) async {
+    if (personIds.isEmpty || ancestorIds.isEmpty) {
+      return;
+    }
+
+    final dao = _ref.read(personalDatabaseDaoProvider);
+    for (final personId in personIds) {
+      for (final ancestorId in ancestorIds.reversed) {
+        await dao.assignFieldToPerson(fieldId: ancestorId, personId: personId);
+      }
+    }
+  }
+
+  Future<void> _removeStaleAncestorAssignments({
+    required Set<String> personIds,
+    required List<String> staleAncestorIds,
+  }) async {
+    if (personIds.isEmpty || staleAncestorIds.isEmpty) {
+      return;
+    }
+
+    final dao = _ref.read(personalDatabaseDaoProvider);
+    for (final personId in personIds) {
+      for (final ancestorId in staleAncestorIds) {
+        final fieldTree = await dao.getFieldTreeForPerson(personId);
+        final ancestor = _findFieldInNodes(
+          nodes: fieldTree,
+          fieldId: ancestorId,
+        );
+        if (ancestor == null ||
+            ancestor.children.isNotEmpty ||
+            !_isEmptyContainerNode(ancestor)) {
+          continue;
+        }
+        await dao.removeFieldFromPerson(
+          fieldId: ancestorId,
+          personId: personId,
+        );
+      }
+    }
+  }
+
+  bool _isEmptyContainerNode(PersonalDatabaseFieldNode field) {
+    if (field.type == PersonalDatabaseValueType.object) {
+      return _asStringKeyedMap(field.value).isEmpty;
+    }
+    if (field.type == PersonalDatabaseValueType.list) {
+      final value = field.value;
+      return value is! List || value.isEmpty;
+    }
+    return false;
+  }
+
+  Future<void> _syncRootAssignmentSortOrders({
+    required Set<String> personIds,
+    required Map<String, PersonalDatabaseField> fieldsById,
+  }) async {
+    if (personIds.isEmpty) {
+      return;
+    }
+
+    final dao = _ref.read(personalDatabaseDaoProvider);
+    final rootFields =
+        fieldsById.values.where((field) => field.parentFieldId == null).toList()
+          ..sort((left, right) {
+            final sortCompare = left.sortOrder.compareTo(right.sortOrder);
+            if (sortCompare != 0) {
+              return sortCompare;
+            }
+            final createdAtCompare = left.createdAt.compareTo(right.createdAt);
+            if (createdAtCompare != 0) {
+              return createdAtCompare;
+            }
+            return left.key.compareTo(right.key);
+          });
+    final rootIndexById = {
+      for (var index = 0; index < rootFields.length; index++)
+        rootFields[index].id: index,
+    };
+
+    for (final personId in personIds) {
+      final assignedFieldIds = await dao.getAssignedFieldIdsForPerson(personId);
+      final orderedRootIds =
+          assignedFieldIds
+              .where(rootIndexById.containsKey)
+              .toList(growable: false)
+            ..sort(
+              (left, right) =>
+                  rootIndexById[left]!.compareTo(rootIndexById[right]!),
+            );
+
+      for (var index = 0; index < orderedRootIds.length; index++) {
+        await dao.updateFieldAssignmentSortOrder(
+          personId: personId,
+          fieldId: orderedRootIds[index],
+          sortOrder: index,
+        );
+      }
+    }
   }
 
   Object? _deepClone(Object? value) {

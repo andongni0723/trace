@@ -542,6 +542,7 @@ class _ChoosePropertyPageState extends State<ChoosePropertyPage> {
       return;
     }
 
+    AppHaptics.selection();
     switch (selectedAction) {
       case _PropertyMenuAction.rename:
         await _renameProperty(item);
@@ -731,6 +732,7 @@ class _HeaderCard extends StatelessWidget {
         if (query.isNotEmpty)
           IconButton(
             onPressed: () {
+              AppHaptics.selection();
               controller.clear();
               onQueryChanged('');
             },
