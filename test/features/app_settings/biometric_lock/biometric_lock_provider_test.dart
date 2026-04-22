@@ -46,9 +46,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final fakeClient = FakeBiometricAuthClient();
     final container = ProviderContainer(
-      overrides: [
-        biometricAuthClientProvider.overrideWithValue(fakeClient),
-      ],
+      overrides: [biometricAuthClientProvider.overrideWithValue(fakeClient)],
     );
     addTearDown(container.dispose);
 
@@ -75,18 +73,14 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final fakeClient = FakeBiometricAuthClient();
     final container = ProviderContainer(
-      overrides: [
-        biometricAuthClientProvider.overrideWithValue(fakeClient),
-      ],
+      overrides: [biometricAuthClientProvider.overrideWithValue(fakeClient)],
     );
     addTearDown(container.dispose);
 
     final notifier = container.read(biometricLockStateProvider.notifier);
     await notifier.setEnabled(true);
     await notifier.setReauthInterval(BiometricReauthInterval.fifteenMinutes);
-    await notifier.recordSuccessfulAuthentication(
-      DateTime(2026, 3, 30, 10),
-    );
+    await notifier.recordSuccessfulAuthentication(DateTime(2026, 3, 30, 10));
 
     final outcome = await notifier.handleLifecycleTrigger(
       BiometricLockTrigger.appResumed,

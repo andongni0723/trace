@@ -12,8 +12,7 @@ class PeopleDao extends DatabaseAccessor<AppDatabase> with _$PeopleDaoMixin {
   Expression<bool> _matchesId(String personId) => people.id.equals(personId);
 
   Selectable<PeopleData> _orderedPeople() {
-    return select(people)
-      ..orderBy([(table) => OrderingTerm.asc(table.name)]);
+    return select(people)..orderBy([(table) => OrderingTerm.asc(table.name)]);
   }
 
   Stream<List<PeopleData>> watchPeople() => _orderedPeople().watch();
@@ -21,13 +20,15 @@ class PeopleDao extends DatabaseAccessor<AppDatabase> with _$PeopleDaoMixin {
   Future<List<PeopleData>> getPeople() => _orderedPeople().get();
 
   Stream<PeopleData?> watchPersonById(String personId) {
-    return (select(people)..where((table) => _matchesId(personId)))
-        .watchSingleOrNull();
+    return (select(
+      people,
+    )..where((table) => _matchesId(personId))).watchSingleOrNull();
   }
 
   Future<PeopleData?> getPersonById(String personId) {
-    return (select(people)..where((table) => _matchesId(personId)))
-        .getSingleOrNull();
+    return (select(
+      people,
+    )..where((table) => _matchesId(personId))).getSingleOrNull();
   }
 
   Future<int> insertPerson({

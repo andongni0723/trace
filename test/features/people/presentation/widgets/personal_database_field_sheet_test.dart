@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:trace/features/people/data/models/personal_database_media_value.dart';
 import 'package:trace/features/people/data/models/personal_database_mention.dart';
 import 'package:trace/features/people/data/models/personal_database_mention_suggestion.dart';
 import 'package:trace/features/people/data/models/personal_database_value_type.dart';
@@ -15,8 +16,20 @@ class _PersonalDatabaseFieldSheetTestAssetLoader extends AssetLoader {
         'sheet': {
           'type': 'Type',
           'value': 'Value',
+          'chooseExistingMedia': 'Choose existing media file',
+          'chooseMediaInDevice': 'Choose in device',
+          'mediaEmpty': 'No media file selected',
           'invalidList': 'Invalid list',
           'invalidObject': 'Invalid object',
+        },
+        'type': {
+          'string': 'String',
+          'number': 'Number',
+          'boolean': 'Boolean',
+          'media': 'Media',
+          'null': 'Null',
+          'list': 'List',
+          'object': 'Object',
         },
       },
     },
@@ -175,6 +188,67 @@ void main() {
     expect(result!.type, PersonalDatabaseValueType.object);
     expect(result.value, isA<Map<String, Object?>>());
     expect(result.value, isEmpty);
+  });
+
+  testWidgets('media input shows picker actions instead of value text field', (
+    tester,
+  ) async {
+    PersonalDatabaseFieldSheetResult? result;
+
+    await tester.pumpWidget(
+      EasyLocalization(
+        supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+        path: 'unused',
+        assetLoader: const _PersonalDatabaseFieldSheetTestAssetLoader(),
+        fallbackLocale: const Locale('zh', 'TW'),
+        startLocale: const Locale('zh', 'TW'),
+        child: Builder(
+          builder: (localizationContext) {
+            return MaterialApp(
+              supportedLocales: localizationContext.supportedLocales,
+              localizationsDelegates: localizationContext.localizationDelegates,
+              locale: localizationContext.locale,
+              home: Builder(
+                builder: (materialContext) {
+                  return Scaffold(
+                    body: Center(
+                      child: FilledButton(
+                        onPressed: () async {
+                          result = await showPersonalDatabaseFieldSheet(
+                            context: materialContext,
+                            title: 'Edit property',
+                            submitLabel: 'Save',
+                            showKeyInput: false,
+                            initialType: PersonalDatabaseValueType.media,
+                          );
+                        },
+                        child: const Text('Open'),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Choose existing media file'), findsOneWidget);
+    expect(find.text('Choose in device'), findsOneWidget);
+    expect(find.text('No media file selected'), findsOneWidget);
+    expect(find.text('Value'), findsNothing);
+
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(result, isNotNull);
+    expect(result!.type, PersonalDatabaseValueType.media);
+    expect(result!.value, emptyPersonalDatabaseMediaValue);
   });
 
   testWidgets('string input decodes and re-encodes stored mention tokens', (

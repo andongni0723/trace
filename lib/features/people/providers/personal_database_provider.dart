@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../../../core/database/database.dart';
 import '../data/models/personal_database_field_node.dart';
 import '../data/models/personal_database_management_error.dart';
+import '../data/models/personal_database_media_value.dart';
 import '../data/models/personal_database_mention.dart';
 import '../data/models/personal_database_value_type.dart';
 import 'people_database_providers.dart';
@@ -944,6 +945,9 @@ class PersonalDatabaseActions {
         value is num ? value : num.tryParse('${value ?? ''}') ?? 0,
       ),
       PersonalDatabaseValueType.boolean => jsonEncode(value == true),
+      PersonalDatabaseValueType.media => jsonEncode(
+        personalDatabaseMediaValueFromObject(value).toJson(),
+      ),
       PersonalDatabaseValueType.nullType => 'null',
       PersonalDatabaseValueType.list => jsonEncode(
         value is List<dynamic> ? value : const <Object?>[],

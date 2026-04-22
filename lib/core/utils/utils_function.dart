@@ -18,7 +18,9 @@ int compareVersion(String left, String right) {
   final maxLength = max(leftParts.length, rightParts.length);
 
   for (var index = 0; index < maxLength; index++) {
-    final leftValue = leftParts.length > index ? int.parse(leftParts[index]) : 0;
+    final leftValue = leftParts.length > index
+        ? int.parse(leftParts[index])
+        : 0;
     final rightValue = rightParts.length > index
         ? int.parse(rightParts[index])
         : 0;

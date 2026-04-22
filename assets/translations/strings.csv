@@ -5,8 +5,10 @@ appShell.navigation.database,資料庫,Database
 appShell.drawer.openMenu,開啟側邊選單,Open navigation menu
 appShell.drawer.mainPage,主頁,Main page
 appShell.drawer.manageDatabaseProperties,管理資料庫屬性,Manage database properties
+appShell.drawer.mediaLibrary,媒體資料管理,Media library
 appShell.drawer.settings,設定,Settings
 appShell.drawer.feedback,意見回饋,Feedback
+common.cancel,取消,Cancel
 propertyManager.title,管理資料庫屬性,Manage database properties
 propertyManager.searchHint,搜尋屬性,Search properties
 propertyManager.libraryLabel,屬性庫,Property library
@@ -186,6 +188,31 @@ database.metrics.people,人物數,People
 database.metrics.todos,待辦總數,Total to-dos
 database.metrics.openTodos,未完成待辦,Open to-dos
 database.metrics.completedTodos,已完成待辦,Completed to-dos
+mediaLibrary.title,媒體資料管理,Media library
+mediaLibrary.searchHint,搜尋媒體檔名,Search media files
+mediaLibrary.fab.tooltip,新增媒體檔案,Add media file
+mediaLibrary.emptyTitle,尚未有媒體資料,No media files yet
+mediaLibrary.emptyBody,點右上角按鈕新增音訊、影片或圖片。,Use the action button to add audio, video, or picture files.
+mediaLibrary.emptySearchTitle,找不到符合的媒體,No matching media found
+mediaLibrary.emptySearchBody,試著換個檔名或媒體類型再搜尋。,Try another file name or media type.
+mediaLibrary.kind.image,圖片,Image
+mediaLibrary.kind.video,影片,Video
+mediaLibrary.kind.audio,音訊,Audio
+mediaLibrary.card.renameTooltip,重新命名檔案,Rename file
+mediaLibrary.loadError,讀取媒體資料失敗。,Unable to load media files.
+mediaLibrary.uploadError,無法匯入媒體檔案，請再試一次。,Unable to import media files. Please try again.
+mediaLibrary.openError,無法開啟媒體檔案。,Unable to open media file.
+mediaLibrary.renameDialog.title,重新命名媒體,Rename media
+mediaLibrary.renameDialog.fieldLabel,檔名,File name
+mediaLibrary.renameDialog.confirm,儲存,Save
+mediaLibrary.uploadSheet.imageTitle,圖片,Image
+mediaLibrary.uploadSheet.imageBody,從系統相簿選擇圖片。,Choose images from the system library.
+mediaLibrary.uploadSheet.videoTitle,影片,Video
+mediaLibrary.uploadSheet.videoBody,從系統相簿選擇影片。,Choose videos from the system library.
+mediaLibrary.uploadSheet.visualTitle,圖片與影片,Photos and videos
+mediaLibrary.uploadSheet.visualBody,從系統相簿選擇圖片或影片。,Choose photos or videos from the system library.
+mediaLibrary.uploadSheet.audioTitle,音訊,Audio
+mediaLibrary.uploadSheet.audioBody,選擇音訊檔案匯入媒體庫。,Choose audio files to import.
 personTodo.noteTitle,人物備註,Person note
 personTodo.noteEmpty,還沒有記錄這個人的備註。,No note has been recorded for this person yet.
 personTodo.noteFallback,"{name} 的個人備註尚未建立，最後更新時間是 {date}。","A detailed note for {name} has not been added yet. Last updated on {date}."
@@ -208,12 +235,14 @@ personTodo.database.loadError,讀取個人資料庫失敗。,Unable to load the 
 personTodo.database.type.string,字串,String
 personTodo.database.type.number,數字,Number
 personTodo.database.type.boolean,布林,Boolean
+personTodo.database.type.media,媒體,Media
 personTodo.database.type.object,物件,Object
 personTodo.database.type.list,陣列,List
 personTodo.database.type.null,空值,Null
 personTodo.database.fieldType.string,字串,String
 personTodo.database.fieldType.number,數字,Number
 personTodo.database.fieldType.boolean,布林,Boolean
+personTodo.database.fieldType.media,媒體,Media
 personTodo.database.fieldType.object,物件,Object
 personTodo.database.fieldType.list,陣列,List
 personTodo.database.fieldType.null,空值,Null
@@ -222,6 +251,7 @@ personTodo.database.action.edit,編輯,Edit
 personTodo.database.action.delete,刪除,Delete
 personTodo.database.menu.more,更多操作,More actions
 personTodo.database.actionError,個人資料庫更新失敗。,Unable to update the personal database.
+personTodo.database.mediaOpenError,無法開啟媒體檔案。,Unable to open media file.
 personTodo.database.deleteDialog.title,刪除屬性,Delete property
 personTodo.database.deleteDialog.body,確定要刪除屬性「{key}」嗎？,Delete property "{key}"?
 personTodo.database.deleteDialog.cancel,取消,Cancel
@@ -246,6 +276,13 @@ personTodo.database.sheet.save,儲存,Save
 personTodo.database.sheet.boolTrue,true,true
 personTodo.database.sheet.boolFalse,false,false
 personTodo.database.sheet.nullValue,此欄位值為 null。,This field value is null.
+personTodo.database.sheet.chooseExistingMedia,選擇既有媒體檔,Choose existing media file
+personTodo.database.sheet.chooseMediaInDevice,從裝置選擇,Choose in device
+personTodo.database.sheet.mediaEmpty,尚未選擇媒體檔,No media file selected
+personTodo.database.sheet.mediaImportError,無法匯入媒體檔案，請再試一次。,Unable to import media file. Please try again.
+personTodo.database.sheet.mediaPickerTitle,選擇媒體檔,Choose media file
+personTodo.database.sheet.mediaLibraryEmptyTitle,尚未有媒體資料,No media files yet
+personTodo.database.sheet.mediaLibraryEmptyBody,請先到媒體資料管理新增檔案，或回上一頁從裝置選擇。,Add files in Media Library first, or go back and choose from device.
 personTodo.database.sheet.objectHint,Object 內容請用新增子屬性管理。,Use add child property to manage object entries.
 personTodo.database.sheet.keyRequired,請輸入 key。,Key is required.
 personTodo.database.sheet.invalidNumber,數字格式不正確。,Invalid number format.

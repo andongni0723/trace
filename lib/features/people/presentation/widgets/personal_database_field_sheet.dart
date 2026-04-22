@@ -2,10 +2,16 @@ import 'dart:convert';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:trace/shared/widgets/bottom_sheet_keyboard_inset.dart';
 
 import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/utils/useful_extension.dart';
+import '../../../media_library/data/models/media_asset_kind.dart';
+import '../../../media_library/data/services/media_asset_picker.dart';
+import '../../../media_library/presentation/pages/select_media_library_page.dart';
+import '../../../media_library/providers/media_library_providers.dart';
+import '../../data/models/personal_database_media_value.dart';
 import '../../data/models/personal_database_mention.dart';
 import '../../data/models/personal_database_mention_suggestion.dart';
 import '../../data/models/personal_database_value_type.dart';
@@ -64,7 +70,7 @@ Future<PersonalDatabaseFieldSheetResult?> showPersonalDatabaseFieldSheet({
   );
 }
 
-class _PersonalDatabaseFieldSheet extends StatefulWidget {
+class _PersonalDatabaseFieldSheet extends ConsumerStatefulWidget {
   const _PersonalDatabaseFieldSheet({
     required this.title,
     required this.submitLabel,
@@ -96,12 +102,12 @@ class _PersonalDatabaseFieldSheet extends StatefulWidget {
   final PersonalDatabaseMentionCodec mentionCodec;
 
   @override
-  State<_PersonalDatabaseFieldSheet> createState() =>
+  ConsumerState<_PersonalDatabaseFieldSheet> createState() =>
       _PersonalDatabaseFieldSheetState();
 }
 
 class _PersonalDatabaseFieldSheetState
-    extends State<_PersonalDatabaseFieldSheet>
+    extends ConsumerState<_PersonalDatabaseFieldSheet>
     with LateInitMixin<_PersonalDatabaseFieldSheet> {
   static const _sheetFocusDelay = Duration(milliseconds: 220);
 
@@ -111,7 +117,9 @@ class _PersonalDatabaseFieldSheetState
   late final FocusNode _valueFocusNode;
   late PersonalDatabaseValueType _type;
   late String _lastValueText;
+  late PersonalDatabaseMediaValue _mediaValue;
   bool _boolValue = false;
+  bool _isImportingMedia = false;
   bool _suppressMentionTracking = false;
   String? _errorText;
   List<_DraftMentionRange> _stringMentions = const [];
@@ -144,6 +152,7 @@ class _PersonalDatabaseFieldSheetState
     _valueFocusNode = FocusNode();
     _type = widget.initialType;
     _boolValue = widget.initialValue == true;
+    _mediaValue = personalDatabaseMediaValueFromObject(widget.initialValue);
   }
 
   @override
@@ -227,7 +236,10 @@ class _PersonalDatabaseFieldSheetState
                   if (type == PersonalDatabaseValueType.boolean) {
                     _boolValue = false;
                   }
-                  _clearError();
+                  if (type == PersonalDatabaseValueType.media) {
+                    _mediaValue = emptyPersonalDatabaseMediaValue;
+                  }
+                  _errorText = null;
                 });
               },
               dropdownMenuEntries: PersonalDatabaseValueType.values
@@ -311,6 +323,10 @@ class _PersonalDatabaseFieldSheetState
       );
     }
 
+    if (_type == PersonalDatabaseValueType.media) {
+      return _buildMediaValueInput(context);
+    }
+
     final isJsonInput = _type.isContainer;
     return PersonalDatabaseMentionTextField(
       controller: _valueController,
@@ -335,6 +351,188 @@ class _PersonalDatabaseFieldSheetState
           borderRadius: BorderRadius.all(Radius.circular(16)),
         ),
       ),
+    );
+  }
+
+  Widget _buildMediaValueInput(BuildContext context) {
+    final valueLabel = _mediaValue.hasFile
+        ? _mediaValue.fileName
+        : 'personTodo.database.sheet.mediaEmpty'.tr();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 10,
+      children: [
+        Row(
+          spacing: 8,
+          children: [
+            Expanded(
+              child: FilledButton.tonal(
+                onPressed: _isImportingMedia ? null : _chooseExistingMedia,
+                child: Text(
+                  'personTodo.database.sheet.chooseExistingMedia'.tr(),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+            Expanded(
+              child: FilledButton.tonal(
+                onPressed: _isImportingMedia ? null : _chooseMediaInDevice,
+                child: Text(
+                  'personTodo.database.sheet.chooseMediaInDevice'.tr(),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ],
+        ),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: context.cs.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Text(
+            valueLabel,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.tt.bodyMedium?.copyWith(
+              color: _mediaValue.hasFile
+                  ? context.cs.onSurface
+                  : context.cs.onSurfaceVariant,
+              fontWeight: _mediaValue.hasFile ? FontWeight.w600 : null,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _chooseExistingMedia() async {
+    AppHaptics.selection();
+    final selectedValue = await showSelectMediaLibraryPage(context: context);
+    if (!mounted || selectedValue == null) {
+      return;
+    }
+
+    setState(() {
+      _mediaValue = selectedValue;
+      _errorText = null;
+    });
+  }
+
+  Future<void> _chooseMediaInDevice() async {
+    if (_isImportingMedia) {
+      return;
+    }
+
+    AppHaptics.selection();
+    final pickerMode = await _chooseDeviceMediaPickerMode();
+    if (!mounted || pickerMode == null) {
+      return;
+    }
+
+    setState(() {
+      _isImportingMedia = true;
+    });
+
+    try {
+      final importedAssets = await ref
+          .read(mediaLibraryActionsProvider)
+          .importMediaFiles(mode: pickerMode);
+      if (!mounted || importedAssets.isEmpty) {
+        return;
+      }
+
+      final importedAsset = importedAssets.first;
+      setState(() {
+        _mediaValue = PersonalDatabaseMediaValue(
+          mediaAssetId: importedAsset.id,
+          fileName: importedAsset.displayName,
+          kind: importedAsset.kind.dbKey,
+        );
+        _errorText = null;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _errorText = 'personTodo.database.sheet.mediaImportError'.tr();
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isImportingMedia = false;
+        });
+      }
+    }
+  }
+
+  Future<MediaAssetPickerMode?> _chooseDeviceMediaPickerMode() {
+    return showModalBottomSheet<MediaAssetPickerMode>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: context.cs.surface,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: 8,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    'personTodo.database.sheet.mediaPickerTitle'.tr(),
+                    style: sheetContext.tt.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.photo_library_outlined),
+                  title: Text('mediaLibrary.kind.image'.tr()),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  onTap: () {
+                    AppHaptics.selection();
+                    Navigator.of(sheetContext).pop(MediaAssetPickerMode.image);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.video_library_outlined),
+                  title: Text('mediaLibrary.kind.video'.tr()),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  onTap: () {
+                    AppHaptics.selection();
+                    Navigator.of(sheetContext).pop(MediaAssetPickerMode.video);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.audio_file_outlined),
+                  title: Text('mediaLibrary.kind.audio'.tr()),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  onTap: () {
+                    AppHaptics.selection();
+                    Navigator.of(
+                      sheetContext,
+                    ).pop(MediaAssetPickerMode.singleAudio);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -388,6 +586,8 @@ class _PersonalDatabaseFieldSheetState
         return null;
       case PersonalDatabaseValueType.boolean:
         return _boolValue;
+      case PersonalDatabaseValueType.media:
+        return _mediaValue;
       case PersonalDatabaseValueType.nullType:
         return null;
       case PersonalDatabaseValueType.list:
@@ -447,6 +647,7 @@ class _PersonalDatabaseFieldSheetState
       return null;
     }
     if (_type == PersonalDatabaseValueType.boolean ||
+        _type == PersonalDatabaseValueType.media ||
         _type == PersonalDatabaseValueType.nullType) {
       return null;
     }
@@ -579,6 +780,8 @@ class _PersonalDatabaseFieldSheetState
         return 0;
       case PersonalDatabaseValueType.boolean:
         return false;
+      case PersonalDatabaseValueType.media:
+        return emptyPersonalDatabaseMediaValue;
       case PersonalDatabaseValueType.nullType:
         return null;
       case PersonalDatabaseValueType.list:
@@ -711,6 +914,9 @@ String _initialValueText({
     PersonalDatabaseValueType.string => value.toString(),
     PersonalDatabaseValueType.number => value.toString(),
     PersonalDatabaseValueType.boolean => value == true ? 'true' : 'false',
+    PersonalDatabaseValueType.media => personalDatabaseMediaValueFromObject(
+      value,
+    ).fileName,
     PersonalDatabaseValueType.nullType => 'null',
     PersonalDatabaseValueType.list => jsonEncode(value),
     PersonalDatabaseValueType.object => jsonEncode(value),
@@ -722,6 +928,7 @@ String _defaultValueTextByType(PersonalDatabaseValueType type) {
     PersonalDatabaseValueType.string => '',
     PersonalDatabaseValueType.number => '0',
     PersonalDatabaseValueType.boolean => 'false',
+    PersonalDatabaseValueType.media => '',
     PersonalDatabaseValueType.nullType => 'null',
     PersonalDatabaseValueType.list => '[\n  \n]',
     PersonalDatabaseValueType.object => '{\n  \n}',

@@ -88,4 +88,119 @@ void main() {
 
     expect(tappedPersonId, 'person-1');
   });
+
+  testWidgets('disabled value row does not call onPressedValue', (
+    tester,
+  ) async {
+    var didPressValue = false;
+
+    await tester.pumpWidget(
+      EasyLocalization(
+        supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+        path: 'unused',
+        assetLoader: const _PersonalDatabaseEditorTestAssetLoader(),
+        fallbackLocale: const Locale('zh', 'TW'),
+        startLocale: const Locale('zh', 'TW'),
+        child: Builder(
+          builder: (context) {
+            return MaterialApp(
+              supportedLocales: context.supportedLocales,
+              localizationsDelegates: context.localizationDelegates,
+              locale: context.locale,
+              home: Scaffold(
+                body: PersonalDatabaseEditor(
+                  rows: const [
+                    PersonalDatabaseEditorRowData(
+                      nodeId: 'media-row',
+                      fieldId: 'field-media',
+                      rootFieldId: 'field-media',
+                      path: [],
+                      keyLabel: '照片',
+                      valuePreview: 'portrait.jpg',
+                      rawValue: null,
+                      valueType: PersonalDatabaseValueType.media,
+                      depth: 0,
+                      isExpanded: false,
+                      isContainer: false,
+                      isDefinitionBacked: true,
+                      parentIsList: false,
+                      isValueEnabled: false,
+                    ),
+                  ],
+                  padding: EdgeInsets.zero,
+                  onPressedValue: (_) {
+                    didPressValue = true;
+                  },
+                  onPressedAction: (_, __) {},
+                  onPressedMention: (_) {},
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('portrait.jpg'));
+    await tester.pumpAndSettle();
+
+    expect(didPressValue, isFalse);
+  });
+
+  testWidgets('media value row is tappable by default', (tester) async {
+    var didPressValue = false;
+
+    await tester.pumpWidget(
+      EasyLocalization(
+        supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+        path: 'unused',
+        assetLoader: const _PersonalDatabaseEditorTestAssetLoader(),
+        fallbackLocale: const Locale('zh', 'TW'),
+        startLocale: const Locale('zh', 'TW'),
+        child: Builder(
+          builder: (context) {
+            return MaterialApp(
+              supportedLocales: context.supportedLocales,
+              localizationsDelegates: context.localizationDelegates,
+              locale: context.locale,
+              home: Scaffold(
+                body: PersonalDatabaseEditor(
+                  rows: const [
+                    PersonalDatabaseEditorRowData(
+                      nodeId: 'media-row',
+                      fieldId: 'field-media',
+                      rootFieldId: 'field-media',
+                      path: [],
+                      keyLabel: '照片',
+                      valuePreview: 'portrait.jpg',
+                      rawValue: null,
+                      valueType: PersonalDatabaseValueType.media,
+                      depth: 0,
+                      isExpanded: false,
+                      isContainer: false,
+                      isDefinitionBacked: true,
+                      parentIsList: false,
+                    ),
+                  ],
+                  padding: EdgeInsets.zero,
+                  onPressedValue: (_) {
+                    didPressValue = true;
+                  },
+                  onPressedAction: (_, __) {},
+                  onPressedMention: (_) {},
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('portrait.jpg'));
+    await tester.pumpAndSettle();
+
+    expect(didPressValue, isTrue);
+  });
 }

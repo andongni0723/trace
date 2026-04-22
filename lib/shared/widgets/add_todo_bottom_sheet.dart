@@ -52,7 +52,6 @@ class _AddTodoBottomSheetState extends ConsumerState<AddTodoBottomSheet>
     _selectedParticipantIds = {
       ...?widget.initialTodo?.relatedPeople.map((person) => person.id),
     };
-
   }
 
   @override

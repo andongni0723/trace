@@ -53,7 +53,6 @@ class _AppOpeningAnimationOverlayState extends State<AppOpeningAnimationOverlay>
         widget.onCompleted();
       }
     });
-
   }
 
   @override

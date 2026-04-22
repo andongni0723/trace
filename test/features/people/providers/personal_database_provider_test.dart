@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trace/core/database/database.dart';
+import 'package:trace/features/people/data/models/personal_database_media_value.dart';
 import 'package:trace/features/people/data/models/personal_database_value_type.dart';
 import 'package:trace/features/people/providers/people_database_providers.dart';
 import 'package:trace/features/people/providers/personal_database_provider.dart';
@@ -72,6 +73,44 @@ void main() {
       expect(friendAssignedIds, {library.single.id});
       expect(ownerFields.single.value, 'Active');
       expect(friendFields.single.value, '');
+    });
+
+    test('creates media property values through provider actions', () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+
+      await database.peopleDao.createPerson(
+        id: 'owner',
+        name: 'Owner',
+        colorValue: 0xFF111111,
+      );
+
+      final container = ProviderContainer(
+        overrides: [appDatabaseProvider.overrideWithValue(database)],
+      );
+      addTearDown(container.dispose);
+
+      const mediaValue = PersonalDatabaseMediaValue(
+        mediaAssetId: 'asset-1',
+        fileName: 'voice-note.m4a',
+        kind: 'audio',
+      );
+
+      await container
+          .read(personalDatabaseActionsProvider)
+          .createPropertyAndAssignToPerson(
+            personId: 'owner',
+            key: 'voice note',
+            type: PersonalDatabaseValueType.media,
+            value: mediaValue,
+          );
+
+      final ownerFields = await database.personalDatabaseDao
+          .watchFieldTreeForPerson('owner')
+          .first;
+
+      expect(ownerFields.single.type, PersonalDatabaseValueType.media);
+      expect(ownerFields.single.value, mediaValue);
     });
 
     test('renameObjectKey rejects duplicate sibling keys', () async {

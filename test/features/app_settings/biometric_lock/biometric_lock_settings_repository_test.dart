@@ -31,23 +31,28 @@ void main() {
     expect(loaded.lastVerifiedAt, savedAt);
   });
 
-  test('saving a null verification timestamp clears the stored value', () async {
-    SharedPreferences.setMockInitialValues({
-      'biometric_lock.last_verified_at_ms': 1,
-    });
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
+  test(
+    'saving a null verification timestamp clears the stored value',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'biometric_lock.last_verified_at_ms': 1,
+      });
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
 
-    final repository = container.read(biometricLockSettingsRepositoryProvider);
+      final repository = container.read(
+        biometricLockSettingsRepositoryProvider,
+      );
 
-    await repository.save(
-      const BiometricLockSettings(
-        enabled: true,
-        reauthInterval: BiometricReauthInterval.nextOpen,
-      ),
-    );
+      await repository.save(
+        const BiometricLockSettings(
+          enabled: true,
+          reauthInterval: BiometricReauthInterval.nextOpen,
+        ),
+      );
 
-    final prefs = await SharedPreferences.getInstance();
-    expect(prefs.getInt('biometric_lock.last_verified_at_ms'), isNull);
-  });
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getInt('biometric_lock.last_verified_at_ms'), isNull);
+    },
+  );
 }

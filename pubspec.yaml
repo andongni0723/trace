@@ -43,6 +43,8 @@ dependencies:
   path_provider: ^2.1.5
   file_picker: ^10.3.10
   image_picker: ^1.2.1
+  image_picker_android: ^0.8.13+16
+  image_picker_platform_interface: ^2.11.1
   image_cropper: ^12.1.0
   share_plus: ^12.0.1
   intl: ^0.20.2
@@ -61,6 +63,7 @@ dependencies:
   path: ^1.9.1
   drift_flutter: ^0.2.7
   riverpod_annotation: ^4.0.2
+  flutter_expandable_fab: ^2.5.2
 
 dev_dependencies:
   flutter_test:

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:convert';
 
 import 'package:easy_localization/easy_localization.dart';
@@ -8,7 +9,9 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/database/database.dart';
 import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/utils/useful_extension.dart';
+import '../../../media_library/providers/media_library_providers.dart';
 import '../../data/models/personal_database_field_node.dart';
+import '../../data/models/personal_database_media_value.dart';
 import '../../data/models/personal_database_mention.dart';
 import '../../data/models/personal_database_mention_suggestion.dart';
 import '../../data/models/personal_database_value_type.dart';
@@ -327,7 +330,47 @@ class _PersonPersonalDatabaseTabState
       return;
     }
 
+    if (row.valueType == PersonalDatabaseValueType.media) {
+      await _openMediaValue(row.rawValue);
+      return;
+    }
+
     await _editRow(row, fieldsById);
+  }
+
+  Future<void> _openMediaValue(Object? rawValue) async {
+    final mediaValue = personalDatabaseMediaValueFromObject(rawValue);
+    if (!mediaValue.hasFile || mediaValue.mediaAssetId.trim().isEmpty) {
+      _showMediaOpenError();
+      return;
+    }
+
+    AppHaptics.primaryAction();
+    try {
+      final asset = await ref
+          .read(mediaAssetsDaoProvider)
+          .getMediaAssetById(mediaValue.mediaAssetId);
+      final filePath = asset?.filePath.trim();
+      if (filePath == null || filePath.isEmpty) {
+        _showMediaOpenError();
+        return;
+      }
+
+      final file = File(filePath);
+      if (!await file.exists()) {
+        _showMediaOpenError();
+        return;
+      }
+
+      final didOpen = await ref
+          .read(mediaAssetOpenerProvider)
+          .openMediaFile(filePath: file.path, mimeType: asset?.mimeType);
+      if (!didOpen) {
+        _showMediaOpenError();
+      }
+    } catch (_) {
+      _showMediaOpenError();
+    }
   }
 
   Future<void> _onPressedAction(
@@ -637,6 +680,14 @@ class _PersonPersonalDatabaseTabState
     );
   }
 
+  void _showMediaOpenError() {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text('personTodo.database.mediaOpenError'.tr())),
+      );
+  }
+
   void _handleMentionPressed(
     String personId,
     Map<String, PeopleData> peopleById,
@@ -680,6 +731,9 @@ PersonalDatabaseValueType _valueTypeFromValue(Object? value) {
   if (value is bool) {
     return PersonalDatabaseValueType.boolean;
   }
+  if (value is PersonalDatabaseMediaValue) {
+    return PersonalDatabaseValueType.media;
+  }
   if (value is List) {
     return PersonalDatabaseValueType.list;
   }
@@ -695,6 +749,9 @@ String _fieldValuePreview(
 }) {
   if (field.type == PersonalDatabaseValueType.object) {
     return '{${field.children.length}}';
+  }
+  if (field.type == PersonalDatabaseValueType.media) {
+    return _mediaFileNamePreview(field.value);
   }
   return _valuePreview(field.value, mentionCodec: mentionCodec);
 }
@@ -713,6 +770,9 @@ String _valuePreview(
   if (value is num || value is bool) {
     return '$value';
   }
+  if (value is PersonalDatabaseMediaValue) {
+    return _mediaFileNamePreview(value);
+  }
   if (value is Map) {
     return '{${value.length}}';
   }
@@ -720,6 +780,15 @@ String _valuePreview(
     return '[${value.length}]';
   }
   return '$value';
+}
+
+String _mediaFileNamePreview(Object? value) {
+  final mediaValue = personalDatabaseMediaValueFromObject(value);
+  final fileName = mediaValue.fileName.trim();
+  if (fileName.isEmpty) {
+    return 'personTodo.database.sheet.mediaEmpty'.tr();
+  }
+  return fileName;
 }
 
 List<PersonalDatabaseEditorValueSegment> _valueSegments(

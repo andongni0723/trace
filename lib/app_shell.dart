@@ -66,8 +66,9 @@ class _AppShellDrawer extends StatelessWidget {
   final BuildContext shellContext;
   static const _mainPageDestinationIndex = 0;
   static const _manageDatabasePropertiesDestinationIndex = 1;
-  static const _settingsDestinationIndex = 2;
-  static const _feedbackDestinationIndex = 3;
+  static const _mediaLibraryDestinationIndex = 2;
+  static const _settingsDestinationIndex = 3;
+  static const _feedbackDestinationIndex = 4;
 
   void _openSettings(BuildContext drawerContext) {
     final router = GoRouter.of(shellContext);
@@ -106,6 +107,12 @@ class _AppShellDrawer extends StatelessWidget {
     router.push('/manage-database-properties');
   }
 
+  void _openMediaLibrary(BuildContext drawerContext) {
+    final router = GoRouter.of(shellContext);
+    Navigator.of(drawerContext).pop();
+    router.push('/media-library');
+  }
+
   void _handleDestinationSelected(BuildContext context, int index) {
     AppHaptics.selection();
 
@@ -114,6 +121,8 @@ class _AppShellDrawer extends StatelessWidget {
         _openMainPage(context);
       case _manageDatabasePropertiesDestinationIndex:
         _openManageDatabaseProperties(context);
+      case _mediaLibraryDestinationIndex:
+        _openMediaLibrary(context);
       case _settingsDestinationIndex:
         _openSettings(context);
       case _feedbackDestinationIndex:
@@ -127,11 +136,12 @@ class _AppShellDrawer extends StatelessWidget {
       selectedIndex: _mainPageDestinationIndex,
       onDestinationSelected: (index) =>
           _handleDestinationSelected(context, index),
-      tilePadding : const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+      tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(28, 20, 28, 16),
           child: Row(
+            spacing: 12,
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(14),
@@ -142,7 +152,6 @@ class _AppShellDrawer extends StatelessWidget {
                   fit: BoxFit.cover,
                 ),
               ),
-              const SizedBox(width: 12),
               Text(
                 'Trace',
                 style: context.tt.headlineMedium?.copyWith(
@@ -162,6 +171,11 @@ class _AppShellDrawer extends StatelessWidget {
           icon: const Icon(Icons.inventory_2_outlined),
           selectedIcon: const Icon(Icons.inventory_2_rounded),
           label: Text('appShell.drawer.manageDatabaseProperties'.tr()),
+        ),
+        NavigationDrawerDestination(
+          icon: const Icon(Icons.perm_media_outlined),
+          selectedIcon: const Icon(Icons.perm_media_rounded),
+          label: Text('appShell.drawer.mediaLibrary'.tr()),
         ),
         const Divider(height: 1, thickness: 1),
         NavigationDrawerDestination(

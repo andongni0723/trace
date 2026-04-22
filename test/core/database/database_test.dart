@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trace/core/database/database.dart';
+import 'package:trace/features/people/data/models/personal_database_media_value.dart';
 import 'package:trace/features/people/data/models/personal_database_value_type.dart';
 
 void main() {
@@ -281,5 +282,30 @@ void main() {
         expect(friendFields.single.value, '7');
       },
     );
+
+    test('encodes and decodes media property values', () async {
+      await database.personalDatabaseDao.createFieldAndAssignToPerson(
+        id: 'field-media',
+        personId: 'owner',
+        key: 'photo',
+        type: PersonalDatabaseValueType.media,
+        jsonValue:
+            '{"mediaAssetId":"asset-1","fileName":"portrait.jpg","kind":"image"}',
+      );
+
+      final ownerFields = await database.personalDatabaseDao
+          .watchFieldTreeForPerson('owner')
+          .first;
+
+      expect(ownerFields.single.type, PersonalDatabaseValueType.media);
+      expect(
+        ownerFields.single.value,
+        const PersonalDatabaseMediaValue(
+          mediaAssetId: 'asset-1',
+          fileName: 'portrait.jpg',
+          kind: 'image',
+        ),
+      );
+    });
   });
 }

@@ -76,10 +76,7 @@ class BiometricLockNotifier extends AsyncNotifier<BiometricLockState> {
     final currentState = state.asData?.value ?? await _service.loadState();
     final updatedSettings = await _service.setReauthInterval(interval);
     state = AsyncData(
-      currentState.copyWith(
-        settings: updatedSettings,
-        lastErrorMessage: null,
-      ),
+      currentState.copyWith(settings: updatedSettings, lastErrorMessage: null),
     );
   }
 

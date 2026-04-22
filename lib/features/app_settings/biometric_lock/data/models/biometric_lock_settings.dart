@@ -2,11 +2,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'biometric_lock_settings.freezed.dart';
 
-enum BiometricReauthInterval {
-  nextOpen,
-  fifteenMinutes,
-  thirtyMinutes,
-}
+enum BiometricReauthInterval { nextOpen, fifteenMinutes, thirtyMinutes }
 
 extension BiometricReauthIntervalX on BiometricReauthInterval {
   static BiometricReauthInterval fromPreference(String? value) {

@@ -8,10 +8,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/database/database.dart';
+import '../../media_library/providers/media_library_providers.dart';
+import '../../people/data/models/personal_database_value_type.dart';
+import '../../people/providers/people_database_providers.dart';
 import '../biometric_lock/data/models/biometric_lock_settings.dart';
 import '../biometric_lock/data/repositories/biometric_lock_settings_repository.dart';
 import '../biometric_lock/providers/biometric_lock_provider.dart';
-import '../../people/providers/people_database_providers.dart';
 import '../data/models/app_settings.dart';
 import 'app_settings_provider.dart';
 
@@ -22,8 +24,8 @@ final appDataTransferProvider = Provider<AppDataTransferService>((ref) {
 const _backupAppId = 'trace';
 const _legacyBackupAppIds = {'people_todolist'};
 const _backupType = 'app_backup';
-const _backupVersion = 5;
-const _supportedBackupVersions = {1, 2, 3, 4, 5};
+const _backupVersion = 6;
+const _supportedBackupVersions = {1, 2, 3, 4, 5, 6};
 
 class AppDataTransferService {
   AppDataTransferService(this._ref);
@@ -96,6 +98,7 @@ class AppDataTransferService {
     final personalDatabaseValues = await database
         .select(database.personalDatabaseValues)
         .get();
+    final mediaAssets = await database.select(database.mediaAssets).get();
     final personAvatars = await _ref
         .read(personAvatarStorageProvider)
         .buildBackupPayload(
@@ -103,6 +106,22 @@ class AppDataTransferService {
             (person) => (personId: person.id, avatarPath: person.avatarPath),
           ),
         );
+    final mediaFiles = await _ref
+        .read(mediaAssetStorageProvider)
+        .buildBackupPayload(
+          mediaAssets.map(
+            (asset) => (mediaAssetId: asset.id, filePath: asset.filePath),
+          ),
+        );
+    final exportableMediaAssetIds = mediaFiles.keys.toSet();
+    final exportableMediaAssets = mediaAssets
+        .where((asset) => exportableMediaAssetIds.contains(asset.id))
+        .toList(growable: false);
+    final exportablePersonalDatabaseValues = _withoutUnavailableMediaReferences(
+      personalDatabaseValues: personalDatabaseValues,
+      personalDatabaseFields: personalDatabaseFields,
+      availableMediaAssetIds: exportableMediaAssetIds,
+    );
 
     return <String, Object?>{
       'appId': _backupAppId,
@@ -118,6 +137,10 @@ class AppDataTransferService {
       },
       'people': people.map((person) => person.toJson()).toList(growable: false),
       'personAvatars': personAvatars,
+      'mediaAssets': exportableMediaAssets
+          .map((asset) => asset.toJson())
+          .toList(growable: false),
+      'mediaFiles': mediaFiles,
       'todos': todos.map((todo) => todo.toJson()).toList(growable: false),
       'todoParticipants': participants
           .map((participant) => participant.toJson())
@@ -128,7 +151,7 @@ class AppDataTransferService {
       'personalDatabasePersonFields': personalDatabasePersonFields
           .map((item) => item.toJson())
           .toList(growable: false),
-      'personalDatabaseValues': personalDatabaseValues
+      'personalDatabaseValues': exportablePersonalDatabaseValues
           .map((value) => value.toJson())
           .toList(growable: false),
     };
@@ -147,6 +170,9 @@ class AppDataTransferService {
         (rawJson['personalDatabasePersonFields'] as List<dynamic>? ?? const []);
     final personalDatabaseValuesJson =
         (rawJson['personalDatabaseValues'] as List<dynamic>? ?? const []);
+    final mediaAssetsJson =
+        (rawJson['mediaAssets'] as List<dynamic>? ?? const []);
+    final mediaFilesJson = rawJson['mediaFiles'] as Map<String, dynamic>?;
     final personAvatarsJson = rawJson['personAvatars'] as Map<String, dynamic>?;
     final settingsJson = rawJson['settings'] as Map<String, dynamic>?;
     final biometricSettingsJson =
@@ -155,6 +181,13 @@ class AppDataTransferService {
     final previousPeople = await database.select(database.people).get();
     final previousManagedAvatarPaths = previousPeople
         .map((person) => person.avatarPath)
+        .whereType<String>()
+        .toSet();
+    final previousMediaAssets = await database
+        .select(database.mediaAssets)
+        .get();
+    final previousManagedMediaPaths = previousMediaAssets
+        .map((asset) => asset.filePath)
         .whereType<String>()
         .toSet();
 
@@ -194,16 +227,21 @@ class AppDataTransferService {
           ),
         )
         .toList(growable: false);
-    final personalDatabaseValues = personalDatabaseValuesJson
+    final importedPersonalDatabaseValues = personalDatabaseValuesJson
         .map(
           (item) => PersonalDatabaseValue.fromJson(
             Map<String, dynamic>.from(item as Map),
           ),
         )
         .toList(growable: false);
+    final importedMediaAssets = mediaAssetsJson
+        .map(
+          (item) => MediaAsset.fromJson(Map<String, dynamic>.from(item as Map)),
+        )
+        .toList(growable: false);
     final personalDatabasePersonFields =
         personalDatabasePersonFieldsJson.isEmpty
-        ? personalDatabaseValues
+        ? importedPersonalDatabaseValues
               .map(
                 (value) => PersonalDatabasePersonField(
                   fieldId: value.fieldId,
@@ -220,12 +258,34 @@ class AppDataTransferService {
                 ),
               )
               .toList(growable: false);
+    final mediaAssets = <MediaAsset>[];
+    final restoredMediaPaths = <String>{};
+    try {
+      final restoredMediaAssets = await _restoreMediaAssetsWithManagedFiles(
+        importedMediaAssets,
+        mediaFilesJson,
+      );
+      mediaAssets.addAll(restoredMediaAssets);
+      restoredMediaPaths.addAll(
+        restoredMediaAssets.map((asset) => asset.filePath).whereType<String>(),
+      );
+    } catch (_) {
+      await _cleanupMediaPaths(restoredMediaPaths);
+      rethrow;
+    }
+    final availableMediaAssetIds = mediaAssets.map((asset) => asset.id).toSet();
+    final personalDatabaseValues = _withoutUnavailableMediaReferences(
+      personalDatabaseValues: importedPersonalDatabaseValues,
+      personalDatabaseFields: personalDatabaseFields,
+      availableMediaAssetIds: availableMediaAssetIds,
+    );
 
     try {
       await database.transaction(() async {
         await database.delete(database.personalDatabaseValues).go();
         await database.delete(database.personalDatabasePersonFields).go();
         await database.delete(database.personalDatabaseFields).go();
+        await database.delete(database.mediaAssets).go();
         await database.delete(database.todoParticipants).go();
         await database.delete(database.todos).go();
         await database.delete(database.people).go();
@@ -258,10 +318,14 @@ class AppDataTransferService {
               personalDatabaseValues,
             );
           }
+          if (mediaAssets.isNotEmpty) {
+            batch.insertAll(database.mediaAssets, mediaAssets);
+          }
         });
       });
     } catch (_) {
       await _cleanupAvatarPaths(restoredAvatarPaths);
+      await _cleanupMediaPaths(restoredMediaPaths);
       rethrow;
     }
 
@@ -285,6 +349,10 @@ class AppDataTransferService {
       restoredAvatarPaths,
     );
     await _cleanupAvatarPaths(avatarPathsToDelete);
+    final mediaPathsToDelete = previousManagedMediaPaths.difference(
+      restoredMediaPaths,
+    );
+    await _cleanupMediaPaths(mediaPathsToDelete);
   }
 
   Future<AppSettings> _readCurrentSettings() async {
@@ -313,6 +381,10 @@ class AppDataTransferService {
         rawJson['people'] is List<dynamic> &&
         (rawJson['personAvatars'] == null ||
             rawJson['personAvatars'] is Map<String, dynamic>) &&
+        (rawJson['mediaAssets'] == null ||
+            rawJson['mediaAssets'] is List<dynamic>) &&
+        (rawJson['mediaFiles'] == null ||
+            rawJson['mediaFiles'] is Map<String, dynamic>) &&
         rawJson['todos'] is List<dynamic> &&
         rawJson['todoParticipants'] is List<dynamic> &&
         (rawJson['personalDatabaseFields'] == null ||
@@ -357,10 +429,96 @@ class AppDataTransferService {
     );
   }
 
+  Future<List<MediaAsset>> _restoreMediaAssetsWithManagedFiles(
+    List<MediaAsset> mediaAssets,
+    Map<String, dynamic>? mediaFilesJson,
+  ) async {
+    final mediaStorage = _ref.read(mediaAssetStorageProvider);
+
+    final restoredMediaAssets = await Future.wait(
+      mediaAssets.map((asset) async {
+        final encodedMediaFile = mediaFilesJson?[asset.id];
+        if (encodedMediaFile is! String || encodedMediaFile.isEmpty) {
+          return null;
+        }
+
+        final restoredMediaPath = await mediaStorage.restoreMediaFile(
+          mediaAssetId: asset.id,
+          base64Bytes: encodedMediaFile,
+          originalPath: asset.filePath,
+          originalFileName: asset.originalFileName,
+        );
+
+        return asset.copyWith(filePath: restoredMediaPath);
+      }),
+    );
+
+    return restoredMediaAssets.whereType<MediaAsset>().toList(growable: false);
+  }
+
+  List<PersonalDatabaseValue> _withoutUnavailableMediaReferences({
+    required List<PersonalDatabaseValue> personalDatabaseValues,
+    required List<PersonalDatabaseField> personalDatabaseFields,
+    required Set<String> availableMediaAssetIds,
+  }) {
+    final mediaFieldIds = personalDatabaseFields
+        .where(
+          (field) =>
+              personalDatabaseValueTypeFromDb(field.valueType) ==
+              PersonalDatabaseValueType.media,
+        )
+        .map((field) => field.id)
+        .toSet();
+
+    if (mediaFieldIds.isEmpty) {
+      return personalDatabaseValues;
+    }
+
+    return personalDatabaseValues
+        .where((value) {
+          if (!mediaFieldIds.contains(value.fieldId)) {
+            return true;
+          }
+
+          final mediaAssetId = _mediaAssetIdFromJsonValue(value.jsonValue);
+          if (mediaAssetId == null || mediaAssetId.isEmpty) {
+            return true;
+          }
+
+          return availableMediaAssetIds.contains(mediaAssetId);
+        })
+        .toList(growable: false);
+  }
+
+  String? _mediaAssetIdFromJsonValue(String jsonValue) {
+    try {
+      final decoded = jsonDecode(jsonValue);
+      if (decoded is! Map) {
+        return null;
+      }
+
+      final mediaAssetId = decoded['mediaAssetId'];
+      if (mediaAssetId is! String) {
+        return null;
+      }
+
+      return mediaAssetId.trim();
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _cleanupAvatarPaths(Iterable<String> avatarPaths) async {
     final avatarStorage = _ref.read(personAvatarStorageProvider);
     for (final avatarPath in avatarPaths) {
       await avatarStorage.deleteManagedAvatar(avatarPath);
+    }
+  }
+
+  Future<void> _cleanupMediaPaths(Iterable<String> mediaPaths) async {
+    final mediaStorage = _ref.read(mediaAssetStorageProvider);
+    for (final mediaPath in mediaPaths) {
+      await mediaStorage.deleteManagedMediaFile(mediaPath);
     }
   }
 }

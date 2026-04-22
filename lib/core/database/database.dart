@@ -8,7 +8,10 @@ import 'package:path_provider/path_provider.dart';
 import '../../features/people/data/daos/people_dao.dart';
 import '../../features/people/data/daos/personal_database_dao.dart';
 import '../../features/people/data/daos/todos_dao.dart';
+import '../../features/media_library/data/daos/media_assets_dao.dart';
+import '../../features/media_library/data/models/media_asset_kind.dart';
 import 'tables/people.dart';
+import 'tables/media_assets.dart';
 import 'tables/personal_database_fields.dart';
 import 'tables/personal_database_person_fields.dart';
 import 'tables/personal_database_values.dart';
@@ -17,22 +20,25 @@ import 'tables/todos.dart';
 
 part 'database.g.dart';
 
+typedef MediaAssetData = MediaAsset;
+
 @DriftDatabase(
   tables: [
     People,
+    MediaAssets,
     Todos,
     TodoParticipants,
     PersonalDatabaseFields,
     PersonalDatabasePersonFields,
     PersonalDatabaseValues,
   ],
-  daos: [PeopleDao, TodosDao, PersonalDatabaseDao],
+  daos: [PeopleDao, TodosDao, PersonalDatabaseDao, MediaAssetsDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -69,6 +75,9 @@ class AppDatabase extends _$AppDatabase {
           SET is_public = 1,
               owner_person_id = NULL
         ''');
+      }
+      if (from < 6) {
+        await migrator.createTable(mediaAssets);
       }
     },
     beforeOpen: (details) async {

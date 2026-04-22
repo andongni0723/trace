@@ -17,6 +17,7 @@ class _AppShellManageDatabasePropertiesAssetLoader extends AssetLoader {
         'openMenu': '開啟側邊選單',
         'mainPage': '主頁',
         'manageDatabaseProperties': '管理資料庫屬性',
+        'mediaLibrary': '媒體資料管理',
         'settings': '設定',
         'feedback': '意見回饋',
       },
@@ -29,6 +30,16 @@ class _AppShellManageDatabasePropertiesAssetLoader extends AssetLoader {
       'emptyTitle': '還沒有資料庫屬性',
       'emptyBody': '建立屬性後，就能在這裡重新整理整個 property tree。',
     },
+    'mediaLibrary': {
+      'title': '媒體資料管理',
+      'searchHint': '搜尋媒體檔名',
+      'fab': {'tooltip': '新增媒體檔案'},
+      'emptyTitle': '尚未有媒體資料',
+      'emptyBody': '點右上角按鈕新增音訊、影片或圖片。',
+      'emptySearchTitle': '找不到符合的媒體',
+      'emptySearchBody': '試著換個檔名或媒體類型再搜尋。',
+    },
+    'common': {'cancel': '取消'},
     'messages': {
       'searchHint': '搜尋訊息',
       'tabs': {'all': '全部', 'unread': '未讀', 'groups': '群組'},
@@ -63,6 +74,7 @@ void main() {
   testWidgets('drawer can navigate to manage database properties page', (
     tester,
   ) async {
+    router.go('/');
     final database = AppDatabase(NativeDatabase.memory());
     addTearDown(database.close);
 
@@ -107,6 +119,60 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('管理資料庫屬性'), findsWidgets);
+    expect(find.byType(SearchBar), findsOneWidget);
+
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
+    await tester.pump(const Duration(milliseconds: 1));
+  });
+
+  testWidgets('drawer can navigate to media library page', (tester) async {
+    router.go('/');
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(database),
+          peopleProvider.overrideWith((ref) => Stream.value(const [])),
+          personOpenTodoCountProvider.overrideWith((ref, personId) {
+            return Stream.value(0);
+          }),
+          personPreviewTodoProvider.overrideWith((ref, personId) {
+            return Stream.value(null);
+          }),
+        ],
+        child: EasyLocalization(
+          supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+          path: 'unused',
+          assetLoader: const _AppShellManageDatabasePropertiesAssetLoader(),
+          fallbackLocale: const Locale('zh', 'TW'),
+          startLocale: const Locale('zh', 'TW'),
+          child: Builder(
+            builder: (context) {
+              return MaterialApp.router(
+                supportedLocales: context.supportedLocales,
+                localizationsDelegates: context.localizationDelegates,
+                locale: context.locale,
+                routerConfig: router,
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('開啟側邊選單'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('媒體資料管理'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('媒體資料管理'), findsWidgets);
     expect(find.byType(SearchBar), findsOneWidget);
 
     await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));

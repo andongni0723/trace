@@ -22,6 +22,7 @@ class PersonalDatabaseEditorRowData {
     required this.isContainer,
     required this.isDefinitionBacked,
     required this.parentIsList,
+    this.isValueEnabled = true,
     this.valueSegments = const [],
   });
 
@@ -38,6 +39,7 @@ class PersonalDatabaseEditorRowData {
   final bool isContainer;
   final bool isDefinitionBacked;
   final bool parentIsList;
+  final bool isValueEnabled;
   final List<PersonalDatabaseEditorValueSegment> valueSegments;
 }
 
@@ -205,7 +207,7 @@ class _PersonalDatabaseEditorRow extends StatelessWidget {
                 flex: 5,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(4),
-                  onTap: onPressedValue,
+                  onTap: row.isValueEnabled ? onPressedValue : null,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,

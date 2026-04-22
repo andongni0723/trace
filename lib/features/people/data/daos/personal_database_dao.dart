@@ -8,6 +8,7 @@ import '../../../../core/database/tables/personal_database_fields.dart';
 import '../../../../core/database/tables/personal_database_person_fields.dart';
 import '../../../../core/database/tables/personal_database_values.dart';
 import '../models/personal_database_field_node.dart';
+import '../models/personal_database_media_value.dart';
 import '../models/personal_database_value_type.dart';
 
 part 'personal_database_dao.g.dart';
@@ -867,6 +868,9 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
       PersonalDatabaseValueType.string => decoded is String ? decoded : '',
       PersonalDatabaseValueType.number => decoded is num ? decoded : 0,
       PersonalDatabaseValueType.boolean => decoded is bool ? decoded : false,
+      PersonalDatabaseValueType.media => personalDatabaseMediaValueFromObject(
+        decoded,
+      ),
       PersonalDatabaseValueType.nullType => null,
       PersonalDatabaseValueType.list => decoded is List ? decoded : const [],
       PersonalDatabaseValueType.object =>
@@ -886,6 +890,9 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
         value is num ? value : num.tryParse('${value ?? ''}') ?? 0,
       ),
       PersonalDatabaseValueType.boolean => jsonEncode(value == true),
+      PersonalDatabaseValueType.media => jsonEncode(
+        personalDatabaseMediaValueFromObject(value).toJson(),
+      ),
       PersonalDatabaseValueType.nullType => 'null',
       PersonalDatabaseValueType.list => jsonEncode(
         value is List<dynamic> ? value : const <Object?>[],
@@ -920,6 +927,9 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
       ),
       PersonalDatabaseValueType.boolean => jsonEncode(
         decoded is bool ? decoded : false,
+      ),
+      PersonalDatabaseValueType.media => jsonEncode(
+        personalDatabaseMediaValueFromObject(decoded).toJson(),
       ),
       PersonalDatabaseValueType.nullType => 'null',
       PersonalDatabaseValueType.list => jsonEncode(

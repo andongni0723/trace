@@ -1,3 +1,22 @@
+## v1.5.0
+
+更新內容:
+- 新增媒體資料管理頁，可從側邊欄進入，支援搜尋、匯入圖片/影片/音訊、重新命名與開啟媒體檔案。
+- 新增媒體資料庫資料表、DAO、Riverpod provider 與檔案儲存/挑選/縮圖/開啟服務，並補上 Android / iOS 檔案分享與安全存取設定。
+- 擴充 personal database，新增媒體欄位型別，可從既有媒體庫選擇或直接從裝置匯入媒體作為人物資料。
+- 改善資料匯入匯出流程，讓備份可保留媒體資料、媒體欄位與相關 app/生物辨識設定。
+- 更新待辦與人物資料庫 schema、關聯查詢與 generated database code，支援媒體資產與更完整的任務/人物資料關聯。
+- 補強媒體庫、個人資料庫媒體欄位、資料匯入匯出、生物辨識設定與資料庫層測試。
+
+Updates:
+- Added a media library page in the navigation drawer with search, image/video/audio import, rename, and open actions.
+- Added media database tables, DAO, Riverpod providers, and file storage/picker/thumbnail/opening services, including Android and iOS file access configuration.
+- Expanded the personal database with a media field type that can reference existing library items or import media directly from the device.
+- Improved backup import/export so media assets, media field values, and related app/biometric settings are preserved.
+- Updated todo and people database schemas, relationship queries, and generated database code to support media assets and richer task/person data links.
+- Added coverage for the media library, personal database media fields, data import/export, biometric settings, and database layer behavior.
+
+
 ## v1.4.0
 
 更新內容:

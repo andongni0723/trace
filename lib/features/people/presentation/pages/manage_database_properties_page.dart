@@ -61,6 +61,7 @@ class _ManageDatabasePropertiesPageState
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
             child: SearchBar(
+              elevation: const WidgetStatePropertyAll<double>(0),
               leading: const Icon(Icons.search_rounded),
               hintText: 'databasePropertyManager.searchHint'.tr(),
               onChanged: _handleSearchChanged,

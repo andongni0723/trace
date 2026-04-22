@@ -7,25 +7,28 @@ import 'package:flutter/foundation.dart';
 import 'useful_extension.dart';
 import 'utils_function.dart';
 
-typedef GithubReleaseAsset =
-    ({String name, int sizeBytes, String? downloadUrl});
-typedef GithubReleaseInfo =
-    ({String tag, String notes, GithubReleaseAsset? asset});
+typedef GithubReleaseAsset = ({
+  String name,
+  int sizeBytes,
+  String? downloadUrl,
+});
+typedef GithubReleaseInfo = ({
+  String tag,
+  String notes,
+  GithubReleaseAsset? asset,
+});
 
 class GitHubUpdateChecker {
-  GitHubUpdateChecker({
-    required this.owner,
-    required this.repo,
-    Dio? dio,
-  }) : _dio =
-           dio ??
-           Dio(
-             BaseOptions(
-               baseUrl: _apiBaseUrl,
-               connectTimeout: const Duration(seconds: 10),
-               receiveTimeout: const Duration(seconds: 10),
-             ),
-           );
+  GitHubUpdateChecker({required this.owner, required this.repo, Dio? dio})
+    : _dio =
+          dio ??
+          Dio(
+            BaseOptions(
+              baseUrl: _apiBaseUrl,
+              connectTimeout: const Duration(seconds: 10),
+              receiveTimeout: const Duration(seconds: 10),
+            ),
+          );
 
   static const String _apiBaseUrl = 'https://api.github.com';
 
@@ -101,9 +104,7 @@ class GitHubUpdateChecker {
     }
   }
 
-  Future<bool> hasNewerRelease({
-    String? currentVersion,
-  }) async {
+  Future<bool> hasNewerRelease({String? currentVersion}) async {
     final resolvedCurrentVersion = currentVersion ?? await getAppVersion();
     final latestRelease = await fetchLatestRelease();
     if (latestRelease == null) return false;
@@ -114,4 +115,3 @@ class GitHubUpdateChecker {
     );
   }
 }
-

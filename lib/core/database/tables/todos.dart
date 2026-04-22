@@ -5,7 +5,8 @@ import 'people.dart';
 class Todos extends Table {
   TextColumn get id => text()();
 
-  TextColumn get personId => text().references(People, #id, onDelete: KeyAction.cascade)();
+  TextColumn get personId =>
+      text().references(People, #id, onDelete: KeyAction.cascade)();
 
   TextColumn get title => text().withLength(min: 1, max: 280)();
 

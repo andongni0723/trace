@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:trace/core/utils/app_haptics.dart';
 import 'package:trace/core/utils/useful_extension.dart';
 import 'package:trace/features/people/data/models/personal_database_field_node.dart';
+import 'package:trace/features/people/data/models/personal_database_media_value.dart';
 import 'package:trace/features/people/data/models/personal_database_value_type.dart';
 
 class ChoosePropertyPage extends StatefulWidget {
@@ -971,6 +972,9 @@ String _valuePreview(Object? value) {
   }
   if (value is num || value is bool) {
     return '$value';
+  }
+  if (value is PersonalDatabaseMediaValue) {
+    return value.fileName.trim().isEmpty ? '""' : value.fileName;
   }
   if (value is Map) {
     return '{${value.length}}';

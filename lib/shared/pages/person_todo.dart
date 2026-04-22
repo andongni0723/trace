@@ -591,22 +591,6 @@ class _RenamePersonSheetState extends ConsumerState<_RenamePersonSheet>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    _selectedAvatarPath == null
-                        ? 'personTodo.avatar.none'.tr()
-                        : 'personTodo.avatar.selected'.tr(),
-                    style: context.tt.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'personTodo.avatar.subtitle'.tr(),
-                    style: context.tt.bodyMedium?.copyWith(
-                      color: context.cs.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
