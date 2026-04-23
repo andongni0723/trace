@@ -14,6 +14,8 @@ import 'people_database_providers.dart';
 typedef PersonalDatabaseFieldViewModel = PersonalDatabaseFieldNode;
 typedef PersonalDatabaseLibraryFieldViewModel = PersonalDatabaseFieldNode;
 
+const personalDatabaseArrayTemplateMetadataKey = '__traceArrayElementTemplates';
+
 final personalDatabaseLibraryProvider =
     StreamProvider<List<PersonalDatabaseFieldNode>>((ref) {
       return ref.watch(personalDatabaseDaoProvider).watchFieldLibrary();
@@ -190,6 +192,45 @@ class PersonalDatabaseActions {
     return _ref
         .read(personalDatabaseDaoProvider)
         .updatePropertyDefinition(fieldId: fieldId, key: key, type: type);
+  }
+
+  Future<void> updateArrayElementType({
+    required String fieldId,
+    required PersonalDatabaseValueType? elementType,
+  }) {
+    return _ref
+        .read(personalDatabaseDaoProvider)
+        .updateArrayElementType(fieldId: fieldId, elementType: elementType);
+  }
+
+  Future<void> updateArrayElementTemplate({
+    required String fieldId,
+    required Map<String, Object?> template,
+  }) {
+    return _ref
+        .read(personalDatabaseDaoProvider)
+        .updateArrayElementTemplate(
+          fieldId: fieldId,
+          jsonValue: jsonEncode(template),
+        );
+  }
+
+  Future<void> addArrayElementFromTemplate({
+    required String personId,
+    required PersonalDatabaseFieldNode field,
+  }) async {
+    if (field.type != PersonalDatabaseValueType.list ||
+        !field.hasArrayElementTemplate) {
+      return;
+    }
+
+    final root = _deepClone(field.value);
+    if (root is! List<dynamic>) {
+      return;
+    }
+
+    root.add(_materializeTemplateValue(field.arrayElementTemplate));
+    await updateFieldValue(personId: personId, field: field, value: root);
   }
 
   Future<void> deletePropertyDefinition(String fieldId) {
@@ -873,6 +914,32 @@ class PersonalDatabaseActions {
       return null;
     }
     return jsonDecode(jsonEncode(value));
+  }
+
+  Object? _materializeTemplateValue(Object? value) {
+    final cloned = _deepClone(value);
+    return _stripTemplateMetadata(cloned);
+  }
+
+  Object? _stripTemplateMetadata(Object? value) {
+    if (value is Map<String, dynamic>) {
+      return {
+        for (final entry in value.entries)
+          if (entry.key != personalDatabaseArrayTemplateMetadataKey)
+            entry.key: _stripTemplateMetadata(entry.value),
+      };
+    }
+    if (value is Map) {
+      return {
+        for (final entry in value.entries)
+          if ('${entry.key}' != personalDatabaseArrayTemplateMetadataKey)
+            '${entry.key}': _stripTemplateMetadata(entry.value),
+      };
+    }
+    if (value is List) {
+      return value.map(_stripTemplateMetadata).toList(growable: false);
+    }
+    return value;
   }
 
   Map<String, Object?> _asStringKeyedMap(Object? value) {

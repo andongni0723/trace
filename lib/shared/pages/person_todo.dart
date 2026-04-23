@@ -413,7 +413,7 @@ class _PersonTodoPageState extends ConsumerState<PersonTodoPage>
                 ),
                 PersonPersonalDatabaseTab(
                   personId: widget.personId,
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
                 ),
               ],
             ),

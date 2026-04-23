@@ -11,6 +11,11 @@ class PersonalDatabaseFields extends Table {
 
   TextColumn get valueType => text().withLength(min: 1, max: 20)();
 
+  TextColumn get arrayElementType =>
+      text().withLength(min: 1, max: 20).nullable()();
+
+  TextColumn get arrayElementTemplateJsonValue => text().nullable()();
+
   BoolColumn get isPublic => boolean().withDefault(const Constant(true))();
 
   TextColumn get ownerPersonId =>

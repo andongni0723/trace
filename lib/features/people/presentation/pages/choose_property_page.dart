@@ -5,6 +5,7 @@ import 'package:trace/core/utils/useful_extension.dart';
 import 'package:trace/features/people/data/models/personal_database_field_node.dart';
 import 'package:trace/features/people/data/models/personal_database_media_value.dart';
 import 'package:trace/features/people/data/models/personal_database_value_type.dart';
+import 'package:trace/features/people/presentation/widgets/personal_database_type_tags.dart';
 
 class ChoosePropertyPage extends StatefulWidget {
   const ChoosePropertyPage({
@@ -37,6 +38,7 @@ class ChoosePropertyItem {
     this.parentId,
     this.children = const [],
     this.isAssignedToCurrentPerson = false,
+    this.arrayElementType,
   });
 
   factory ChoosePropertyItem.fromFieldNode(
@@ -51,6 +53,7 @@ class ChoosePropertyItem {
       rawValue: field.value,
       valuePreview: _valuePreview(field.value),
       parentId: field.parentFieldId,
+      arrayElementType: field.arrayElementType,
       children: field.children
           .map(
             (child) => ChoosePropertyItem.fromFieldNode(
@@ -72,6 +75,7 @@ class ChoosePropertyItem {
   final String? parentId;
   final List<ChoosePropertyItem> children;
   final bool isAssignedToCurrentPerson;
+  final PersonalDatabaseValueType? arrayElementType;
 
   bool get hasChildren => children.isNotEmpty;
   bool get isContainer => hasChildren || valueType.isContainer;
@@ -85,6 +89,7 @@ class ChoosePropertyItem {
     String? parentId,
     List<ChoosePropertyItem>? children,
     bool? isAssignedToCurrentPerson,
+    PersonalDatabaseValueType? arrayElementType,
   }) {
     return ChoosePropertyItem(
       id: id,
@@ -97,6 +102,7 @@ class ChoosePropertyItem {
       children: children ?? this.children,
       isAssignedToCurrentPerson:
           isAssignedToCurrentPerson ?? this.isAssignedToCurrentPerson,
+      arrayElementType: arrayElementType ?? this.arrayElementType,
     );
   }
 }
@@ -802,6 +808,18 @@ class _PropertyTile extends StatelessWidget {
                         label: item.subtitle,
                         tagKey: ValueKey('choose-property-type-tag-${item.id}'),
                       ),
+                      if (item.valueType == PersonalDatabaseValueType.list) ...[
+                        const SizedBox(width: 8),
+                        ArrayElementTypeTag(
+                          label:
+                              item.arrayElementType?.localizationKey.tr() ??
+                              'databasePropertyManager.arrayElement.unspecified'
+                                  .tr(),
+                          tagKey: ValueKey(
+                            'choose-property-element-type-tag-${item.id}',
+                          ),
+                        ),
+                      ],
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(

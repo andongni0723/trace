@@ -11,6 +11,9 @@ class PersonalDatabaseFieldNode {
     required this.rawJsonValue,
     required this.value,
     required this.children,
+    this.arrayElementType,
+    this.arrayElementTemplateJsonValue,
+    this.arrayElementTemplate,
   });
 
   final String id;
@@ -22,6 +25,13 @@ class PersonalDatabaseFieldNode {
   final String rawJsonValue;
   final Object? value;
   final List<PersonalDatabaseFieldNode> children;
+  final PersonalDatabaseValueType? arrayElementType;
+  final String? arrayElementTemplateJsonValue;
+  final Map<String, Object?>? arrayElementTemplate;
 
   bool get isObject => type == PersonalDatabaseValueType.object;
+
+  bool get hasArrayElementTemplate =>
+      arrayElementType == PersonalDatabaseValueType.object &&
+      arrayElementTemplate != null;
 }

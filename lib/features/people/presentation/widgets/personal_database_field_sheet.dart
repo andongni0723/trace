@@ -41,6 +41,7 @@ Future<PersonalDatabaseFieldSheetResult?> showPersonalDatabaseFieldSheet({
   String? initialKey,
   PersonalDatabaseValueType initialType = PersonalDatabaseValueType.string,
   Object? initialValue,
+  List<PersonalDatabaseValueType>? availableTypes,
   List<PersonalDatabaseMentionSuggestion> mentionSuggestions = const [],
   PersonalDatabaseMentionSuggestionSelected? onMentionSelected,
   PersonalDatabaseMentionCodec mentionCodec =
@@ -63,6 +64,7 @@ Future<PersonalDatabaseFieldSheetResult?> showPersonalDatabaseFieldSheet({
       initialKey: initialKey,
       initialType: initialType,
       initialValue: initialValue,
+      availableTypes: availableTypes ?? PersonalDatabaseValueType.values,
       mentionSuggestions: mentionSuggestions,
       onMentionSelected: onMentionSelected,
       mentionCodec: mentionCodec,
@@ -80,6 +82,7 @@ class _PersonalDatabaseFieldSheet extends ConsumerStatefulWidget {
     this.readOnlyKeyText,
     this.readOnlyTypeText,
     required this.initialType,
+    required this.availableTypes,
     required this.mentionSuggestions,
     required this.mentionCodec,
     this.initialKey,
@@ -97,6 +100,7 @@ class _PersonalDatabaseFieldSheet extends ConsumerStatefulWidget {
   final String? initialKey;
   final PersonalDatabaseValueType initialType;
   final Object? initialValue;
+  final List<PersonalDatabaseValueType> availableTypes;
   final List<PersonalDatabaseMentionSuggestion> mentionSuggestions;
   final PersonalDatabaseMentionSuggestionSelected? onMentionSelected;
   final PersonalDatabaseMentionCodec mentionCodec;
@@ -150,7 +154,9 @@ class _PersonalDatabaseFieldSheetState
     _valueController.addListener(_handleValueControllerChanged);
     _keyFocusNode = FocusNode();
     _valueFocusNode = FocusNode();
-    _type = widget.initialType;
+    _type = widget.availableTypes.contains(widget.initialType)
+        ? widget.initialType
+        : widget.availableTypes.first;
     _boolValue = widget.initialValue == true;
     _mediaValue = personalDatabaseMediaValueFromObject(widget.initialValue);
   }
@@ -242,7 +248,7 @@ class _PersonalDatabaseFieldSheetState
                   _errorText = null;
                 });
               },
-              dropdownMenuEntries: PersonalDatabaseValueType.values
+              dropdownMenuEntries: widget.availableTypes
                   .map(
                     (type) => DropdownMenuEntry(
                       value: type,

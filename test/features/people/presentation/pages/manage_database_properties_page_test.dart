@@ -19,6 +19,7 @@ class _ManageDatabasePropertiesTestAssetLoader extends AssetLoader {
           'string': '字串',
           'number': '數字',
           'boolean': '布林',
+          'media': '媒體',
           'null': 'Null',
           'list': '清單',
           'object': '物件',
@@ -50,6 +51,8 @@ class _ManageDatabasePropertiesTestAssetLoader extends AssetLoader {
         'retype': '變更類型',
         'retypeHint': '改變這個 property 的 value type。',
         'retypeDisabled': '這個物件還有子屬性，不能直接變更類型。',
+        'changeElementType': '變更元素類型',
+        'editElementTemplate': '編輯元素模板',
         'delete': '刪除屬性',
       },
       'renameDialog': {
@@ -59,6 +62,10 @@ class _ManageDatabasePropertiesTestAssetLoader extends AssetLoader {
         'save': '儲存',
       },
       'retypeDialog': {'title': '變更屬性型別', 'save': '儲存'},
+      'arrayElement': {'prefix': '元素', 'unspecified': '未指定'},
+      'elementTypeDialog': {'title': '變更元素型別', 'save': '儲存'},
+      'editElementTemplateTitle': '編輯元素模板',
+      'editElementTemplateSubmit': '儲存模板',
       'createRootTitle': '新增根屬性',
       'createRootSubmit': '建立',
       'createSubTitle': '新增子屬性',
@@ -198,6 +205,109 @@ void main() {
 
     expect(find.text('新增子屬性'), findsOneWidget);
     expect(find.byType(FloatingActionButton), findsOneWidget);
+  });
+
+  testWidgets('list property shows element type tag with object actions', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await database.peopleDao.createPerson(
+      id: 'owner',
+      name: 'Owner',
+      colorValue: 0xFF111111,
+    );
+    await database.personalDatabaseDao.createFieldAndAssignToPerson(
+      id: 'field-pets',
+      personId: 'owner',
+      key: '寵物',
+      type: PersonalDatabaseValueType.list,
+      jsonValue: '[]',
+      arrayElementType: PersonalDatabaseValueType.object,
+      arrayElementTemplateJsonValue: '{"名字":""}',
+    );
+
+    await _pumpManageDatabasePropertiesPage(tester, database);
+    await tester.pumpAndSettle();
+
+    expect(find.text('物件'), findsOneWidget);
+
+    await tester.tap(find.text('物件'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('變更元素類型'), findsOneWidget);
+    expect(find.text('編輯元素模板'), findsOneWidget);
+    expect(find.text('新增子屬性'), findsNothing);
+  });
+
+  testWidgets('non-object element tag opens element type chooser directly', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await database.peopleDao.createPerson(
+      id: 'owner',
+      name: 'Owner',
+      colorValue: 0xFF111111,
+    );
+    await database.personalDatabaseDao.createFieldAndAssignToPerson(
+      id: 'field-tags',
+      personId: 'owner',
+      key: '標籤',
+      type: PersonalDatabaseValueType.list,
+      jsonValue: '[]',
+      arrayElementType: PersonalDatabaseValueType.string,
+    );
+
+    await _pumpManageDatabasePropertiesPage(tester, database);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('字串'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('變更元素型別'), findsOneWidget);
+    expect(
+      find.byType(DropdownMenu<PersonalDatabaseValueType?>),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('saving unspecified element type keeps definition unchanged', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await database.peopleDao.createPerson(
+      id: 'owner',
+      name: 'Owner',
+      colorValue: 0xFF111111,
+    );
+    await database.personalDatabaseDao.createFieldAndAssignToPerson(
+      id: 'field-list',
+      personId: 'owner',
+      key: '清單',
+      type: PersonalDatabaseValueType.list,
+      jsonValue: '[]',
+    );
+
+    await _pumpManageDatabasePropertiesPage(tester, database);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('未指定'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('儲存'));
+    await tester.pumpAndSettle();
+
+    final rawDefinition = await database.personalDatabaseDao.getFieldById(
+      'field-list',
+    );
+
+    expect(rawDefinition, isNotNull);
+    expect(rawDefinition!.arrayElementType, isNull);
+    expect(rawDefinition.arrayElementTemplateJsonValue, isNull);
   });
 
   testWidgets('tap chevron collapses subproperties', (tester) async {

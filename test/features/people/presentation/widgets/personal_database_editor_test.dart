@@ -11,7 +11,14 @@ class _PersonalDatabaseEditorTestAssetLoader extends AssetLoader {
     'personTodo': {
       'database': {
         'title': '個人資料庫',
-        'action': {'edit': '編輯', 'delete': '刪除', 'addChild': '新增子項目'},
+        'action': {
+          'edit': '編輯',
+          'delete': '刪除',
+          'addChild': '新增子項目',
+          'addElement': '新增元素',
+          'addFromTemplate': '從既有模板新增元素',
+          'editTemplate': '編輯模板',
+        },
       },
     },
   };
@@ -203,4 +210,77 @@ void main() {
 
     expect(didPressValue, isTrue);
   });
+
+  testWidgets(
+    'array row menu shows template action first and add element label',
+    (tester) async {
+      await tester.pumpWidget(
+        EasyLocalization(
+          supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+          path: 'unused',
+          assetLoader: const _PersonalDatabaseEditorTestAssetLoader(),
+          fallbackLocale: const Locale('zh', 'TW'),
+          startLocale: const Locale('zh', 'TW'),
+          child: Builder(
+            builder: (context) {
+              return MaterialApp(
+                supportedLocales: context.supportedLocales,
+                localizationsDelegates: context.localizationDelegates,
+                locale: context.locale,
+                home: Scaffold(
+                  body: PersonalDatabaseEditor(
+                    rows: const [
+                      PersonalDatabaseEditorRowData(
+                        nodeId: 'array-row',
+                        fieldId: 'field-array',
+                        rootFieldId: 'field-array',
+                        path: [],
+                        keyLabel: '寵物',
+                        valuePreview: '[0] <物件>',
+                        rawValue: [],
+                        valueType: PersonalDatabaseValueType.list,
+                        depth: 0,
+                        isExpanded: false,
+                        isContainer: true,
+                        isDefinitionBacked: true,
+                        parentIsList: false,
+                        canAddFromTemplate: true,
+                        canEditTemplate: true,
+                      ),
+                    ],
+                    padding: EdgeInsets.zero,
+                    onPressedValue: (_) {},
+                    onPressedAction: (_, __) {},
+                    onPressedMention: (_) {},
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.more_vert_rounded));
+      await tester.pumpAndSettle();
+
+      final addFromTemplate = find.text('從既有模板新增元素');
+      final addElement = find.text('新增元素');
+      final editTemplate = find.text('編輯模板');
+
+      expect(addFromTemplate, findsOneWidget);
+      expect(addElement, findsOneWidget);
+      expect(find.text('新增子項目'), findsNothing);
+      expect(editTemplate, findsOneWidget);
+
+      expect(
+        tester.getTopLeft(addFromTemplate).dy,
+        lessThan(tester.getTopLeft(addElement).dy),
+      );
+      expect(
+        tester.getTopLeft(addElement).dy,
+        lessThan(tester.getTopLeft(editTemplate).dy),
+      );
+    },
+  );
 }

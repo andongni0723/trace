@@ -31,11 +31,19 @@ class _PersonTodoTestAssetLoader extends AssetLoader {
           'string': '字串',
           'number': '數字',
           'boolean': '布林',
+          'media': '媒體',
           'object': '物件',
           'list': '陣列',
           'null': '空值',
         },
-        'action': {'edit': '編輯', 'delete': '刪除', 'addChild': '新增子項目'},
+        'action': {
+          'edit': '編輯',
+          'delete': '刪除',
+          'addChild': '新增子項目',
+          'addElement': '新增元素',
+          'addFromTemplate': '從既有模板新增元素',
+          'editTemplate': '編輯模板',
+        },
         'sheet': {
           'editTitle': '編輯屬性',
           'update': '更新',
@@ -61,6 +69,9 @@ class _PersonTodoTestAssetLoader extends AssetLoader {
         'emptyBody': '先建立第一個屬性，之後就能重複加入不同人物。',
         'added': '已加入此人',
       },
+    },
+    'databasePropertyManager': {
+      'arrayElement': {'unspecified': '未指定'},
     },
   };
 
@@ -570,7 +581,7 @@ void main() {
       await tester.pump();
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('[1]'));
+      await tester.tap(find.textContaining('[1]'));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byIcon(Icons.more_vert_rounded).at(1));
@@ -598,6 +609,217 @@ void main() {
       await tester.pump(const Duration(milliseconds: 1));
     },
   );
+
+  testWidgets('list row can add object element from saved template', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await database.peopleDao.createPerson(
+      id: 'owner',
+      name: 'Owner',
+      colorValue: 0xFF111111,
+    );
+    await database.personalDatabaseDao.createFieldAndAssignToPerson(
+      id: 'field-pets',
+      personId: 'owner',
+      key: '寵物',
+      type: PersonalDatabaseValueType.list,
+      jsonValue: '[]',
+      arrayElementType: PersonalDatabaseValueType.object,
+      arrayElementTemplateJsonValue: '{"名字":"Cap"}',
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appDatabaseProvider.overrideWithValue(database)],
+        child: EasyLocalization(
+          supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+          path: 'unused',
+          assetLoader: const _PersonTodoTestAssetLoader(),
+          fallbackLocale: const Locale('zh', 'TW'),
+          startLocale: const Locale('zh', 'TW'),
+          child: Builder(
+            builder: (context) {
+              return MaterialApp(
+                supportedLocales: context.supportedLocales,
+                localizationsDelegates: context.localizationDelegates,
+                locale: context.locale,
+                home: const Scaffold(
+                  body: PersonPersonalDatabaseTab(personId: 'owner'),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.more_vert_rounded).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('從既有模板新增元素'));
+    await tester.pumpAndSettle();
+
+    final ownerFields = await database.personalDatabaseDao
+        .getFieldTreeForPerson('owner');
+    expect(ownerFields.single.value, [
+      {'名字': 'Cap'},
+    ]);
+
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
+    await tester.pump(const Duration(milliseconds: 1));
+  });
+
+  testWidgets('nested list row can add object element from saved template', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await database.peopleDao.createPerson(
+      id: 'owner',
+      name: 'Owner',
+      colorValue: 0xFF111111,
+    );
+    await database.personalDatabaseDao.createFieldAndAssignToPerson(
+      id: 'field-family',
+      personId: 'owner',
+      key: '家族',
+      type: PersonalDatabaseValueType.list,
+      jsonValue: '[{"孩子":[]}]',
+      arrayElementType: PersonalDatabaseValueType.object,
+      arrayElementTemplateJsonValue:
+          '{"孩子":[],"__traceArrayElementTemplates":{"孩子":{"elementType":"object","template":{"名字":"小孩"}}}}',
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appDatabaseProvider.overrideWithValue(database)],
+        child: EasyLocalization(
+          supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+          path: 'unused',
+          assetLoader: const _PersonTodoTestAssetLoader(),
+          fallbackLocale: const Locale('zh', 'TW'),
+          startLocale: const Locale('zh', 'TW'),
+          child: Builder(
+            builder: (context) {
+              return MaterialApp(
+                supportedLocales: context.supportedLocales,
+                localizationsDelegates: context.localizationDelegates,
+                locale: context.locale,
+                home: const Scaffold(
+                  body: PersonPersonalDatabaseTab(personId: 'owner'),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.textContaining('[1]'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('{1}'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.more_vert_rounded).at(2));
+    await tester.pumpAndSettle();
+    expect(find.text('從既有模板新增元素'), findsOneWidget);
+    expect(find.text('編輯模板'), findsOneWidget);
+
+    await tester.tap(find.text('從既有模板新增元素'));
+    await tester.pumpAndSettle();
+
+    final ownerFields = await database.personalDatabaseDao
+        .getFieldTreeForPerson('owner');
+    expect(ownerFields.single.value, [
+      {
+        '孩子': [
+          {'名字': '小孩'},
+        ],
+      },
+    ]);
+
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
+    await tester.pump(const Duration(milliseconds: 1));
+  });
+
+  testWidgets('nested list row exposes edit template without saved template', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await database.peopleDao.createPerson(
+      id: 'owner',
+      name: 'Owner',
+      colorValue: 0xFF111111,
+    );
+    await database.personalDatabaseDao.createFieldAndAssignToPerson(
+      id: 'field-family',
+      personId: 'owner',
+      key: '家族',
+      type: PersonalDatabaseValueType.list,
+      jsonValue: '[{"孩子":[]}]',
+      arrayElementType: PersonalDatabaseValueType.object,
+      arrayElementTemplateJsonValue: '{"孩子":[]}',
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appDatabaseProvider.overrideWithValue(database)],
+        child: EasyLocalization(
+          supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+          path: 'unused',
+          assetLoader: const _PersonTodoTestAssetLoader(),
+          fallbackLocale: const Locale('zh', 'TW'),
+          startLocale: const Locale('zh', 'TW'),
+          child: Builder(
+            builder: (context) {
+              return MaterialApp(
+                supportedLocales: context.supportedLocales,
+                localizationsDelegates: context.localizationDelegates,
+                locale: context.locale,
+                home: const Scaffold(
+                  body: PersonPersonalDatabaseTab(personId: 'owner'),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.textContaining('[1]'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('{1}'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.more_vert_rounded).at(2));
+    await tester.pumpAndSettle();
+
+    expect(find.text('編輯模板'), findsOneWidget);
+    expect(find.text('從既有模板新增元素'), findsNothing);
+
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
+    await tester.pump(const Duration(milliseconds: 1));
+  });
 
   testWidgets('self mention does not push another person route', (
     tester,

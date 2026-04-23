@@ -83,6 +83,24 @@ class PersonalDatabasePropertyManagementActions {
         );
   }
 
+  Future<void> updateArrayElementType({
+    required String fieldId,
+    required PersonalDatabaseValueType? elementType,
+  }) {
+    return _ref
+        .read(personalDatabaseActionsProvider)
+        .updateArrayElementType(fieldId: fieldId, elementType: elementType);
+  }
+
+  Future<void> updateArrayElementTemplate({
+    required String fieldId,
+    required Map<String, Object?> template,
+  }) {
+    return _ref
+        .read(personalDatabaseActionsProvider)
+        .updateArrayElementTemplate(fieldId: fieldId, template: template);
+  }
+
   Future<bool> canDeletePropertyDefinition(String fieldId) async {
     final dao = _ref.read(personalDatabaseDaoProvider);
     return await dao.countAssignmentsForFieldSubtree(fieldId) == 0;

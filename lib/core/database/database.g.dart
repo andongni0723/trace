@@ -1876,6 +1876,32 @@ class $PersonalDatabaseFieldsTable extends PersonalDatabaseFields
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _arrayElementTypeMeta = const VerificationMeta(
+    'arrayElementType',
+  );
+  @override
+  late final GeneratedColumn<String> arrayElementType = GeneratedColumn<String>(
+    'array_element_type',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 20,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _arrayElementTemplateJsonValueMeta =
+      const VerificationMeta('arrayElementTemplateJsonValue');
+  @override
+  late final GeneratedColumn<String> arrayElementTemplateJsonValue =
+      GeneratedColumn<String>(
+        'array_element_template_json_value',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _isPublicMeta = const VerificationMeta(
     'isPublic',
   );
@@ -1947,6 +1973,8 @@ class $PersonalDatabaseFieldsTable extends PersonalDatabaseFields
     key,
     parentFieldId,
     valueType,
+    arrayElementType,
+    arrayElementTemplateJsonValue,
     isPublic,
     ownerPersonId,
     sortOrder,
@@ -1994,6 +2022,24 @@ class $PersonalDatabaseFieldsTable extends PersonalDatabaseFields
       );
     } else if (isInserting) {
       context.missing(_valueTypeMeta);
+    }
+    if (data.containsKey('array_element_type')) {
+      context.handle(
+        _arrayElementTypeMeta,
+        arrayElementType.isAcceptableOrUnknown(
+          data['array_element_type']!,
+          _arrayElementTypeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('array_element_template_json_value')) {
+      context.handle(
+        _arrayElementTemplateJsonValueMeta,
+        arrayElementTemplateJsonValue.isAcceptableOrUnknown(
+          data['array_element_template_json_value']!,
+          _arrayElementTemplateJsonValueMeta,
+        ),
+      );
     }
     if (data.containsKey('is_public')) {
       context.handle(
@@ -2053,6 +2099,14 @@ class $PersonalDatabaseFieldsTable extends PersonalDatabaseFields
         DriftSqlType.string,
         data['${effectivePrefix}value_type'],
       )!,
+      arrayElementType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}array_element_type'],
+      ),
+      arrayElementTemplateJsonValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}array_element_template_json_value'],
+      ),
       isPublic: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_public'],
@@ -2088,6 +2142,8 @@ class PersonalDatabaseField extends DataClass
   final String key;
   final String? parentFieldId;
   final String valueType;
+  final String? arrayElementType;
+  final String? arrayElementTemplateJsonValue;
   final bool isPublic;
   final String? ownerPersonId;
   final int sortOrder;
@@ -2098,6 +2154,8 @@ class PersonalDatabaseField extends DataClass
     required this.key,
     this.parentFieldId,
     required this.valueType,
+    this.arrayElementType,
+    this.arrayElementTemplateJsonValue,
     required this.isPublic,
     this.ownerPersonId,
     required this.sortOrder,
@@ -2113,6 +2171,14 @@ class PersonalDatabaseField extends DataClass
       map['parent_field_id'] = Variable<String>(parentFieldId);
     }
     map['value_type'] = Variable<String>(valueType);
+    if (!nullToAbsent || arrayElementType != null) {
+      map['array_element_type'] = Variable<String>(arrayElementType);
+    }
+    if (!nullToAbsent || arrayElementTemplateJsonValue != null) {
+      map['array_element_template_json_value'] = Variable<String>(
+        arrayElementTemplateJsonValue,
+      );
+    }
     map['is_public'] = Variable<bool>(isPublic);
     if (!nullToAbsent || ownerPersonId != null) {
       map['owner_person_id'] = Variable<String>(ownerPersonId);
@@ -2131,6 +2197,13 @@ class PersonalDatabaseField extends DataClass
           ? const Value.absent()
           : Value(parentFieldId),
       valueType: Value(valueType),
+      arrayElementType: arrayElementType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(arrayElementType),
+      arrayElementTemplateJsonValue:
+          arrayElementTemplateJsonValue == null && nullToAbsent
+          ? const Value.absent()
+          : Value(arrayElementTemplateJsonValue),
       isPublic: Value(isPublic),
       ownerPersonId: ownerPersonId == null && nullToAbsent
           ? const Value.absent()
@@ -2151,6 +2224,10 @@ class PersonalDatabaseField extends DataClass
       key: serializer.fromJson<String>(json['key']),
       parentFieldId: serializer.fromJson<String?>(json['parentFieldId']),
       valueType: serializer.fromJson<String>(json['valueType']),
+      arrayElementType: serializer.fromJson<String?>(json['arrayElementType']),
+      arrayElementTemplateJsonValue: serializer.fromJson<String?>(
+        json['arrayElementTemplateJsonValue'],
+      ),
       isPublic: serializer.fromJson<bool>(json['isPublic']),
       ownerPersonId: serializer.fromJson<String?>(json['ownerPersonId']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
@@ -2166,6 +2243,10 @@ class PersonalDatabaseField extends DataClass
       'key': serializer.toJson<String>(key),
       'parentFieldId': serializer.toJson<String?>(parentFieldId),
       'valueType': serializer.toJson<String>(valueType),
+      'arrayElementType': serializer.toJson<String?>(arrayElementType),
+      'arrayElementTemplateJsonValue': serializer.toJson<String?>(
+        arrayElementTemplateJsonValue,
+      ),
       'isPublic': serializer.toJson<bool>(isPublic),
       'ownerPersonId': serializer.toJson<String?>(ownerPersonId),
       'sortOrder': serializer.toJson<int>(sortOrder),
@@ -2179,6 +2260,8 @@ class PersonalDatabaseField extends DataClass
     String? key,
     Value<String?> parentFieldId = const Value.absent(),
     String? valueType,
+    Value<String?> arrayElementType = const Value.absent(),
+    Value<String?> arrayElementTemplateJsonValue = const Value.absent(),
     bool? isPublic,
     Value<String?> ownerPersonId = const Value.absent(),
     int? sortOrder,
@@ -2191,6 +2274,12 @@ class PersonalDatabaseField extends DataClass
         ? parentFieldId.value
         : this.parentFieldId,
     valueType: valueType ?? this.valueType,
+    arrayElementType: arrayElementType.present
+        ? arrayElementType.value
+        : this.arrayElementType,
+    arrayElementTemplateJsonValue: arrayElementTemplateJsonValue.present
+        ? arrayElementTemplateJsonValue.value
+        : this.arrayElementTemplateJsonValue,
     isPublic: isPublic ?? this.isPublic,
     ownerPersonId: ownerPersonId.present
         ? ownerPersonId.value
@@ -2209,6 +2298,12 @@ class PersonalDatabaseField extends DataClass
           ? data.parentFieldId.value
           : this.parentFieldId,
       valueType: data.valueType.present ? data.valueType.value : this.valueType,
+      arrayElementType: data.arrayElementType.present
+          ? data.arrayElementType.value
+          : this.arrayElementType,
+      arrayElementTemplateJsonValue: data.arrayElementTemplateJsonValue.present
+          ? data.arrayElementTemplateJsonValue.value
+          : this.arrayElementTemplateJsonValue,
       isPublic: data.isPublic.present ? data.isPublic.value : this.isPublic,
       ownerPersonId: data.ownerPersonId.present
           ? data.ownerPersonId.value
@@ -2226,6 +2321,10 @@ class PersonalDatabaseField extends DataClass
           ..write('key: $key, ')
           ..write('parentFieldId: $parentFieldId, ')
           ..write('valueType: $valueType, ')
+          ..write('arrayElementType: $arrayElementType, ')
+          ..write(
+            'arrayElementTemplateJsonValue: $arrayElementTemplateJsonValue, ',
+          )
           ..write('isPublic: $isPublic, ')
           ..write('ownerPersonId: $ownerPersonId, ')
           ..write('sortOrder: $sortOrder, ')
@@ -2241,6 +2340,8 @@ class PersonalDatabaseField extends DataClass
     key,
     parentFieldId,
     valueType,
+    arrayElementType,
+    arrayElementTemplateJsonValue,
     isPublic,
     ownerPersonId,
     sortOrder,
@@ -2255,6 +2356,9 @@ class PersonalDatabaseField extends DataClass
           other.key == this.key &&
           other.parentFieldId == this.parentFieldId &&
           other.valueType == this.valueType &&
+          other.arrayElementType == this.arrayElementType &&
+          other.arrayElementTemplateJsonValue ==
+              this.arrayElementTemplateJsonValue &&
           other.isPublic == this.isPublic &&
           other.ownerPersonId == this.ownerPersonId &&
           other.sortOrder == this.sortOrder &&
@@ -2268,6 +2372,8 @@ class PersonalDatabaseFieldsCompanion
   final Value<String> key;
   final Value<String?> parentFieldId;
   final Value<String> valueType;
+  final Value<String?> arrayElementType;
+  final Value<String?> arrayElementTemplateJsonValue;
   final Value<bool> isPublic;
   final Value<String?> ownerPersonId;
   final Value<int> sortOrder;
@@ -2279,6 +2385,8 @@ class PersonalDatabaseFieldsCompanion
     this.key = const Value.absent(),
     this.parentFieldId = const Value.absent(),
     this.valueType = const Value.absent(),
+    this.arrayElementType = const Value.absent(),
+    this.arrayElementTemplateJsonValue = const Value.absent(),
     this.isPublic = const Value.absent(),
     this.ownerPersonId = const Value.absent(),
     this.sortOrder = const Value.absent(),
@@ -2291,6 +2399,8 @@ class PersonalDatabaseFieldsCompanion
     required String key,
     this.parentFieldId = const Value.absent(),
     required String valueType,
+    this.arrayElementType = const Value.absent(),
+    this.arrayElementTemplateJsonValue = const Value.absent(),
     this.isPublic = const Value.absent(),
     this.ownerPersonId = const Value.absent(),
     this.sortOrder = const Value.absent(),
@@ -2305,6 +2415,8 @@ class PersonalDatabaseFieldsCompanion
     Expression<String>? key,
     Expression<String>? parentFieldId,
     Expression<String>? valueType,
+    Expression<String>? arrayElementType,
+    Expression<String>? arrayElementTemplateJsonValue,
     Expression<bool>? isPublic,
     Expression<String>? ownerPersonId,
     Expression<int>? sortOrder,
@@ -2317,6 +2429,9 @@ class PersonalDatabaseFieldsCompanion
       if (key != null) 'key': key,
       if (parentFieldId != null) 'parent_field_id': parentFieldId,
       if (valueType != null) 'value_type': valueType,
+      if (arrayElementType != null) 'array_element_type': arrayElementType,
+      if (arrayElementTemplateJsonValue != null)
+        'array_element_template_json_value': arrayElementTemplateJsonValue,
       if (isPublic != null) 'is_public': isPublic,
       if (ownerPersonId != null) 'owner_person_id': ownerPersonId,
       if (sortOrder != null) 'sort_order': sortOrder,
@@ -2331,6 +2446,8 @@ class PersonalDatabaseFieldsCompanion
     Value<String>? key,
     Value<String?>? parentFieldId,
     Value<String>? valueType,
+    Value<String?>? arrayElementType,
+    Value<String?>? arrayElementTemplateJsonValue,
     Value<bool>? isPublic,
     Value<String?>? ownerPersonId,
     Value<int>? sortOrder,
@@ -2343,6 +2460,9 @@ class PersonalDatabaseFieldsCompanion
       key: key ?? this.key,
       parentFieldId: parentFieldId ?? this.parentFieldId,
       valueType: valueType ?? this.valueType,
+      arrayElementType: arrayElementType ?? this.arrayElementType,
+      arrayElementTemplateJsonValue:
+          arrayElementTemplateJsonValue ?? this.arrayElementTemplateJsonValue,
       isPublic: isPublic ?? this.isPublic,
       ownerPersonId: ownerPersonId ?? this.ownerPersonId,
       sortOrder: sortOrder ?? this.sortOrder,
@@ -2366,6 +2486,14 @@ class PersonalDatabaseFieldsCompanion
     }
     if (valueType.present) {
       map['value_type'] = Variable<String>(valueType.value);
+    }
+    if (arrayElementType.present) {
+      map['array_element_type'] = Variable<String>(arrayElementType.value);
+    }
+    if (arrayElementTemplateJsonValue.present) {
+      map['array_element_template_json_value'] = Variable<String>(
+        arrayElementTemplateJsonValue.value,
+      );
     }
     if (isPublic.present) {
       map['is_public'] = Variable<bool>(isPublic.value);
@@ -2395,6 +2523,10 @@ class PersonalDatabaseFieldsCompanion
           ..write('key: $key, ')
           ..write('parentFieldId: $parentFieldId, ')
           ..write('valueType: $valueType, ')
+          ..write('arrayElementType: $arrayElementType, ')
+          ..write(
+            'arrayElementTemplateJsonValue: $arrayElementTemplateJsonValue, ',
+          )
           ..write('isPublic: $isPublic, ')
           ..write('ownerPersonId: $ownerPersonId, ')
           ..write('sortOrder: $sortOrder, ')
@@ -5070,6 +5202,8 @@ typedef $$PersonalDatabaseFieldsTableCreateCompanionBuilder =
       required String key,
       Value<String?> parentFieldId,
       required String valueType,
+      Value<String?> arrayElementType,
+      Value<String?> arrayElementTemplateJsonValue,
       Value<bool> isPublic,
       Value<String?> ownerPersonId,
       Value<int> sortOrder,
@@ -5083,6 +5217,8 @@ typedef $$PersonalDatabaseFieldsTableUpdateCompanionBuilder =
       Value<String> key,
       Value<String?> parentFieldId,
       Value<String> valueType,
+      Value<String?> arrayElementType,
+      Value<String?> arrayElementTemplateJsonValue,
       Value<bool> isPublic,
       Value<String?> ownerPersonId,
       Value<int> sortOrder,
@@ -5209,6 +5345,16 @@ class $$PersonalDatabaseFieldsTableFilterComposer
 
   ColumnFilters<String> get valueType => $composableBuilder(
     column: $table.valueType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get arrayElementType => $composableBuilder(
+    column: $table.arrayElementType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get arrayElementTemplateJsonValue => $composableBuilder(
+    column: $table.arrayElementTemplateJsonValue,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5340,6 +5486,17 @@ class $$PersonalDatabaseFieldsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get arrayElementType => $composableBuilder(
+    column: $table.arrayElementType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get arrayElementTemplateJsonValue =>
+      $composableBuilder(
+        column: $table.arrayElementTemplateJsonValue,
+        builder: (column) => ColumnOrderings(column),
+      );
+
   ColumnOrderings<bool> get isPublic => $composableBuilder(
     column: $table.isPublic,
     builder: (column) => ColumnOrderings(column),
@@ -5406,6 +5563,17 @@ class $$PersonalDatabaseFieldsTableAnnotationComposer
 
   GeneratedColumn<String> get valueType =>
       $composableBuilder(column: $table.valueType, builder: (column) => column);
+
+  GeneratedColumn<String> get arrayElementType => $composableBuilder(
+    column: $table.arrayElementType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get arrayElementTemplateJsonValue =>
+      $composableBuilder(
+        column: $table.arrayElementTemplateJsonValue,
+        builder: (column) => column,
+      );
 
   GeneratedColumn<bool> get isPublic =>
       $composableBuilder(column: $table.isPublic, builder: (column) => column);
@@ -5545,6 +5713,9 @@ class $$PersonalDatabaseFieldsTableTableManager
                 Value<String> key = const Value.absent(),
                 Value<String?> parentFieldId = const Value.absent(),
                 Value<String> valueType = const Value.absent(),
+                Value<String?> arrayElementType = const Value.absent(),
+                Value<String?> arrayElementTemplateJsonValue =
+                    const Value.absent(),
                 Value<bool> isPublic = const Value.absent(),
                 Value<String?> ownerPersonId = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
@@ -5556,6 +5727,8 @@ class $$PersonalDatabaseFieldsTableTableManager
                 key: key,
                 parentFieldId: parentFieldId,
                 valueType: valueType,
+                arrayElementType: arrayElementType,
+                arrayElementTemplateJsonValue: arrayElementTemplateJsonValue,
                 isPublic: isPublic,
                 ownerPersonId: ownerPersonId,
                 sortOrder: sortOrder,
@@ -5569,6 +5742,9 @@ class $$PersonalDatabaseFieldsTableTableManager
                 required String key,
                 Value<String?> parentFieldId = const Value.absent(),
                 required String valueType,
+                Value<String?> arrayElementType = const Value.absent(),
+                Value<String?> arrayElementTemplateJsonValue =
+                    const Value.absent(),
                 Value<bool> isPublic = const Value.absent(),
                 Value<String?> ownerPersonId = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
@@ -5580,6 +5756,8 @@ class $$PersonalDatabaseFieldsTableTableManager
                 key: key,
                 parentFieldId: parentFieldId,
                 valueType: valueType,
+                arrayElementType: arrayElementType,
+                arrayElementTemplateJsonValue: arrayElementTemplateJsonValue,
                 isPublic: isPublic,
                 ownerPersonId: ownerPersonId,
                 sortOrder: sortOrder,

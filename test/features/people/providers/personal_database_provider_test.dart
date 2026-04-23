@@ -276,6 +276,60 @@ void main() {
       },
     );
 
+    test('addArrayElementFromTemplate appends cloned saved template', () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+
+      await database.peopleDao.createPerson(
+        id: 'owner',
+        name: 'Owner',
+        colorValue: 0xFF111111,
+      );
+      await database.personalDatabaseDao.createFieldAndAssignToPerson(
+        id: 'field-pets',
+        personId: 'owner',
+        key: 'pets',
+        type: PersonalDatabaseValueType.list,
+        jsonValue: '[]',
+        arrayElementType: PersonalDatabaseValueType.object,
+        arrayElementTemplateJsonValue:
+            '{"name":"Cap","children":[],"__traceArrayElementTemplates":{"children":{"elementType":"object","template":{"name":""}}}}',
+      );
+
+      final container = ProviderContainer(
+        overrides: [appDatabaseProvider.overrideWithValue(database)],
+      );
+      addTearDown(container.dispose);
+
+      var field = (await database.personalDatabaseDao.getFieldTreeForPerson(
+        'owner',
+      )).single;
+      await container
+          .read(personalDatabaseActionsProvider)
+          .addArrayElementFromTemplate(personId: 'owner', field: field);
+
+      await container
+          .read(personalDatabaseActionsProvider)
+          .updateArrayElementTemplate(
+            fieldId: 'field-pets',
+            template: {'name': 'New', 'age': 0},
+          );
+
+      field = (await database.personalDatabaseDao.getFieldTreeForPerson(
+        'owner',
+      )).single;
+      await container
+          .read(personalDatabaseActionsProvider)
+          .addArrayElementFromTemplate(personId: 'owner', field: field);
+
+      final ownerFields = await database.personalDatabaseDao
+          .getFieldTreeForPerson('owner');
+      expect(ownerFields.single.value, [
+        {'name': 'Cap', 'children': []},
+        {'name': 'New', 'age': 0},
+      ]);
+    });
+
     test(
       'ensureObjectSubtreeDefinitions backfills legacy object keys',
       () async {

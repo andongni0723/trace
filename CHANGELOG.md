@@ -1,3 +1,17 @@
+## v1.6.0
+
+更新內容:
+- 擴充 personal database 的清單欄位，新增元素型別與元素模板設定，支援根層與巢狀陣列直接從既有模板新增物件元素。
+- 新增元素模板編輯頁與型別標籤 UI，並在屬性管理、人物資料庫編輯與屬性選擇流程中顯示陣列元素型別與相關操作。
+- 更新 personal database schema、DAO、provider 與備份版本，讓陣列元素型別與模板可正確儲存、讀取、匯出與匯入。
+- 補強資料庫、provider 與 widget/page 測試，涵蓋陣列元素 metadata、模板新增、模板編輯與未指定元素型別不被誤寫的情境。
+
+Updates:
+- Expanded personal database list fields with element type and element template support, including adding object elements from saved templates at both root and nested array levels.
+- Added an element template editor page and array element type tags, and surfaced the new list metadata across property management, person database editing, and property chooser flows.
+- Updated the personal database schema, DAO, providers, and backup version so array element type/template metadata is persisted and restored correctly through storage and backup flows.
+- Added database, provider, page, and widget coverage for array metadata, template-based insertion, template editing, and preserving the unspecified element type during no-op saves.
+
 ## v1.5.0
 
 更新內容:

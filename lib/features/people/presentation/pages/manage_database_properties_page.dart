@@ -12,7 +12,9 @@ import '../../data/models/personal_database_field_node.dart';
 import '../../data/models/personal_database_management_error.dart';
 import '../../data/models/personal_database_value_type.dart';
 import '../../providers/personal_database_property_management_provider.dart';
+import 'personal_database_array_template_editor_page.dart';
 import '../widgets/personal_database_field_sheet.dart';
+import '../widgets/personal_database_type_tags.dart';
 
 class ManageDatabasePropertiesPage extends ConsumerStatefulWidget {
   const ManageDatabasePropertiesPage({super.key});
@@ -171,6 +173,10 @@ class _ManageDatabasePropertiesPageState
                     )
                   : BorderRadius.circular(_tileInnerRadius),
               onTap: () => _showPropertyActions(row.field),
+              onPressedArrayElementType:
+                  row.field.type == PersonalDatabaseValueType.list
+                  ? () => _showArrayElementTypeActions(row.field)
+                  : null,
               onToggleCollapsed: () => _toggleCollapsed(row.field),
             ),
           ),
@@ -504,6 +510,121 @@ class _ManageDatabasePropertiesPageState
       );
       await _reloadLibrary();
     } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      _showErrorSnackBar('databasePropertyManager.loadError'.tr());
+    }
+  }
+
+  Future<void> _showArrayElementTypeActions(
+    PersonalDatabaseFieldNode field,
+  ) async {
+    AppHaptics.selection();
+
+    if (field.arrayElementType != PersonalDatabaseValueType.object) {
+      await _showArrayElementTypeSheet(field);
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      backgroundColor: context.cs.surface,
+      builder: (sheetContext) {
+        return SafeArea(
+          top: false,
+          child: BottomSheetKeyboardInset(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.category_outlined),
+                  title: Text(
+                    'databasePropertyManager.action.changeElementType'.tr(),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  onTap: () async {
+                    AppHaptics.selection();
+                    Navigator.of(sheetContext).pop();
+                    await _showArrayElementTypeSheet(field);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.data_object_rounded),
+                  title: Text(
+                    'databasePropertyManager.action.editElementTemplate'.tr(),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  onTap: () async {
+                    AppHaptics.selection();
+                    Navigator.of(sheetContext).pop();
+                    await _showArrayElementTemplateSheet(field);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showArrayElementTypeSheet(
+    PersonalDatabaseFieldNode field,
+  ) async {
+    final selectedType = await showModalBottomSheet<PersonalDatabaseValueType?>(
+      context: context,
+      isScrollControlled: true,
+      requestFocus: false,
+      showDragHandle: true,
+      backgroundColor: context.cs.surface,
+      builder: (_) =>
+          _ArrayElementTypeSheet(initialType: field.arrayElementType),
+    );
+
+    if (selectedType == field.arrayElementType) {
+      return;
+    }
+
+    try {
+      await ref
+          .read(personalDatabasePropertyManagementActionsProvider)
+          .updateArrayElementType(fieldId: field.id, elementType: selectedType);
+      await _reloadLibrary();
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      _showErrorSnackBar('databasePropertyManager.loadError'.tr());
+    }
+  }
+
+  Future<void> _showArrayElementTemplateSheet(
+    PersonalDatabaseFieldNode field,
+  ) async {
+    final result = await showPersonalDatabaseArrayTemplateEditorPage(
+      context: context,
+      title: 'databasePropertyManager.editElementTemplateTitle'.tr(),
+      initialTemplate: field.arrayElementTemplate ?? const <String, Object?>{},
+    );
+
+    if (result == null) {
+      return;
+    }
+
+    try {
+      await ref
+          .read(personalDatabasePropertyManagementActionsProvider)
+          .updateArrayElementTemplate(fieldId: field.id, template: result);
+      await _reloadLibrary();
+    } catch (_) {
       if (!mounted) {
         return;
       }
@@ -881,6 +1002,7 @@ class _PropertyTile extends StatelessWidget {
     required this.dragHandleKey,
     required this.borderRadius,
     required this.onTap,
+    required this.onPressedArrayElementType,
     required this.onToggleCollapsed,
   });
 
@@ -889,6 +1011,7 @@ class _PropertyTile extends StatelessWidget {
   final Key dragHandleKey;
   final BorderRadius borderRadius;
   final VoidCallback onTap;
+  final VoidCallback? onPressedArrayElementType;
   final VoidCallback onToggleCollapsed;
 
   @override
@@ -922,6 +1045,15 @@ class _PropertyTile extends StatelessWidget {
               ),
               const SizedBox(width: 12),
               _TypeTag(type: row.field.type),
+              if (row.field.type == PersonalDatabaseValueType.list) ...[
+                const SizedBox(width: 8),
+                ArrayElementTypeTag(
+                  label:
+                      row.field.arrayElementType?.localizationKey.tr() ??
+                      'databasePropertyManager.arrayElement.unspecified'.tr(),
+                  onTap: onPressedArrayElementType,
+                ),
+              ],
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -1152,6 +1284,77 @@ class _RetypePropertySheetState extends State<_RetypePropertySheet> {
           FilledButton(
             onPressed: () => Navigator.of(context).pop(_selectedType),
             child: Text('databasePropertyManager.retypeDialog.save'.tr()),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ArrayElementTypeSheet extends StatefulWidget {
+  const _ArrayElementTypeSheet({required this.initialType});
+
+  final PersonalDatabaseValueType? initialType;
+
+  @override
+  State<_ArrayElementTypeSheet> createState() => _ArrayElementTypeSheetState();
+}
+
+class _ArrayElementTypeSheetState extends State<_ArrayElementTypeSheet> {
+  PersonalDatabaseValueType? _selectedType;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedType = widget.initialType;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BottomSheetKeyboardInset(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'databasePropertyManager.elementTypeDialog.title'.tr(),
+            style: context.tt.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 16),
+          DropdownMenu<PersonalDatabaseValueType?>(
+            initialSelection: _selectedType,
+            width: double.infinity,
+            label: Text('databasePropertyManager.arrayElement.prefix'.tr()),
+            inputDecorationTheme: const InputDecorationTheme(
+              filled: true,
+              border: OutlineInputBorder(
+                borderSide: BorderSide.none,
+                borderRadius: BorderRadius.all(Radius.circular(16)),
+              ),
+            ),
+            onSelected: (type) {
+              setState(() {
+                _selectedType = type;
+              });
+            },
+            dropdownMenuEntries: [
+              DropdownMenuEntry(
+                value: null,
+                label: 'databasePropertyManager.arrayElement.unspecified'.tr(),
+              ),
+              ...PersonalDatabaseValueType.values.map(
+                (type) => DropdownMenuEntry(
+                  value: type,
+                  label: type.localizationKey.tr(),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(_selectedType),
+            child: Text('databasePropertyManager.elementTypeDialog.save'.tr()),
           ),
         ],
       ),

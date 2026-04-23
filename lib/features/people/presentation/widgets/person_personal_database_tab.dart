@@ -5,7 +5,6 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
 import '../../../../core/database/database.dart';
 import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/utils/useful_extension.dart';
@@ -17,6 +16,7 @@ import '../../data/models/personal_database_mention_suggestion.dart';
 import '../../data/models/personal_database_value_type.dart';
 import '../../providers/people_provider.dart';
 import '../../providers/personal_database_provider.dart';
+import '../pages/personal_database_array_template_editor_page.dart';
 import 'personal_database_editor.dart';
 import 'personal_database_field_sheet.dart';
 
@@ -179,6 +179,10 @@ class _PersonPersonalDatabaseTabState
         isContainer: isContainer,
         isDefinitionBacked: true,
         parentIsList: false,
+        canAddFromTemplate:
+            field.type == PersonalDatabaseValueType.list &&
+            field.hasArrayElementTemplate,
+        canEditTemplate: field.type == PersonalDatabaseValueType.list,
         valueSegments: _valueSegments(
           field.value,
           peopleById: peopleById,
@@ -209,6 +213,7 @@ class _PersonPersonalDatabaseTabState
       for (var index = 0; index < listValue.length; index++) {
         _appendValueRows(
           rows: rows,
+          rootField: field,
           fieldId: field.id,
           rootFieldId: field.id,
           path: [index],
@@ -225,6 +230,7 @@ class _PersonPersonalDatabaseTabState
 
   void _appendValueRows({
     required List<PersonalDatabaseEditorRowData> rows,
+    required PersonalDatabaseFieldNode rootField,
     required String fieldId,
     required String rootFieldId,
     required List<Object> path,
@@ -236,6 +242,9 @@ class _PersonPersonalDatabaseTabState
     required PersonalDatabaseMentionCodec mentionCodec,
   }) {
     final valueType = _valueTypeFromValue(value);
+    final arrayTemplateMetadata = valueType == PersonalDatabaseValueType.list
+        ? _resolveArrayTemplateMetadata(rootField: rootField, path: path)
+        : null;
     final nodeId = _nodeId(rootFieldId: rootFieldId, path: path);
     final isExpanded = _expandedNodeIds.contains(nodeId);
     final isContainer =
@@ -249,7 +258,11 @@ class _PersonPersonalDatabaseTabState
         rootFieldId: rootFieldId,
         path: path,
         keyLabel: keyLabel,
-        valuePreview: _valuePreview(value, mentionCodec: mentionCodec),
+        valuePreview: _valuePreview(
+          value,
+          arrayElementType: arrayTemplateMetadata?.elementType,
+          mentionCodec: mentionCodec,
+        ),
         rawValue: value,
         valueType: valueType,
         depth: depth,
@@ -257,6 +270,12 @@ class _PersonPersonalDatabaseTabState
         isContainer: isContainer,
         isDefinitionBacked: false,
         parentIsList: parentIsList,
+        canAddFromTemplate:
+            valueType == PersonalDatabaseValueType.list &&
+            arrayTemplateMetadata?.hasObjectTemplate == true,
+        canEditTemplate:
+            valueType == PersonalDatabaseValueType.list &&
+            _canEditNestedArrayTemplate(rootField: rootField),
         valueSegments: _valueSegments(
           value,
           peopleById: peopleById,
@@ -273,6 +292,7 @@ class _PersonPersonalDatabaseTabState
       for (final entry in value.entries) {
         _appendValueRows(
           rows: rows,
+          rootField: rootField,
           fieldId: fieldId,
           rootFieldId: rootFieldId,
           path: [...path, entry.key],
@@ -291,6 +311,7 @@ class _PersonPersonalDatabaseTabState
       for (var index = 0; index < value.length; index++) {
         _appendValueRows(
           rows: rows,
+          rootField: rootField,
           fieldId: fieldId,
           rootFieldId: rootFieldId,
           path: [...path, index],
@@ -382,12 +403,144 @@ class _PersonPersonalDatabaseTabState
       case PersonalDatabaseEditorAction.addChild:
         await _addChild(row, fieldsById);
         return;
+      case PersonalDatabaseEditorAction.addFromTemplate:
+        await _addFromTemplate(row, fieldsById);
+        return;
+      case PersonalDatabaseEditorAction.editTemplate:
+        await _editTemplate(row, fieldsById);
+        return;
       case PersonalDatabaseEditorAction.edit:
         await _editRow(row, fieldsById);
         return;
       case PersonalDatabaseEditorAction.delete:
         await _deleteRow(row, fieldsById);
         return;
+    }
+  }
+
+  Future<void> _editTemplate(
+    PersonalDatabaseEditorRowData row,
+    Map<String, PersonalDatabaseFieldNode> fieldsById,
+  ) async {
+    final targetField = fieldsById[row.fieldId];
+    if (targetField == null ||
+        targetField.type != PersonalDatabaseValueType.list) {
+      return;
+    }
+
+    final initialTemplate = row.isDefinitionBacked
+        ? targetField.arrayElementTemplate ?? const <String, Object?>{}
+        : _resolveArrayTemplateMetadata(
+                rootField: targetField,
+                path: row.path,
+              )?.template ??
+              const <String, Object?>{};
+    final titleKey = row.isDefinitionBacked
+        ? 'personalDatabaseTemplateEditor.rootTitle'
+        : 'personalDatabaseTemplateEditor.nestedTitle';
+    final titleArg = row.isDefinitionBacked ? targetField.key : row.keyLabel;
+
+    final result = await showPersonalDatabaseArrayTemplateEditorPage(
+      context: context,
+      title: titleKey.tr(namedArgs: {'key': titleArg}),
+      initialTemplate: initialTemplate,
+    );
+
+    if (!mounted || result == null) {
+      return;
+    }
+
+    try {
+      final actions = ref.read(personalDatabaseActionsProvider);
+      if (row.isDefinitionBacked) {
+        if (targetField.arrayElementType != PersonalDatabaseValueType.object) {
+          await actions.updateArrayElementType(
+            fieldId: targetField.id,
+            elementType: PersonalDatabaseValueType.object,
+          );
+        }
+        await actions.updateArrayElementTemplate(
+          fieldId: targetField.id,
+          template: result,
+        );
+        return;
+      }
+
+      final updatedTemplate = _upsertNestedArrayTemplate(
+        rootField: targetField,
+        path: row.path,
+        template: result,
+      );
+      if (updatedTemplate == null) {
+        _showError();
+        return;
+      }
+
+      await actions.updateArrayElementTemplate(
+        fieldId: targetField.id,
+        template: updatedTemplate,
+      );
+    } catch (_) {
+      _showError();
+    }
+  }
+
+  Future<void> _addFromTemplate(
+    PersonalDatabaseEditorRowData row,
+    Map<String, PersonalDatabaseFieldNode> fieldsById,
+  ) async {
+    final targetField = fieldsById[row.fieldId];
+    if (targetField == null) {
+      return;
+    }
+
+    final metadata = row.isDefinitionBacked
+        ? _ArrayTemplateMetadataView(
+            elementType: targetField.arrayElementType,
+            template: targetField.arrayElementTemplate,
+          )
+        : _resolveArrayTemplateMetadata(rootField: targetField, path: row.path);
+    if (metadata?.hasObjectTemplate != true) {
+      return;
+    }
+
+    try {
+      AppHaptics.primaryAction();
+
+      if (row.isDefinitionBacked) {
+        await ref
+            .read(personalDatabaseActionsProvider)
+            .addArrayElementFromTemplate(
+              personId: widget.personId,
+              field: targetField,
+            );
+      } else {
+        final currentValue = row.rawValue;
+        if (currentValue is! List<dynamic>) {
+          return;
+        }
+
+        final nextValue = _deepCloneJson(currentValue);
+        if (nextValue is! List<dynamic>) {
+          return;
+        }
+        nextValue.add(_materializeTemplateValue(metadata!.template));
+
+        await ref
+            .read(personalDatabaseActionsProvider)
+            .updateNodeValue(
+              personId: widget.personId,
+              field: targetField,
+              path: row.path,
+              value: nextValue,
+            );
+      }
+
+      if (!_expandedNodeIds.contains(row.nodeId) && mounted) {
+        _toggleExpand(row);
+      }
+    } catch (_) {
+      _showError();
     }
   }
 
@@ -714,8 +867,261 @@ class _PersonPersonalDatabaseTabState
   }
 }
 
+class _ArrayTemplateMetadataView {
+  const _ArrayTemplateMetadataView({this.elementType, this.template});
+
+  final PersonalDatabaseValueType? elementType;
+  final Map<String, Object?>? template;
+
+  bool get hasObjectTemplate =>
+      elementType == PersonalDatabaseValueType.object && template != null;
+}
+
 String _nodeId({required String rootFieldId, required List<Object> path}) {
   return '$rootFieldId:${jsonEncode(path)}';
+}
+
+bool _canEditNestedArrayTemplate({
+  required PersonalDatabaseFieldNode rootField,
+}) {
+  return rootField.type == PersonalDatabaseValueType.list &&
+      rootField.arrayElementType == PersonalDatabaseValueType.object;
+}
+
+_ArrayTemplateMetadataView? _resolveArrayTemplateMetadata({
+  required PersonalDatabaseFieldNode rootField,
+  required List<Object> path,
+}) {
+  if (!_canEditNestedArrayTemplate(rootField: rootField)) {
+    return null;
+  }
+
+  var currentList = _ArrayTemplateMetadataView(
+    elementType: rootField.arrayElementType,
+    template: rootField.arrayElementTemplate,
+  );
+  if (path.isEmpty) {
+    return currentList;
+  }
+
+  Map<String, Object?>? currentObjectTemplate;
+
+  for (final segment in path) {
+    if (segment is int) {
+      if (currentList.elementType != PersonalDatabaseValueType.object ||
+          currentList.template == null) {
+        return null;
+      }
+      currentObjectTemplate = currentList.template;
+      continue;
+    }
+
+    if (segment is! String || currentObjectTemplate == null) {
+      return null;
+    }
+
+    final propertyValue = currentObjectTemplate[segment];
+    if (propertyValue is List) {
+      currentList =
+          _readArrayTemplateMetadataForKey(currentObjectTemplate, segment) ??
+          const _ArrayTemplateMetadataView();
+      currentObjectTemplate = null;
+      continue;
+    }
+
+    if (propertyValue is Map<String, dynamic>) {
+      currentObjectTemplate = propertyValue.cast<String, Object?>();
+      continue;
+    }
+
+    if (propertyValue is Map<String, Object?>) {
+      currentObjectTemplate = propertyValue;
+      continue;
+    }
+
+    return null;
+  }
+
+  return currentList;
+}
+
+_ArrayTemplateMetadataView? _readArrayTemplateMetadataForKey(
+  Map<String, Object?> objectTemplate,
+  String key,
+) {
+  final metadataRoot = _mutableTemplateMap(
+    objectTemplate[personalDatabaseArrayTemplateMetadataKey],
+  );
+  final rawMetadata = _mutableTemplateMap(metadataRoot?[key]);
+  final dbKey = rawMetadata?['elementType'];
+  if (dbKey is! String) {
+    return null;
+  }
+
+  final elementType = personalDatabaseValueTypeFromDb(dbKey);
+  return _ArrayTemplateMetadataView(
+    elementType: elementType,
+    template: elementType == PersonalDatabaseValueType.object
+        ? _mutableTemplateMap(rawMetadata?['template']) ??
+              const <String, Object?>{}
+        : null,
+  );
+}
+
+Map<String, Object?>? _upsertNestedArrayTemplate({
+  required PersonalDatabaseFieldNode rootField,
+  required List<Object> path,
+  required Map<String, Object?> template,
+}) {
+  if (!_canEditNestedArrayTemplate(rootField: rootField) || path.isEmpty) {
+    return null;
+  }
+
+  final rootTemplateValue = _deepCloneJson(
+    rootField.arrayElementTemplate ?? const <String, Object?>{},
+  );
+  final rootTemplate = _mutableTemplateMap(rootTemplateValue);
+  if (rootTemplate == null) {
+    return null;
+  }
+
+  Map<String, Object?>? currentObjectTemplate;
+
+  for (var index = 0; index < path.length; index++) {
+    final segment = path[index];
+    if (segment is int) {
+      currentObjectTemplate ??= rootTemplate;
+      continue;
+    }
+
+    if (segment is! String || currentObjectTemplate == null) {
+      return null;
+    }
+
+    final isLast = index == path.length - 1;
+    if (isLast) {
+      if (currentObjectTemplate[segment] is! List) {
+        currentObjectTemplate[segment] = <Object?>[];
+      }
+      _writeArrayTemplateMetadataForKey(
+        currentObjectTemplate,
+        segment,
+        template: template,
+      );
+      return rootTemplate;
+    }
+
+    final nextSegment = path[index + 1];
+    if (nextSegment is int) {
+      if (currentObjectTemplate[segment] is! List) {
+        currentObjectTemplate[segment] = <Object?>[];
+      }
+      currentObjectTemplate = _writeArrayTemplateMetadataForKey(
+        currentObjectTemplate,
+        segment,
+      ).template;
+      continue;
+    }
+
+    final existingObject = _mutableTemplateMap(currentObjectTemplate[segment]);
+    if (existingObject != null) {
+      currentObjectTemplate = existingObject;
+      continue;
+    }
+
+    final createdObject = <String, Object?>{};
+    currentObjectTemplate[segment] = createdObject;
+    currentObjectTemplate = createdObject;
+  }
+
+  return rootTemplate;
+}
+
+_ArrayTemplateMetadataView _writeArrayTemplateMetadataForKey(
+  Map<String, Object?> objectTemplate,
+  String key, {
+  Map<String, Object?>? template,
+}) {
+  final metadataRoot = _ensureArrayTemplateMetadataRoot(objectTemplate);
+  final metadata =
+      _mutableTemplateMap(metadataRoot[key]) ?? <String, Object?>{};
+  final nextTemplate =
+      _mutableTemplateMap(metadata['template']) ??
+      _deepCloneJson(template ?? const <String, Object?>{})
+          as Map<String, Object?>;
+
+  metadata['elementType'] = PersonalDatabaseValueType.object.dbKey;
+  metadata['template'] = nextTemplate;
+  metadataRoot[key] = metadata;
+
+  return _ArrayTemplateMetadataView(
+    elementType: PersonalDatabaseValueType.object,
+    template: nextTemplate,
+  );
+}
+
+Map<String, Object?> _ensureArrayTemplateMetadataRoot(
+  Map<String, Object?> objectTemplate,
+) {
+  final existing = _mutableTemplateMap(
+    objectTemplate[personalDatabaseArrayTemplateMetadataKey],
+  );
+  if (existing != null) {
+    return existing;
+  }
+
+  final created = <String, Object?>{};
+  objectTemplate[personalDatabaseArrayTemplateMetadataKey] = created;
+  return created;
+}
+
+Map<String, Object?>? _mutableTemplateMap(Object? value) {
+  if (value is Map<String, Object?>) {
+    return value;
+  }
+  if (value is Map<String, dynamic>) {
+    return value.cast<String, Object?>();
+  }
+  return null;
+}
+
+Object? _deepCloneJson(Object? value) {
+  if (value == null) {
+    return null;
+  }
+  return jsonDecode(jsonEncode(value));
+}
+
+Object? _materializeTemplateValue(Object? value) {
+  return _stripTemplateMetadata(_deepCloneJson(value));
+}
+
+Object? _stripTemplateMetadata(Object? value) {
+  if (value is Map<String, dynamic>) {
+    return {
+      for (final entry in value.entries)
+        if (entry.key != personalDatabaseArrayTemplateMetadataKey)
+          entry.key: _stripTemplateMetadata(entry.value),
+    };
+  }
+  if (value is Map<String, Object?>) {
+    return {
+      for (final entry in value.entries)
+        if (entry.key != personalDatabaseArrayTemplateMetadataKey)
+          entry.key: _stripTemplateMetadata(entry.value),
+    };
+  }
+  if (value is Map) {
+    return {
+      for (final entry in value.entries)
+        if ('${entry.key}' != personalDatabaseArrayTemplateMetadataKey)
+          '${entry.key}': _stripTemplateMetadata(entry.value),
+    };
+  }
+  if (value is List) {
+    return value.map(_stripTemplateMetadata).toList(growable: false);
+  }
+  return value;
 }
 
 PersonalDatabaseValueType _valueTypeFromValue(Object? value) {
@@ -753,11 +1159,16 @@ String _fieldValuePreview(
   if (field.type == PersonalDatabaseValueType.media) {
     return _mediaFileNamePreview(field.value);
   }
-  return _valuePreview(field.value, mentionCodec: mentionCodec);
+  return _valuePreview(
+    field.value,
+    arrayElementType: field.arrayElementType,
+    mentionCodec: mentionCodec,
+  );
 }
 
 String _valuePreview(
   Object? value, {
+  PersonalDatabaseValueType? arrayElementType,
   required PersonalDatabaseMentionCodec mentionCodec,
 }) {
   if (value == null) {
@@ -777,7 +1188,10 @@ String _valuePreview(
     return '{${value.length}}';
   }
   if (value is List) {
-    return '[${value.length}]';
+    final elementTypeLabel =
+        arrayElementType?.localizationKey.tr() ??
+        'databasePropertyManager.arrayElement.unspecified'.tr();
+    return '[${value.length}] <$elementTypeLabel>';
   }
   return '$value';
 }

@@ -49,6 +49,7 @@ databasePropertyManager.emptyTitle,還沒有資料庫屬性,No database properti
 databasePropertyManager.emptyBody,建立屬性後，就能在這裡重新整理整個 property tree。,Create properties to manage the full property tree here.
 databasePropertyManager.emptySearchTitle,找不到符合的屬性,No matching properties
 databasePropertyManager.emptySearchBody,試著換個關鍵字搜尋。,Try a different search term.
+databasePropertyManager.loadError,讀取屬性庫失敗。,Failed to load the property library.
 databasePropertyManager.objectChildren,{count} 個子屬性,{count} child properties
 databasePropertyManager.rootOption,主層級,Root level
 databasePropertyManager.fab.tooltip,建立根屬性,Create root property
@@ -57,6 +58,8 @@ databasePropertyManager.action.addSubproperty,新增子屬性,Add subproperty
 databasePropertyManager.action.retype,變更類型,Change type
 databasePropertyManager.action.retypeHint,改變這個 property 的 value type。,Change the value type of this property.
 databasePropertyManager.action.retypeDisabled,這個物件還有子屬性，不能直接變更類型。,This object still has child properties and cannot be retyped.
+databasePropertyManager.action.changeElementType,變更元素類型,Change element type
+databasePropertyManager.action.editElementTemplate,編輯元素模板,Edit element template
 databasePropertyManager.action.delete,刪除屬性,Delete property
 databasePropertyManager.renameDialog.title,重新命名屬性,Rename property
 databasePropertyManager.renameDialog.label,屬性名稱,Property name
@@ -64,6 +67,12 @@ databasePropertyManager.renameDialog.cancel,取消,Cancel
 databasePropertyManager.renameDialog.save,儲存,Save
 databasePropertyManager.retypeDialog.title,變更屬性型別,Change property type
 databasePropertyManager.retypeDialog.save,儲存,Save
+databasePropertyManager.arrayElement.prefix,元素,Element
+databasePropertyManager.arrayElement.unspecified,未指定,Unspecified
+databasePropertyManager.elementTypeDialog.title,變更元素型別,Change element type
+databasePropertyManager.elementTypeDialog.save,儲存,Save
+databasePropertyManager.editElementTemplateTitle,編輯元素模板,Edit element template
+databasePropertyManager.editElementTemplateSubmit,儲存模板,Save template
 databasePropertyManager.createRootTitle,新增根屬性,Create root property
 databasePropertyManager.createRootSubmit,建立,Create
 databasePropertyManager.createSubTitle,新增子屬性,Create subproperty
@@ -247,6 +256,9 @@ personTodo.database.fieldType.object,物件,Object
 personTodo.database.fieldType.list,陣列,List
 personTodo.database.fieldType.null,空值,Null
 personTodo.database.action.addChild,新增子屬性,Add child property
+personTodo.database.action.addElement,新增元素,Add element
+personTodo.database.action.addFromTemplate,從既有模板新增元素,Add element from existing template
+personTodo.database.action.editTemplate,編輯模板,Edit template
 personTodo.database.action.edit,編輯,Edit
 personTodo.database.action.delete,刪除,Delete
 personTodo.database.menu.more,更多操作,More actions
@@ -288,6 +300,20 @@ personTodo.database.sheet.keyRequired,請輸入 key。,Key is required.
 personTodo.database.sheet.invalidNumber,數字格式不正確。,Invalid number format.
 personTodo.database.sheet.invalidObject,請輸入有效的 JSON object。,Enter a valid JSON object.
 personTodo.database.sheet.invalidList,請輸入有效的 JSON list。,Enter a valid JSON list.
+personalDatabaseTemplateEditor.rootTitle,編輯「{key}」元素模板,Edit "{key}" element template
+personalDatabaseTemplateEditor.nestedTitle,編輯「{key}」元素模板,Edit "{key}" element template
+personalDatabaseTemplateEditor.save,儲存,Save
+personalDatabaseTemplateEditor.addProperty,新增屬性,Add property
+personalDatabaseTemplateEditor.addPropertyTitle,新增模板屬性,Add template property
+personalDatabaseTemplateEditor.editPropertyTitle,編輯模板屬性,Edit template property
+personalDatabaseTemplateEditor.create,建立,Create
+personalDatabaseTemplateEditor.emptyTitle,尚未定義模板屬性,No template properties yet
+personalDatabaseTemplateEditor.action.editObject,編輯物件結構,Edit object structure
+personalDatabaseTemplateEditor.action.editTemplate,編輯元素模板,Edit element template
+personalDatabaseTemplateEditor.action.editProperty,編輯屬性,Edit property
+personalDatabaseTemplateEditor.leaveDialog.title,放棄未儲存的變更？,Discard unsaved changes?
+personalDatabaseTemplateEditor.leaveDialog.body,你已經修改元素模板，現在離開會遺失這些變更。,You have unsaved changes to this element template. Leave now and lose them.
+personalDatabaseTemplateEditor.leaveDialog.leave,離開,Leave
 personTodo.propertyChooser.title,選擇屬性,Choose property
 personTodo.propertyChooser.subtitle,從屬性庫挑選一個要加入這個人的項目，或建立新的屬性。,Pick a property from the library, or create a new one.
 personTodo.propertyChooser.searchHint,搜尋屬性,Search properties

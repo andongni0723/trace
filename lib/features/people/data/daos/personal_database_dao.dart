@@ -234,6 +234,8 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
     required bool isPublic,
     String? ownerPersonId,
     String? parentFieldId,
+    PersonalDatabaseValueType? arrayElementType,
+    String? arrayElementTemplateJsonValue,
     int sortOrder = 0,
   }) async {
     final trimmedKey = key.trim();
@@ -246,6 +248,14 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
         id: id,
         key: trimmedKey,
         valueType: type.dbKey,
+        arrayElementType: Value(_arrayElementTypeDbKey(type, arrayElementType)),
+        arrayElementTemplateJsonValue: Value(
+          _normalizeArrayElementTemplateJsonValue(
+            fieldType: type,
+            arrayElementType: arrayElementType,
+            jsonValue: arrayElementTemplateJsonValue,
+          ),
+        ),
         isPublic: Value(isPublic),
         ownerPersonId: Value(isPublic ? null : ownerPersonId),
         parentFieldId: Value(parentFieldId),
@@ -263,6 +273,8 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
     bool isPublic = true,
     String? ownerPersonId,
     String? parentFieldId,
+    PersonalDatabaseValueType? arrayElementType,
+    String? arrayElementTemplateJsonValue,
     int sortOrder = 0,
     int? assignmentSortOrder,
   }) async {
@@ -285,6 +297,16 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
           id: id,
           key: trimmedKey,
           valueType: type.dbKey,
+          arrayElementType: Value(
+            _arrayElementTypeDbKey(type, arrayElementType),
+          ),
+          arrayElementTemplateJsonValue: Value(
+            _normalizeArrayElementTemplateJsonValue(
+              fieldType: type,
+              arrayElementType: arrayElementType,
+              jsonValue: arrayElementTemplateJsonValue,
+            ),
+          ),
           isPublic: Value(isPublic),
           ownerPersonId: Value(isPublic ? null : ownerPersonId),
           parentFieldId: Value(parentFieldId),
@@ -351,6 +373,12 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
         PersonalDatabaseFieldsCompanion(
           key: Value(trimmedKey),
           valueType: Value(type.dbKey),
+          arrayElementType: type == PersonalDatabaseValueType.list
+              ? const Value.absent()
+              : const Value(null),
+          arrayElementTemplateJsonValue: type == PersonalDatabaseValueType.list
+              ? const Value.absent()
+              : const Value(null),
           updatedAt: Value(DateTime.now()),
         ),
       );
@@ -385,6 +413,75 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
         );
       });
     });
+  }
+
+  Future<void> updateArrayElementType({
+    required String fieldId,
+    required PersonalDatabaseValueType? elementType,
+  }) async {
+    final field = await getFieldById(fieldId);
+    if (field == null) {
+      return;
+    }
+
+    final fieldType = personalDatabaseValueTypeFromDb(field.valueType);
+    final normalizedElementType = fieldType == PersonalDatabaseValueType.list
+        ? elementType
+        : null;
+
+    await (update(
+      personalDatabaseFields,
+    )..where((table) => table.id.equals(fieldId))).write(
+      PersonalDatabaseFieldsCompanion(
+        arrayElementType: Value(normalizedElementType?.dbKey),
+        arrayElementTemplateJsonValue: Value(
+          normalizedElementType == PersonalDatabaseValueType.object
+              ? _normalizeArrayElementTemplateJsonValue(
+                  fieldType: fieldType,
+                  arrayElementType: normalizedElementType,
+                  jsonValue: field.arrayElementTemplateJsonValue,
+                )
+              : null,
+        ),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  Future<void> updateArrayElementTemplate({
+    required String fieldId,
+    required String jsonValue,
+  }) async {
+    final field = await getFieldById(fieldId);
+    if (field == null) {
+      return;
+    }
+
+    final fieldType = personalDatabaseValueTypeFromDb(field.valueType);
+    final arrayElementType = _arrayElementTypeFromDb(
+      fieldType: fieldType,
+      dbKey: field.arrayElementType,
+    );
+    if (fieldType != PersonalDatabaseValueType.list ||
+        arrayElementType != PersonalDatabaseValueType.object) {
+      await updateArrayElementType(fieldId: fieldId, elementType: null);
+      return;
+    }
+
+    await (update(
+      personalDatabaseFields,
+    )..where((table) => table.id.equals(fieldId))).write(
+      PersonalDatabaseFieldsCompanion(
+        arrayElementTemplateJsonValue: Value(
+          _normalizeArrayElementTemplateJsonValue(
+            fieldType: fieldType,
+            arrayElementType: arrayElementType,
+            jsonValue: jsonValue,
+          ),
+        ),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
   }
 
   Future<void> updateFieldValueForPerson({
@@ -736,6 +833,10 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
 
   _FieldRow _fieldRowFromDefinition(PersonalDatabaseField field) {
     final type = personalDatabaseValueTypeFromDb(field.valueType);
+    final arrayElementType = _arrayElementTypeFromDb(
+      fieldType: type,
+      dbKey: field.arrayElementType,
+    );
     return _FieldRow(
       id: field.id,
       key: field.key,
@@ -744,6 +845,12 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
       parentFieldId: field.parentFieldId,
       sortOrder: field.sortOrder,
       rawJsonValue: type.defaultJsonValue,
+      arrayElementType: arrayElementType,
+      arrayElementTemplateJsonValue: _normalizeArrayElementTemplateJsonValue(
+        fieldType: type,
+        arrayElementType: arrayElementType,
+        jsonValue: field.arrayElementTemplateJsonValue,
+      ),
     );
   }
 
@@ -758,6 +865,10 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
       final personField = row.readTable(personFieldsAlias);
       final valueForPerson = row.readTableOrNull(valuesAlias);
       final type = personalDatabaseValueTypeFromDb(field.valueType);
+      final arrayElementType = _arrayElementTypeFromDb(
+        fieldType: type,
+        dbKey: field.arrayElementType,
+      );
       fieldRows[field.id] = _FieldRow(
         id: field.id,
         key: field.key,
@@ -768,6 +879,12 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
             ? personField.sortOrder
             : field.sortOrder,
         rawJsonValue: valueForPerson?.jsonValue ?? type.defaultJsonValue,
+        arrayElementType: arrayElementType,
+        arrayElementTemplateJsonValue: _normalizeArrayElementTemplateJsonValue(
+          fieldType: type,
+          arrayElementType: arrayElementType,
+          jsonValue: field.arrayElementTemplateJsonValue,
+        ),
       );
     }
 
@@ -835,6 +952,13 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
         rawJsonValue: row.rawJsonValue,
         value: _decodeJsonValue(type: row.type, jsonValue: row.rawJsonValue),
         children: children,
+        arrayElementType: row.arrayElementType,
+        arrayElementTemplateJsonValue: row.arrayElementTemplateJsonValue,
+        arrayElementTemplate: _decodeArrayElementTemplate(
+          fieldType: row.type,
+          arrayElementType: row.arrayElementType,
+          jsonValue: row.arrayElementTemplateJsonValue,
+        ),
       );
     }
 
@@ -940,6 +1064,74 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
       ),
     };
   }
+
+  String? _arrayElementTypeDbKey(
+    PersonalDatabaseValueType fieldType,
+    PersonalDatabaseValueType? arrayElementType,
+  ) {
+    if (fieldType != PersonalDatabaseValueType.list) {
+      return null;
+    }
+    return arrayElementType?.dbKey;
+  }
+
+  PersonalDatabaseValueType? _arrayElementTypeFromDb({
+    required PersonalDatabaseValueType fieldType,
+    required String? dbKey,
+  }) {
+    if (fieldType != PersonalDatabaseValueType.list || dbKey == null) {
+      return null;
+    }
+    return personalDatabaseValueTypeFromDb(dbKey);
+  }
+
+  String? _normalizeArrayElementTemplateJsonValue({
+    required PersonalDatabaseValueType fieldType,
+    required PersonalDatabaseValueType? arrayElementType,
+    required String? jsonValue,
+  }) {
+    if (fieldType != PersonalDatabaseValueType.list ||
+        arrayElementType != PersonalDatabaseValueType.object ||
+        jsonValue == null) {
+      return null;
+    }
+
+    try {
+      final decoded = jsonDecode(jsonValue);
+      final object = _asStringKeyedMap(decoded);
+      return object == null ? null : jsonEncode(object);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Map<String, Object?>? _decodeArrayElementTemplate({
+    required PersonalDatabaseValueType fieldType,
+    required PersonalDatabaseValueType? arrayElementType,
+    required String? jsonValue,
+  }) {
+    final normalized = _normalizeArrayElementTemplateJsonValue(
+      fieldType: fieldType,
+      arrayElementType: arrayElementType,
+      jsonValue: jsonValue,
+    );
+    if (normalized == null) {
+      return null;
+    }
+
+    final decoded = jsonDecode(normalized);
+    return _asStringKeyedMap(decoded);
+  }
+
+  Map<String, Object?>? _asStringKeyedMap(Object? value) {
+    if (value is Map<String, dynamic>) {
+      return Map<String, Object?>.from(value);
+    }
+    if (value is Map) {
+      return {for (final entry in value.entries) '${entry.key}': entry.value};
+    }
+    return null;
+  }
 }
 
 class _FieldRow {
@@ -951,6 +1143,8 @@ class _FieldRow {
     required this.parentFieldId,
     required this.sortOrder,
     required this.rawJsonValue,
+    this.arrayElementType,
+    this.arrayElementTemplateJsonValue,
   });
 
   final String id;
@@ -960,4 +1154,6 @@ class _FieldRow {
   final String? parentFieldId;
   final int sortOrder;
   final String rawJsonValue;
+  final PersonalDatabaseValueType? arrayElementType;
+  final String? arrayElementTemplateJsonValue;
 }

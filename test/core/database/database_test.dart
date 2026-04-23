@@ -307,5 +307,121 @@ void main() {
         ),
       );
     });
+
+    test(
+      'stores array element type and object template on definitions',
+      () async {
+        await database.personalDatabaseDao.createFieldAndAssignToPerson(
+          id: 'field-list',
+          personId: 'owner',
+          key: 'pets',
+          type: PersonalDatabaseValueType.list,
+          jsonValue: '[]',
+          arrayElementType: PersonalDatabaseValueType.object,
+          arrayElementTemplateJsonValue: '{"name":"","age":0}',
+        );
+
+        final rawDefinition = await database.personalDatabaseDao.getFieldById(
+          'field-list',
+        );
+        final ownerFields = await database.personalDatabaseDao
+            .watchFieldTreeForPerson('owner')
+            .first;
+
+        expect(rawDefinition!.arrayElementType, 'object');
+        expect(
+          rawDefinition.arrayElementTemplateJsonValue,
+          '{"name":"","age":0}',
+        );
+        expect(
+          ownerFields.single.arrayElementType,
+          PersonalDatabaseValueType.object,
+        );
+        expect(ownerFields.single.arrayElementTemplate, {'name': '', 'age': 0});
+      },
+    );
+
+    test('list fields default to unspecified array element metadata', () async {
+      await database.personalDatabaseDao.createFieldAndAssignToPerson(
+        id: 'field-list',
+        personId: 'owner',
+        key: 'tags',
+        type: PersonalDatabaseValueType.list,
+        jsonValue: '[]',
+      );
+
+      final rawDefinition = await database.personalDatabaseDao.getFieldById(
+        'field-list',
+      );
+      final ownerFields = await database.personalDatabaseDao
+          .watchFieldTreeForPerson('owner')
+          .first;
+
+      expect(rawDefinition!.arrayElementType, isNull);
+      expect(rawDefinition.arrayElementTemplateJsonValue, isNull);
+      expect(ownerFields.single.arrayElementType, isNull);
+      expect(ownerFields.single.arrayElementTemplate, isNull);
+    });
+
+    test('clears array template when element type is not object', () async {
+      await database.personalDatabaseDao.createFieldAndAssignToPerson(
+        id: 'field-list',
+        personId: 'owner',
+        key: 'pets',
+        type: PersonalDatabaseValueType.list,
+        jsonValue: '[]',
+        arrayElementType: PersonalDatabaseValueType.object,
+        arrayElementTemplateJsonValue: '{"name":""}',
+      );
+
+      await database.personalDatabaseDao.updateArrayElementType(
+        fieldId: 'field-list',
+        elementType: PersonalDatabaseValueType.string,
+      );
+
+      final rawDefinition = await database.personalDatabaseDao.getFieldById(
+        'field-list',
+      );
+      final ownerFields = await database.personalDatabaseDao
+          .watchFieldTreeForPerson('owner')
+          .first;
+
+      expect(rawDefinition!.arrayElementType, 'string');
+      expect(rawDefinition.arrayElementTemplateJsonValue, isNull);
+      expect(
+        ownerFields.single.arrayElementType,
+        PersonalDatabaseValueType.string,
+      );
+      expect(ownerFields.single.arrayElementTemplate, isNull);
+    });
+
+    test(
+      'clears array metadata when property type changes away from list',
+      () async {
+        await database.personalDatabaseDao.createFieldAndAssignToPerson(
+          id: 'field-list',
+          personId: 'owner',
+          key: 'pets',
+          type: PersonalDatabaseValueType.list,
+          jsonValue: '[]',
+          arrayElementType: PersonalDatabaseValueType.object,
+          arrayElementTemplateJsonValue: '{"name":""}',
+        );
+
+        await database.personalDatabaseDao.updatePropertyDefinition(
+          fieldId: 'field-list',
+          key: 'pets',
+          type: PersonalDatabaseValueType.string,
+        );
+
+        final rawDefinition = await database.personalDatabaseDao.getFieldById(
+          'field-list',
+        );
+
+        expect(rawDefinition!.valueType, 'string');
+        expect(rawDefinition.arrayElementType, isNull);
+        expect(rawDefinition.arrayElementTemplateJsonValue, isNull);
+      },
+    );
   });
 }

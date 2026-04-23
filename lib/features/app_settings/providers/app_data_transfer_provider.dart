@@ -24,8 +24,8 @@ final appDataTransferProvider = Provider<AppDataTransferService>((ref) {
 const _backupAppId = 'trace';
 const _legacyBackupAppIds = {'people_todolist'};
 const _backupType = 'app_backup';
-const _backupVersion = 6;
-const _supportedBackupVersions = {1, 2, 3, 4, 5, 6};
+const _backupVersion = 7;
+const _supportedBackupVersions = {1, 2, 3, 4, 5, 6, 7};
 
 class AppDataTransferService {
   AppDataTransferService(this._ref);

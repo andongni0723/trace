@@ -5,7 +5,13 @@ import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/utils/useful_extension.dart';
 import '../../data/models/personal_database_value_type.dart';
 
-enum PersonalDatabaseEditorAction { addChild, edit, delete }
+enum PersonalDatabaseEditorAction {
+  addChild,
+  addFromTemplate,
+  editTemplate,
+  edit,
+  delete,
+}
 
 class PersonalDatabaseEditorRowData {
   const PersonalDatabaseEditorRowData({
@@ -23,6 +29,8 @@ class PersonalDatabaseEditorRowData {
     required this.isDefinitionBacked,
     required this.parentIsList,
     this.isValueEnabled = true,
+    this.canAddFromTemplate = false,
+    this.canEditTemplate = false,
     this.valueSegments = const [],
   });
 
@@ -40,6 +48,8 @@ class PersonalDatabaseEditorRowData {
   final bool isDefinitionBacked;
   final bool parentIsList;
   final bool isValueEnabled;
+  final bool canAddFromTemplate;
+  final bool canEditTemplate;
   final List<PersonalDatabaseEditorValueSegment> valueSegments;
 }
 
@@ -149,6 +159,90 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
+class PersonalDatabasePropertyRow<T> extends StatelessWidget {
+  const PersonalDatabasePropertyRow({
+    required this.leading,
+    required this.value,
+    required this.borderRadius,
+    this.depth = 0,
+    this.leadingFlex = 4,
+    this.valueFlex = 5,
+    this.isContainer = false,
+    this.isExpanded = false,
+    this.onPressedValue,
+    this.onSelectedMenu,
+    this.itemBuilder,
+    super.key,
+  });
+
+  final Widget leading;
+  final Widget value;
+  final BorderRadius borderRadius;
+  final int depth;
+  final int leadingFlex;
+  final int valueFlex;
+  final bool isContainer;
+  final bool isExpanded;
+  final VoidCallback? onPressedValue;
+  final PopupMenuItemSelected<T>? onSelectedMenu;
+  final PopupMenuItemBuilder<T>? itemBuilder;
+
+  @override
+  Widget build(BuildContext context) {
+    final paddingLeft = 12.0 + (depth * 16.0);
+
+    return Material(
+      color: context.cs.surfaceContainerLow,
+      borderRadius: borderRadius,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(paddingLeft, 6, 6, 6),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: Row(
+            children: [
+              Expanded(flex: leadingFlex, child: leading),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: valueFlex,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(4),
+                  onTap: onPressedValue,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 10,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(child: value),
+                        if (isContainer) ...[
+                          const SizedBox(width: 8),
+                          Icon(
+                            isExpanded
+                                ? Icons.expand_less_rounded
+                                : Icons.expand_more_rounded,
+                            color: context.cs.onSurfaceVariant,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              if (itemBuilder != null)
+                PopupMenuButton<T>(
+                  onSelected: onSelectedMenu,
+                  itemBuilder: itemBuilder!,
+                  icon: const Icon(Icons.more_vert_rounded),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _PersonalDatabaseEditorRow extends StatelessWidget {
   const _PersonalDatabaseEditorRow({
     required this.row,
@@ -166,7 +260,6 @@ class _PersonalDatabaseEditorRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final paddingLeft = 12.0 + (row.depth * 16.0);
     final borderRadius = switch (position) {
       _PersonalDatabaseEditorRowPosition.single => BorderRadius.circular(24),
       _PersonalDatabaseEditorRowPosition.first => const BorderRadius.vertical(
@@ -180,85 +273,54 @@ class _PersonalDatabaseEditorRow extends StatelessWidget {
       ),
     };
 
-    return Material(
-      color: context.cs.surfaceContainerLow,
+    return PersonalDatabasePropertyRow<PersonalDatabaseEditorAction>(
       borderRadius: borderRadius,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(paddingLeft, 6, 6, 6),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 48),
-          child: Row(
-            children: [
-              Expanded(
-                flex: 4,
-                child: Text(
-                  row.keyLabel,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.tt.titleSmall?.copyWith(
-                    fontWeight: row.depth == 0
-                        ? FontWeight.w700
-                        : FontWeight.w600,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 5,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(4),
-                  onTap: row.isValueEnabled ? onPressedValue : null,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 10,
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _PersonalDatabaseEditorValueText(
-                            row: row,
-                            onPressedMention: onPressedMention,
-                          ),
-                        ),
-                        if (row.isContainer) ...[
-                          const SizedBox(width: 8),
-                          Icon(
-                            row.isExpanded
-                                ? Icons.expand_less_rounded
-                                : Icons.expand_more_rounded,
-                            color: context.cs.onSurfaceVariant,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              PopupMenuButton<PersonalDatabaseEditorAction>(
-                onSelected: onPressedAction,
-                itemBuilder: (_) {
-                  return [
-                    if (row.isContainer)
-                      PopupMenuItem(
-                        value: PersonalDatabaseEditorAction.addChild,
-                        child: Text('personTodo.database.action.addChild'.tr()),
-                      ),
-                    PopupMenuItem(
-                      value: PersonalDatabaseEditorAction.edit,
-                      child: Text('personTodo.database.action.edit'.tr()),
-                    ),
-                    PopupMenuItem(
-                      value: PersonalDatabaseEditorAction.delete,
-                      child: Text('personTodo.database.action.delete'.tr()),
-                    ),
-                  ];
-                },
-                icon: const Icon(Icons.more_vert_rounded),
-              ),
-            ],
+      depth: row.depth,
+      isContainer: row.isContainer,
+      isExpanded: row.isExpanded,
+      onPressedValue: row.isValueEnabled ? onPressedValue : null,
+      onSelectedMenu: onPressedAction,
+      itemBuilder: (_) {
+        final addChildLabel = row.valueType == PersonalDatabaseValueType.list
+            ? 'personTodo.database.action.addElement'.tr()
+            : 'personTodo.database.action.addChild'.tr();
+        return [
+          if (row.canAddFromTemplate)
+            PopupMenuItem(
+              value: PersonalDatabaseEditorAction.addFromTemplate,
+              child: Text('personTodo.database.action.addFromTemplate'.tr()),
+            ),
+          if (row.isContainer)
+            PopupMenuItem(
+              value: PersonalDatabaseEditorAction.addChild,
+              child: Text(addChildLabel),
+            ),
+          if (row.canEditTemplate)
+            PopupMenuItem(
+              value: PersonalDatabaseEditorAction.editTemplate,
+              child: Text('personTodo.database.action.editTemplate'.tr()),
+            ),
+          PopupMenuItem(
+            value: PersonalDatabaseEditorAction.edit,
+            child: Text('personTodo.database.action.edit'.tr()),
           ),
+          PopupMenuItem(
+            value: PersonalDatabaseEditorAction.delete,
+            child: Text('personTodo.database.action.delete'.tr()),
+          ),
+        ];
+      },
+      leading: Text(
+        row.keyLabel,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: context.tt.titleSmall?.copyWith(
+          fontWeight: row.depth == 0 ? FontWeight.w700 : FontWeight.w600,
         ),
+      ),
+      value: _PersonalDatabaseEditorValueText(
+        row: row,
+        onPressedMention: onPressedMention,
       ),
     );
   }
