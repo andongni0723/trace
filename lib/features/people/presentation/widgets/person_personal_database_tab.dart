@@ -5,6 +5,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../app_settings/data/models/app_settings.dart';
+import '../../../app_settings/providers/app_settings_provider.dart';
 import '../../../../core/database/database.dart';
 import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/utils/useful_extension.dart';
@@ -39,6 +41,7 @@ class _PersonPersonalDatabaseTabState
     extends ConsumerState<PersonPersonalDatabaseTab> {
   final Set<String> _expandedNodeIds = <String>{};
   bool _didScheduleBackfill = false;
+  bool _didInitializeExpandState = false;
 
   @override
   void initState() {
@@ -50,6 +53,8 @@ class _PersonPersonalDatabaseTabState
   void didUpdateWidget(covariant PersonPersonalDatabaseTab oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.personId != widget.personId) {
+      _expandedNodeIds.clear();
+      _didInitializeExpandState = false;
       _didScheduleBackfill = false;
       _scheduleNestedDefinitionBackfill();
     }
@@ -62,9 +67,22 @@ class _PersonPersonalDatabaseTabState
     );
     final peopleAsync = ref.watch(peopleProvider);
     final mentionCodec = ref.watch(personalDatabaseMentionCodecProvider);
+    final initialDisplayMode = ref
+        .watch(appSettingsProvider)
+        .maybeWhen(
+          data: (settings) => settings.initialPropertyDisplayMode,
+          error: (_, __) => AppInitialPropertyDisplayMode.collapsed,
+          orElse: () => null,
+        );
 
     return fieldsAsync.when(
       data: (fields) {
+        if (!_didInitializeExpandState && initialDisplayMode == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (initialDisplayMode != null) {
+          _ensureInitialExpandState(fields, initialDisplayMode);
+        }
         final fieldsById = _fieldsById(fields);
         final peopleById = {
           for (final person
@@ -100,6 +118,102 @@ class _PersonPersonalDatabaseTabState
         ),
       ),
     );
+  }
+
+  void _ensureInitialExpandState(
+    List<PersonalDatabaseFieldNode> fields,
+    AppInitialPropertyDisplayMode mode,
+  ) {
+    if (_didInitializeExpandState) {
+      return;
+    }
+
+    _expandedNodeIds
+      ..clear()
+      ..addAll(
+        mode == AppInitialPropertyDisplayMode.expanded
+            ? _collectExpandableNodeIds(fields)
+            : const <String>{},
+      );
+    _didInitializeExpandState = true;
+  }
+
+  Set<String> _collectExpandableNodeIds(
+    List<PersonalDatabaseFieldNode> fields,
+  ) {
+    final ids = <String>{};
+    for (final field in fields) {
+      _collectFieldExpandableNodeIds(field, ids);
+    }
+    return ids;
+  }
+
+  void _collectFieldExpandableNodeIds(
+    PersonalDatabaseFieldNode field,
+    Set<String> ids,
+  ) {
+    final isContainer =
+        field.type == PersonalDatabaseValueType.object ||
+        field.type == PersonalDatabaseValueType.list;
+    if (isContainer) {
+      ids.add(_nodeId(rootFieldId: field.id, path: const []));
+    }
+
+    for (final child in field.children) {
+      _collectFieldExpandableNodeIds(child, ids);
+    }
+
+    if (field.type == PersonalDatabaseValueType.list &&
+        field.value is List<dynamic>) {
+      final listValue = field.value as List<dynamic>;
+      for (var index = 0; index < listValue.length; index++) {
+        _collectValueExpandableNodeIds(
+          rootFieldId: field.id,
+          path: [index],
+          value: listValue[index],
+          ids: ids,
+        );
+      }
+    }
+  }
+
+  void _collectValueExpandableNodeIds({
+    required String rootFieldId,
+    required List<Object> path,
+    required Object? value,
+    required Set<String> ids,
+  }) {
+    final valueType = _valueTypeFromValue(value);
+    final isContainer =
+        valueType == PersonalDatabaseValueType.object ||
+        valueType == PersonalDatabaseValueType.list;
+
+    if (isContainer) {
+      ids.add(_nodeId(rootFieldId: rootFieldId, path: path));
+    }
+
+    if (value is Map<String, dynamic>) {
+      for (final entry in value.entries) {
+        _collectValueExpandableNodeIds(
+          rootFieldId: rootFieldId,
+          path: [...path, entry.key],
+          value: entry.value,
+          ids: ids,
+        );
+      }
+      return;
+    }
+
+    if (value is List<dynamic>) {
+      for (var index = 0; index < value.length; index++) {
+        _collectValueExpandableNodeIds(
+          rootFieldId: rootFieldId,
+          path: [...path, index],
+          value: value[index],
+          ids: ids,
+        );
+      }
+    }
   }
 
   List<PersonalDatabaseEditorRowData> _buildRows(
@@ -559,11 +673,19 @@ class _PersonPersonalDatabaseTabState
 
     AppHaptics.primaryAction();
     final mentionSuggestions = _mentionSuggestions();
+    final listElementType = _listElementTypeForRow(
+      row: row,
+      targetField: targetField,
+    );
     final result = await showPersonalDatabaseFieldSheet(
       context: context,
       title: 'personTodo.database.sheet.addChildTitle'.tr(),
       submitLabel: 'personTodo.database.sheet.create'.tr(),
       showKeyInput: row.valueType == PersonalDatabaseValueType.object,
+      showTypeInput: listElementType == null,
+      readOnlyTypeText: listElementType?.localizationKey.tr(),
+      initialType: listElementType ?? PersonalDatabaseValueType.string,
+      availableTypes: listElementType == null ? null : [listElementType],
       mentionSuggestions: mentionSuggestions,
       mentionCodec: ref.read(personalDatabaseMentionCodecProvider),
     );
@@ -600,6 +722,22 @@ class _PersonPersonalDatabaseTabState
     } catch (_) {
       _showError();
     }
+  }
+
+  PersonalDatabaseValueType? _listElementTypeForRow({
+    required PersonalDatabaseEditorRowData row,
+    required PersonalDatabaseFieldNode targetField,
+  }) {
+    if (row.valueType != PersonalDatabaseValueType.list) {
+      return null;
+    }
+    if (row.isDefinitionBacked) {
+      return targetField.arrayElementType;
+    }
+    return _resolveArrayTemplateMetadata(
+      rootField: targetField,
+      path: row.path,
+    )?.elementType;
   }
 
   Future<void> _editRow(

@@ -74,7 +74,7 @@ class AppSettingsPage extends ConsumerWidget {
           ),
           const SizedBox(height: 4),
           _SettingsSwitchTile(
-            position: _SettingsTilePosition.last,
+            position: _SettingsTilePosition.middle,
             title: 'appSettings.openingAnimation.title'.tr(),
             subtitle: 'appSettings.openingAnimation.subtitle'.tr(),
             value: appSettings.openingAnimationEnabled,
@@ -85,6 +85,21 @@ class AppSettingsPage extends ConsumerWidget {
                   .read(appSettingsActionsProvider)
                   .setOpeningAnimationEnabled(value);
             },
+          ),
+          const SizedBox(height: 4),
+          _SettingsTile(
+            position: _SettingsTilePosition.last,
+            title: 'appSettings.initialPropertyDisplayMode.title'.tr(),
+            subtitle: _initialPropertyDisplayModeLabel(
+              appSettings.initialPropertyDisplayMode,
+            ).tr(),
+            leading: const Icon(Icons.unfold_more_double_rounded),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => _showInitialPropertyDisplayModeDialog(
+              context,
+              ref,
+              appSettings.initialPropertyDisplayMode,
+            ),
           ),
           const SizedBox(height: 8),
           _SectionLabel(label: 'appSettings.section.security'.tr()),
@@ -255,6 +270,49 @@ class AppSettingsPage extends ConsumerWidget {
     }
 
     await ref.read(appSettingsActionsProvider).setThemeMode(nextMode);
+  }
+
+  Future<void> _showInitialPropertyDisplayModeDialog(
+    BuildContext context,
+    WidgetRef ref,
+    AppInitialPropertyDisplayMode currentMode,
+  ) async {
+    final nextMode = await showDialog<AppInitialPropertyDisplayMode>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text('appSettings.initialPropertyDisplayMode.title'.tr()),
+          contentPadding: const EdgeInsets.only(top: 12, bottom: 8),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: AppInitialPropertyDisplayMode.values
+                .map((mode) {
+                  return ListTile(
+                    leading: Icon(
+                      mode == currentMode
+                          ? Icons.radio_button_checked_rounded
+                          : Icons.radio_button_unchecked_rounded,
+                    ),
+                    title: Text(_initialPropertyDisplayModeLabel(mode).tr()),
+                    onTap: () {
+                      AppHaptics.selection();
+                      Navigator.of(dialogContext).pop(mode);
+                    },
+                  );
+                })
+                .toList(growable: false),
+          ),
+        );
+      },
+    );
+
+    if (nextMode == null || nextMode == currentMode) {
+      return;
+    }
+
+    await ref
+        .read(appSettingsActionsProvider)
+        .setInitialPropertyDisplayMode(nextMode);
   }
 
   Future<void> _handleBiometricToggle(
@@ -717,6 +775,15 @@ String _themeModeLabel(AppThemeMode themeMode) {
     AppThemeMode.system => 'appSettings.themeMode.system',
     AppThemeMode.light => 'appSettings.themeMode.light',
     AppThemeMode.dark => 'appSettings.themeMode.dark',
+  };
+}
+
+String _initialPropertyDisplayModeLabel(AppInitialPropertyDisplayMode mode) {
+  return switch (mode) {
+    AppInitialPropertyDisplayMode.collapsed =>
+      'appSettings.initialPropertyDisplayMode.collapsed',
+    AppInitialPropertyDisplayMode.expanded =>
+      'appSettings.initialPropertyDisplayMode.expanded',
   };
 }
 

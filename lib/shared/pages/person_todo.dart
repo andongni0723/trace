@@ -9,6 +9,7 @@ import 'package:trace/core/utils/useful_extension.dart';
 import 'package:trace/features/people/data/models/todo_with_people.dart';
 import 'package:trace/features/people/data/models/personal_database_mention_suggestion.dart';
 import 'package:trace/features/people/presentation/pages/choose_property_page.dart';
+import 'package:trace/features/people/presentation/widgets/person_note_tab.dart';
 import 'package:trace/features/people/presentation/widgets/person_personal_database_tab.dart';
 import 'package:trace/features/people/providers/person_detail_provider.dart';
 import 'package:trace/features/people/providers/people_provider.dart';
@@ -22,7 +23,7 @@ import 'package:trace/features/people/presentation/widgets/personal_database_fie
 
 enum _PersonMenuAction { rename, delete }
 
-enum PersonTodoInitialTab { todoList, database }
+enum PersonTodoInitialTab { todoList, note, database }
 
 class PersonTodoPage extends ConsumerStatefulWidget {
   const PersonTodoPage({
@@ -46,7 +47,7 @@ class _PersonTodoPageState extends ConsumerState<PersonTodoPage>
   void initState() {
     super.initState();
     _tabController = TabController(
-      length: 2,
+      length: 3,
       vsync: this,
       initialIndex: _tabIndexFor(widget.initialTab),
     )..addListener(_handleTabChanged);
@@ -79,7 +80,8 @@ class _PersonTodoPageState extends ConsumerState<PersonTodoPage>
   int _tabIndexFor(PersonTodoInitialTab tab) {
     return switch (tab) {
       PersonTodoInitialTab.todoList => 0,
-      PersonTodoInitialTab.database => 1,
+      PersonTodoInitialTab.note => 1,
+      PersonTodoInitialTab.database => 2,
     };
   }
 
@@ -173,6 +175,14 @@ class _PersonTodoPageState extends ConsumerState<PersonTodoPage>
       onPressed: _handleAddProperty,
       child: const Icon(Icons.add_rounded),
     );
+  }
+
+  Widget? _buildFloatingActionButton() {
+    return switch (_tabController.index) {
+      0 => _buildAnimatedTodoFab(),
+      2 => _buildDatabaseFab(),
+      _ => null,
+    };
   }
 
   Future<void> _handleAddProperty() async {
@@ -305,6 +315,7 @@ class _PersonTodoPageState extends ConsumerState<PersonTodoPage>
         }
 
         return Scaffold(
+          resizeToAvoidBottomInset: false,
           appBar: AppBar(
             leading: IconButton(
               onPressed: () {
@@ -380,13 +391,12 @@ class _PersonTodoPageState extends ConsumerState<PersonTodoPage>
               controller: _tabController,
               tabs: [
                 Tab(text: 'personTodo.tabs.todoList'.tr()),
+                Tab(text: 'personTodo.tabs.note'.tr()),
                 Tab(text: 'personTodo.tabs.database'.tr()),
               ],
             ),
           ),
-          floatingActionButton: _tabController.index == 0
-              ? _buildAnimatedTodoFab()
-              : _buildDatabaseFab(),
+          floatingActionButton: _buildFloatingActionButton(),
           body: SafeArea(
             child: TabBarView(
               controller: _tabController,
@@ -411,6 +421,7 @@ class _PersonTodoPageState extends ConsumerState<PersonTodoPage>
                     ),
                   ),
                 ),
+                PersonNoteTab(personId: widget.personId),
                 PersonPersonalDatabaseTab(
                   personId: widget.personId,
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),

@@ -31,15 +31,15 @@ propertyManager.renameDialog.save,儲存,Save
 propertyManager.retypeDialog.title,變更屬性型別,Retype property
 propertyManager.retypeDialog.body,選擇新的型別後，後續由資料邏輯模組決定如何更新資料。,Choose a new type. The data logic module will handle persistence later.
 propertyManager.retypeBlocked.title,無法變更型別,Cannot retype
-propertyManager.retypeBlocked.body,屬性「{key}」還有子屬性，請先移除所有子屬性後再變更型別。,Property "{key}" still has child properties. Remove all children before retyping.
+propertyManager.retypeBlocked.body,屬性「{key}」還有子屬性，請先移除所有子屬性後再變更型別。,"Property '{key}' still has child properties. Remove all children before retyping."
 propertyManager.retypeBlocked.short,object 有子屬性時不可變更型別。,Object properties with children cannot be retyped.
 propertyManager.retypeBlocked.confirm,知道了,OK
 propertyManager.deleteBlocked.title,無法刪除,Cannot delete
-propertyManager.deleteBlocked.body,屬性「{key}」仍在被人物使用，先移除所有引用後才能刪除。,Property "{key}" is still used by people. Remove all references before deleting.
+propertyManager.deleteBlocked.body,屬性「{key}」仍在被人物使用，先移除所有引用後才能刪除。,"Property '{key}' is still used by people. Remove all references before deleting."
 propertyManager.deleteBlocked.short,仍被人物使用，不能刪除。,This property is still in use and cannot be deleted.
 propertyManager.deleteBlocked.confirm,知道了,OK
 propertyManager.deleteDialog.title,刪除屬性,Delete property
-propertyManager.deleteDialog.body,確定要刪除屬性「{key}」嗎？,Delete property "{key}"?
+propertyManager.deleteDialog.body,確定要刪除屬性「{key}」嗎？,Delete property '{key}'?
 propertyManager.deleteDialog.cancel,取消,Cancel
 propertyManager.deleteDialog.delete,刪除,Delete
 databasePropertyManager.title,管理資料庫屬性,Manage database properties
@@ -78,14 +78,14 @@ databasePropertyManager.createRootSubmit,建立,Create
 databasePropertyManager.createSubTitle,新增子屬性,Create subproperty
 databasePropertyManager.createSubSubmit,建立,Create
 databasePropertyManager.deleteDialog.title,刪除屬性,Delete property
-databasePropertyManager.deleteDialog.body,確定要刪除屬性「{key}」嗎？,Delete property "{key}"?
+databasePropertyManager.deleteDialog.body,確定要刪除屬性「{key}」嗎？,Delete property '{key}'?
 databasePropertyManager.deleteDialog.delete,刪除,Delete
 databasePropertyManager.sheet.createRootTitle,建立根屬性,Create root property
 databasePropertyManager.sheet.createChildTitle,建立子屬性,Create child property
 databasePropertyManager.drag.insertHere,放到這裡,Drop here
 databasePropertyManager.drag.rootTarget,拖曳到這裡移到主層級,Drop here to move to root
 databasePropertyManager.moveSheet.title,移動屬性,Move property
-databasePropertyManager.moveSheet.body,調整屬性「{key}」的位置或父層級。,Change the position or parent level of "{key}".
+databasePropertyManager.moveSheet.body,調整屬性「{key}」的位置或父層級。,Change the position or parent level of '{key}'.
 databasePropertyManager.moveSheet.parent,父層級,Parent level
 databasePropertyManager.moveSheet.position,排序位置,Position
 databasePropertyManager.moveSheet.positionValue,第 {index} 個,Position {index}
@@ -127,6 +127,9 @@ appSettings.checkUpdate.title,檢查更新,Check for updates
 appSettings.checkUpdate.subtitle,檢查 GitHub Release 是否有新版本。,Check GitHub Releases for a newer version.
 appSettings.openingAnimation.title,開場動畫,Opening animation
 appSettings.openingAnimation.subtitle,控制 app 開啟或重新進入前景時是否播放 Trace 開場動畫。,Control whether the Trace opening animation plays when the app opens or re-enters the foreground.
+appSettings.initialPropertyDisplayMode.title,初始 property 展開狀態,Initial property expansion state
+appSettings.initialPropertyDisplayMode.collapsed,收回,Collapsed
+appSettings.initialPropertyDisplayMode.expanded,展開,Expanded
 appSettings.checkUpdate.availableTitle,發現新版本 {version},New version {version} available
 appSettings.checkUpdate.currentVersion,目前版本 {version},Current version {version}
 appSettings.checkUpdate.releaseNotes,版本說明,Release notes
@@ -225,6 +228,10 @@ mediaLibrary.uploadSheet.audioBody,選擇音訊檔案匯入媒體庫。,Choose a
 personTodo.noteTitle,人物備註,Person note
 personTodo.noteEmpty,還沒有記錄這個人的備註。,No note has been recorded for this person yet.
 personTodo.noteFallback,"{name} 的個人備註尚未建立，最後更新時間是 {date}。","A detailed note for {name} has not been added yet. Last updated on {date}."
+personTodo.note.hint,寫下和這個人相關的筆記...,Write notes related to this person...
+personTodo.note.personChip,人物,person
+personTodo.note.mediaChip,媒體檔,Media file
+personTodo.note.peoplePickerTitle,選擇人物,Choose person
 personTodo.avatar.title,人物頭像,Person avatar
 personTodo.avatar.subtitle,選擇、更新或移除這個人的頭像圖片。,Choose, update, or remove this person's avatar image.
 personTodo.avatar.none,尚未設定圖片。,No image selected yet.
@@ -235,6 +242,7 @@ personTodo.avatar.remove,移除圖片,Remove image
 personTodo.avatar.cropTitle,裁切頭像,Crop avatar
 personTodo.avatar.processError,無法處理這張圖片，請換一張再試一次。,Unable to process this image. Try a different one.
 personTodo.tabs.todoList,待辦清單,To-do list
+personTodo.tabs.note,備註,Notes
 personTodo.tabs.database,資料庫,Database
 personTodo.database.title,個人資料庫,Personal database
 personTodo.database.addField,選擇屬性,Choose property
@@ -265,15 +273,15 @@ personTodo.database.menu.more,更多操作,More actions
 personTodo.database.actionError,個人資料庫更新失敗。,Unable to update the personal database.
 personTodo.database.mediaOpenError,無法開啟媒體檔案。,Unable to open media file.
 personTodo.database.deleteDialog.title,刪除屬性,Delete property
-personTodo.database.deleteDialog.body,確定要刪除屬性「{key}」嗎？,Delete property "{key}"?
+personTodo.database.deleteDialog.body,確定要刪除屬性「{key}」嗎？,Delete property '{key}'?
 personTodo.database.deleteDialog.cancel,取消,Cancel
 personTodo.database.deleteDialog.delete,刪除,Delete
 personTodo.database.removeDialog.title,移除此屬性,Remove property
-personTodo.database.removeDialog.body,要把屬性「{key}」從這個人的資料中移除嗎？,Remove property "{key}" from this person?
+personTodo.database.removeDialog.body,要把屬性「{key}」從這個人的資料中移除嗎？,Remove property '{key}' from this person?
 personTodo.database.removeDialog.cancel,取消,Cancel
 personTodo.database.removeDialog.remove,移除,Remove
 personTodo.database.cannotDeleteDialog.title,無法移除,Can not remove
-personTodo.database.cannotDeleteDialog.body,屬性「{key}」還有未隱藏的子屬性，請先隱藏所有子屬性後再移除。這裡的移除只會對這個人隱藏，不會真的刪掉屬性定義。,Property "{key}" still has visible child properties. Hide all child properties before removing it. Removing here only hides it for this person and does not delete the property definition.
+personTodo.database.cannotDeleteDialog.body,屬性「{key}」還有未隱藏的子屬性，請先隱藏所有子屬性後再移除。這裡的移除只會對這個人隱藏，不會真的刪掉屬性定義。,Property '{key}' still has visible child properties. Hide all child properties before removing it. Removing here only hides it for this person and does not delete the property definition.
 personTodo.database.cannotDeleteDialog.confirm,知道了,OK
 personTodo.database.sheet.addTitle,建立屬性,Create property
 personTodo.database.sheet.createTitle,建立屬性,Create property
@@ -300,8 +308,8 @@ personTodo.database.sheet.keyRequired,請輸入 key。,Key is required.
 personTodo.database.sheet.invalidNumber,數字格式不正確。,Invalid number format.
 personTodo.database.sheet.invalidObject,請輸入有效的 JSON object。,Enter a valid JSON object.
 personTodo.database.sheet.invalidList,請輸入有效的 JSON list。,Enter a valid JSON list.
-personalDatabaseTemplateEditor.rootTitle,編輯「{key}」元素模板,Edit "{key}" element template
-personalDatabaseTemplateEditor.nestedTitle,編輯「{key}」元素模板,Edit "{key}" element template
+personalDatabaseTemplateEditor.rootTitle,編輯「{key}」元素模板,Edit '{key}' element template
+personalDatabaseTemplateEditor.nestedTitle,編輯「{key}」元素模板,Edit '{key}' element template
 personalDatabaseTemplateEditor.save,儲存,Save
 personalDatabaseTemplateEditor.addProperty,新增屬性,Add property
 personalDatabaseTemplateEditor.addPropertyTitle,新增模板屬性,Add template property
@@ -331,14 +339,14 @@ personTodo.propertyChooser.renameDialog.label,Property key,Property key
 personTodo.propertyChooser.renameDialog.cancel,取消,Cancel
 personTodo.propertyChooser.renameDialog.save,儲存,Save
 personTodo.propertyChooser.deleteDialog.title,刪除屬性,Delete property
-personTodo.propertyChooser.deleteDialog.body,確定要刪除屬性「{key}」嗎？這會刪除所有人物的同一個 property。,Delete property "{key}"? This removes the same property from every person.
+personTodo.propertyChooser.deleteDialog.body,確定要刪除屬性「{key}」嗎？這會刪除所有人物的同一個 property。,Delete property '{key}'? This removes the same property from every person.
 personTodo.propertyChooser.deleteDialog.cancel,取消,Cancel
 personTodo.propertyChooser.deleteDialog.delete,刪除,Delete
 personTodo.menu.more,更多操作,More actions
 personTodo.menu.renamePerson,編輯人物,Edit person
 personTodo.menu.deletePerson,刪除人物,Delete person
 personTodo.renameDialog.nameLabel,人物名稱,Person name
-personTodo.deleteDialog.message,確定要刪除「{name}」嗎？這個人的待辦與資料也會一起刪除。,Delete "{name}"? This person's todos and data will also be removed.
+personTodo.deleteDialog.message,確定要刪除「{name}」嗎？這個人的待辦與資料也會一起刪除。,Delete '{name}'? This person's todos and data will also be removed.
 personTodo.dialog.cancel,取消,Cancel
 personTodo.dialog.save,儲存,Save
 personTodo.completed.title,已完成,Completed

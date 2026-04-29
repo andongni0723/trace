@@ -4,6 +4,8 @@ part 'app_settings.freezed.dart';
 
 enum AppThemeMode { system, light, dark }
 
+enum AppInitialPropertyDisplayMode { collapsed, expanded }
+
 enum AppThemeSeed {
   classicDeepPurple,
   violet,
@@ -25,6 +27,17 @@ extension AppThemeModePreferenceX on AppThemeMode {
       'light' => AppThemeMode.light,
       'dark' => AppThemeMode.dark,
       _ => AppThemeMode.dark,
+    };
+  }
+}
+
+extension AppInitialPropertyDisplayModePreferenceX
+    on AppInitialPropertyDisplayMode {
+  static AppInitialPropertyDisplayMode fromPreference(String? value) {
+    return switch (value) {
+      'collapsed' => AppInitialPropertyDisplayMode.collapsed,
+      'expanded' => AppInitialPropertyDisplayMode.expanded,
+      _ => AppInitialPropertyDisplayMode.collapsed,
     };
   }
 }
@@ -54,5 +67,7 @@ abstract class AppSettings with _$AppSettings {
     @Default(AppThemeMode.dark) AppThemeMode themeMode,
     @Default(AppThemeSeed.classicDeepPurple) AppThemeSeed themeSeed,
     @Default(true) bool openingAnimationEnabled,
+    @Default(AppInitialPropertyDisplayMode.collapsed)
+    AppInitialPropertyDisplayMode initialPropertyDisplayMode,
   }) = _AppSettings;
 }

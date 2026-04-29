@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../../features/people/data/daos/people_dao.dart';
+import '../../features/people/data/daos/person_notes_dao.dart';
 import '../../features/people/data/daos/personal_database_dao.dart';
 import '../../features/people/data/daos/todos_dao.dart';
 import '../../features/media_library/data/daos/media_assets_dao.dart';
@@ -15,6 +16,7 @@ import 'tables/media_assets.dart';
 import 'tables/personal_database_fields.dart';
 import 'tables/personal_database_person_fields.dart';
 import 'tables/personal_database_values.dart';
+import 'tables/person_notes.dart';
 import 'tables/todo_participants.dart';
 import 'tables/todos.dart';
 
@@ -28,17 +30,24 @@ typedef MediaAssetData = MediaAsset;
     MediaAssets,
     Todos,
     TodoParticipants,
+    PersonNotes,
     PersonalDatabaseFields,
     PersonalDatabasePersonFields,
     PersonalDatabaseValues,
   ],
-  daos: [PeopleDao, TodosDao, PersonalDatabaseDao, MediaAssetsDao],
+  daos: [
+    PeopleDao,
+    TodosDao,
+    PersonNotesDao,
+    PersonalDatabaseDao,
+    MediaAssetsDao,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -88,6 +97,9 @@ class AppDatabase extends _$AppDatabase {
           personalDatabaseFields,
           personalDatabaseFields.arrayElementTemplateJsonValue,
         );
+      }
+      if (from < 8) {
+        await migrator.createTable(personNotes);
       }
     },
     beforeOpen: (details) async {

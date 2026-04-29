@@ -8,6 +8,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/utils/useful_extension.dart';
 import '../../../../shared/widgets/bottom_sheet_keyboard_inset.dart';
+import '../../../app_settings/data/models/app_settings.dart';
+import '../../../app_settings/providers/app_settings_provider.dart';
 import '../../data/models/personal_database_field_node.dart';
 import '../../data/models/personal_database_management_error.dart';
 import '../../data/models/personal_database_value_type.dart';
@@ -38,7 +40,9 @@ class _ManageDatabasePropertiesPageState
   String _searchQuery = '';
   List<PersonalDatabaseFieldNode> _library = const [];
   List<_ManagedPropertyRow> _visibleRows = const [];
+  bool _didInitializeCollapsedState = false;
   final Set<String> _collapsedFieldIds = <String>{};
+  Set<String> _knownCollapsibleFieldIds = <String>{};
 
   @override
   void initState() {
@@ -192,13 +196,34 @@ class _ManageDatabasePropertiesPageState
     });
 
     try {
+      final settings = await _readAppSettings();
       final library = await ref
           .read(personalDatabasePropertyManagementActionsProvider)
           .getPropertyLibrary();
+      final collapsibleFieldIds = _collectCollapsibleFieldIds(library);
+      final shouldStartCollapsed =
+          settings.initialPropertyDisplayMode ==
+          AppInitialPropertyDisplayMode.collapsed;
       if (!mounted) {
         return;
       }
       setState(() {
+        if (!_didInitializeCollapsedState) {
+          _collapsedFieldIds
+            ..clear()
+            ..addAll(shouldStartCollapsed ? collapsibleFieldIds : const {});
+          _didInitializeCollapsedState = true;
+        } else {
+          _collapsedFieldIds.removeWhere(
+            (fieldId) => !collapsibleFieldIds.contains(fieldId),
+          );
+          if (shouldStartCollapsed) {
+            _collapsedFieldIds.addAll(
+              collapsibleFieldIds.difference(_knownCollapsibleFieldIds),
+            );
+          }
+        }
+        _knownCollapsibleFieldIds = collapsibleFieldIds;
         _library = library;
         _visibleRows = _flattenVisibleRows(library, _searchQuery.trim());
         _isLoading = false;
@@ -219,6 +244,34 @@ class _ManageDatabasePropertiesPageState
       _searchQuery = query;
       _visibleRows = _flattenVisibleRows(_library, query.trim());
     });
+  }
+
+  Future<AppSettings> _readAppSettings() async {
+    try {
+      return await ref.read(appSettingsProvider.future);
+    } catch (_) {
+      return const AppSettings();
+    }
+  }
+
+  Set<String> _collectCollapsibleFieldIds(
+    List<PersonalDatabaseFieldNode> fields,
+  ) {
+    final ids = <String>{};
+
+    void visit(List<PersonalDatabaseFieldNode> nodes) {
+      for (final node in nodes) {
+        if (node.isObject) {
+          ids.add(node.id);
+        }
+        if (node.children.isNotEmpty) {
+          visit(node.children);
+        }
+      }
+    }
+
+    visit(fields);
+    return ids;
   }
 
   List<_ManagedPropertyRow> _flattenVisibleRows(

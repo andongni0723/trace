@@ -79,6 +79,32 @@ class AppSettingsNotifier extends AsyncNotifier<AppSettings> {
       return repository.save(nextSettings);
     });
   }
+
+  Future<void> setInitialPropertyDisplayMode(
+    AppInitialPropertyDisplayMode mode,
+  ) async {
+    final currentSettings = state.maybeWhen(
+      data: (settings) => settings,
+      orElse: () => const AppSettings(),
+    );
+    final nextSettings = currentSettings.copyWith(
+      initialPropertyDisplayMode: mode,
+    );
+
+    state = AsyncData(nextSettings);
+    state = await AsyncValue.guard(() async {
+      final repository = await _repository;
+      return repository.save(nextSettings);
+    });
+  }
+
+  Future<void> replaceSettings(AppSettings settings) async {
+    state = AsyncData(settings);
+    state = await AsyncValue.guard(() async {
+      final repository = await _repository;
+      return repository.save(settings);
+    });
+  }
 }
 
 class AppSettingsActions {
@@ -98,5 +124,17 @@ class AppSettingsActions {
     return _ref
         .read(appSettingsProvider.notifier)
         .setOpeningAnimationEnabled(enabled);
+  }
+
+  Future<void> setInitialPropertyDisplayMode(
+    AppInitialPropertyDisplayMode mode,
+  ) {
+    return _ref
+        .read(appSettingsProvider.notifier)
+        .setInitialPropertyDisplayMode(mode);
+  }
+
+  Future<void> replaceSettings(AppSettings settings) {
+    return _ref.read(appSettingsProvider.notifier).replaceSettings(settings);
   }
 }

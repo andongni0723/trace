@@ -62,6 +62,47 @@ void main() {
     });
   });
 
+  group('PersonNotesDao', () {
+    setUp(() async {
+      await database.peopleDao.createPerson(
+        id: 'owner',
+        name: 'Owner',
+        colorValue: 0xFF111111,
+      );
+    });
+
+    test(
+      'upserts person note content and cascades with owner person',
+      () async {
+        await database.personNotesDao.upsertNote(
+          personId: 'owner',
+          content: 'Meet ![Friend](person:friend-a)',
+        );
+
+        final createdNote = await database.personNotesDao.getNoteForPerson(
+          'owner',
+        );
+        expect(createdNote, isNotNull);
+        expect(createdNote!.content, 'Meet ![Friend](person:friend-a)');
+
+        await database.personNotesDao.upsertNote(
+          personId: 'owner',
+          content: 'Updated note',
+        );
+
+        final updatedNote = await database.personNotesDao.getNoteForPerson(
+          'owner',
+        );
+        expect(updatedNote, isNotNull);
+        expect(updatedNote!.content, 'Updated note');
+
+        await database.peopleDao.deletePersonById('owner');
+
+        expect(await database.personNotesDao.getNoteForPerson('owner'), isNull);
+      },
+    );
+  });
+
   group('TodosDao', () {
     setUp(() async {
       await database.peopleDao.createPerson(

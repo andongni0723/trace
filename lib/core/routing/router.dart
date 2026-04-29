@@ -29,6 +29,7 @@ final router = GoRouter(
       builder: (context, state) {
         final personId = state.pathParameters['personId']!;
         final initialTab = switch (state.uri.queryParameters['tab']) {
+          'note' => PersonTodoInitialTab.note,
           'database' => PersonTodoInitialTab.database,
           _ => PersonTodoInitialTab.todoList,
         };

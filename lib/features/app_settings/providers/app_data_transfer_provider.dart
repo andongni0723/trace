@@ -24,8 +24,8 @@ final appDataTransferProvider = Provider<AppDataTransferService>((ref) {
 const _backupAppId = 'trace';
 const _legacyBackupAppIds = {'people_todolist'};
 const _backupType = 'app_backup';
-const _backupVersion = 7;
-const _supportedBackupVersions = {1, 2, 3, 4, 5, 6, 7};
+const _backupVersion = 8;
+const _supportedBackupVersions = {1, 2, 3, 4, 5, 6, 7, 8};
 
 class AppDataTransferService {
   AppDataTransferService(this._ref);
@@ -87,6 +87,7 @@ class AppDataTransferService {
     final biometricSettings = await _readCurrentBiometricSettings();
 
     final people = await database.select(database.people).get();
+    final personNotes = await database.select(database.personNotes).get();
     final todos = await database.select(database.todos).get();
     final participants = await database.select(database.todoParticipants).get();
     final personalDatabaseFields = await database
@@ -130,12 +131,19 @@ class AppDataTransferService {
       'exportedAt': DateTime.now().toIso8601String(),
       'settings': {
         'themeMode': appSettings.themeMode.name,
+        'themeSeed': appSettings.themeSeed.name,
+        'openingAnimationEnabled': appSettings.openingAnimationEnabled,
+        'initialPropertyDisplayMode':
+            appSettings.initialPropertyDisplayMode.name,
         'biometricLock': {
           'enabled': biometricSettings.enabled,
           'reauthInterval': biometricSettings.reauthInterval.preferenceValue,
         },
       },
       'people': people.map((person) => person.toJson()).toList(growable: false),
+      'personNotes': personNotes
+          .map((note) => note.toJson())
+          .toList(growable: false),
       'personAvatars': personAvatars,
       'mediaAssets': exportableMediaAssets
           .map((asset) => asset.toJson())
@@ -161,6 +169,8 @@ class AppDataTransferService {
     _validateBackupPayload(rawJson);
 
     final peopleJson = (rawJson['people'] as List<dynamic>? ?? const []);
+    final personNotesJson =
+        (rawJson['personNotes'] as List<dynamic>? ?? const []);
     final todosJson = (rawJson['todos'] as List<dynamic>? ?? const []);
     final participantsJson =
         (rawJson['todoParticipants'] as List<dynamic>? ?? const []);
@@ -211,6 +221,11 @@ class AppDataTransferService {
       await _cleanupAvatarPaths(restoredAvatarPaths);
       rethrow;
     }
+    final personNotes = personNotesJson
+        .map(
+          (item) => PersonNote.fromJson(Map<String, dynamic>.from(item as Map)),
+        )
+        .toList(growable: false);
     final todos = todosJson
         .map((item) => Todo.fromJson(Map<String, dynamic>.from(item as Map)))
         .toList(growable: false);
@@ -286,6 +301,7 @@ class AppDataTransferService {
         await database.delete(database.personalDatabasePersonFields).go();
         await database.delete(database.personalDatabaseFields).go();
         await database.delete(database.mediaAssets).go();
+        await database.delete(database.personNotes).go();
         await database.delete(database.todoParticipants).go();
         await database.delete(database.todos).go();
         await database.delete(database.people).go();
@@ -293,6 +309,9 @@ class AppDataTransferService {
         await database.batch((batch) {
           if (people.isNotEmpty) {
             batch.insertAll(database.people, people);
+          }
+          if (personNotes.isNotEmpty) {
+            batch.insertAll(database.personNotes, personNotes);
           }
           if (todos.isNotEmpty) {
             batch.insertAll(database.todos, todos);
@@ -329,10 +348,23 @@ class AppDataTransferService {
       rethrow;
     }
 
-    final importedThemeMode = AppThemeModePreferenceX.fromPreference(
-      settingsJson?['themeMode'] as String?,
+    final importedSettings = AppSettings(
+      themeMode: AppThemeModePreferenceX.fromPreference(
+        settingsJson?['themeMode'] as String?,
+      ),
+      themeSeed: AppThemeSeedPreferenceX.fromPreference(
+        settingsJson?['themeSeed'] as String?,
+      ),
+      openingAnimationEnabled:
+          settingsJson?['openingAnimationEnabled'] as bool? ?? true,
+      initialPropertyDisplayMode:
+          AppInitialPropertyDisplayModePreferenceX.fromPreference(
+            settingsJson?['initialPropertyDisplayMode'] as String?,
+          ),
     );
-    await _ref.read(appSettingsActionsProvider).setThemeMode(importedThemeMode);
+    await _ref
+        .read(appSettingsActionsProvider)
+        .replaceSettings(importedSettings);
     await _ref
         .read(biometricLockSettingsRepositoryProvider)
         .save(
@@ -379,6 +411,8 @@ class AppDataTransferService {
     final hasRequiredStructure =
         rawJson['settings'] is Map<String, dynamic> &&
         rawJson['people'] is List<dynamic> &&
+        (rawJson['personNotes'] == null ||
+            rawJson['personNotes'] is List<dynamic>) &&
         (rawJson['personAvatars'] == null ||
             rawJson['personAvatars'] is Map<String, dynamic>) &&
         (rawJson['mediaAssets'] == null ||

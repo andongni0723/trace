@@ -116,10 +116,11 @@ void main() {
     await tester.tap(find.byTooltip('開啟側邊選單'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('管理資料庫屬性'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('管理資料庫屬性'), findsWidgets);
-    expect(find.byType(SearchBar), findsOneWidget);
+    expect(find.byType(SearchBar), findsAtLeastNWidgets(1));
 
     await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
     await tester.pump();

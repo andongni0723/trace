@@ -1822,6 +1822,323 @@ class TodoParticipantsCompanion extends UpdateCompanion<TodoParticipant> {
   }
 }
 
+class $PersonNotesTable extends PersonNotes
+    with TableInfo<$PersonNotesTable, PersonNote> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PersonNotesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _personIdMeta = const VerificationMeta(
+    'personId',
+  );
+  @override
+  late final GeneratedColumn<String> personId = GeneratedColumn<String>(
+    'person_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES people (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _contentMeta = const VerificationMeta(
+    'content',
+  );
+  @override
+  late final GeneratedColumn<String> content = GeneratedColumn<String>(
+    'content',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    personId,
+    content,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'person_notes';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PersonNote> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('person_id')) {
+      context.handle(
+        _personIdMeta,
+        personId.isAcceptableOrUnknown(data['person_id']!, _personIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_personIdMeta);
+    }
+    if (data.containsKey('content')) {
+      context.handle(
+        _contentMeta,
+        content.isAcceptableOrUnknown(data['content']!, _contentMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {personId};
+  @override
+  PersonNote map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PersonNote(
+      personId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}person_id'],
+      )!,
+      content: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PersonNotesTable createAlias(String alias) {
+    return $PersonNotesTable(attachedDatabase, alias);
+  }
+}
+
+class PersonNote extends DataClass implements Insertable<PersonNote> {
+  final String personId;
+  final String content;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const PersonNote({
+    required this.personId,
+    required this.content,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['person_id'] = Variable<String>(personId);
+    map['content'] = Variable<String>(content);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  PersonNotesCompanion toCompanion(bool nullToAbsent) {
+    return PersonNotesCompanion(
+      personId: Value(personId),
+      content: Value(content),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory PersonNote.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PersonNote(
+      personId: serializer.fromJson<String>(json['personId']),
+      content: serializer.fromJson<String>(json['content']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'personId': serializer.toJson<String>(personId),
+      'content': serializer.toJson<String>(content),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  PersonNote copyWith({
+    String? personId,
+    String? content,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => PersonNote(
+    personId: personId ?? this.personId,
+    content: content ?? this.content,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  PersonNote copyWithCompanion(PersonNotesCompanion data) {
+    return PersonNote(
+      personId: data.personId.present ? data.personId.value : this.personId,
+      content: data.content.present ? data.content.value : this.content,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PersonNote(')
+          ..write('personId: $personId, ')
+          ..write('content: $content, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(personId, content, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PersonNote &&
+          other.personId == this.personId &&
+          other.content == this.content &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class PersonNotesCompanion extends UpdateCompanion<PersonNote> {
+  final Value<String> personId;
+  final Value<String> content;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const PersonNotesCompanion({
+    this.personId = const Value.absent(),
+    this.content = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PersonNotesCompanion.insert({
+    required String personId,
+    this.content = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : personId = Value(personId);
+  static Insertable<PersonNote> custom({
+    Expression<String>? personId,
+    Expression<String>? content,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (personId != null) 'person_id': personId,
+      if (content != null) 'content': content,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PersonNotesCompanion copyWith({
+    Value<String>? personId,
+    Value<String>? content,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return PersonNotesCompanion(
+      personId: personId ?? this.personId,
+      content: content ?? this.content,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (personId.present) {
+      map['person_id'] = Variable<String>(personId.value);
+    }
+    if (content.present) {
+      map['content'] = Variable<String>(content.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PersonNotesCompanion(')
+          ..write('personId: $personId, ')
+          ..write('content: $content, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $PersonalDatabaseFieldsTable extends PersonalDatabaseFields
     with TableInfo<$PersonalDatabaseFieldsTable, PersonalDatabaseField> {
   @override
@@ -3206,6 +3523,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $TodoParticipantsTable todoParticipants = $TodoParticipantsTable(
     this,
   );
+  late final $PersonNotesTable personNotes = $PersonNotesTable(this);
   late final $PersonalDatabaseFieldsTable personalDatabaseFields =
       $PersonalDatabaseFieldsTable(this);
   late final $PersonalDatabasePersonFieldsTable personalDatabasePersonFields =
@@ -3214,6 +3532,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $PersonalDatabaseValuesTable(this);
   late final PeopleDao peopleDao = PeopleDao(this as AppDatabase);
   late final TodosDao todosDao = TodosDao(this as AppDatabase);
+  late final PersonNotesDao personNotesDao = PersonNotesDao(
+    this as AppDatabase,
+  );
   late final PersonalDatabaseDao personalDatabaseDao = PersonalDatabaseDao(
     this as AppDatabase,
   );
@@ -3229,6 +3550,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     mediaAssets,
     todos,
     todoParticipants,
+    personNotes,
     personalDatabaseFields,
     personalDatabasePersonFields,
     personalDatabaseValues,
@@ -3255,6 +3577,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('todo_participants', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'people',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('person_notes', kind: UpdateKind.delete)],
     ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
@@ -3363,6 +3692,24 @@ final class $$PeopleTableReferences
     final cache = $_typedResult.readTableOrNull(
       _todoParticipantsRefsTable($_db),
     );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$PersonNotesTable, List<PersonNote>>
+  _personNotesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.personNotes,
+    aliasName: $_aliasNameGenerator(db.people.id, db.personNotes.personId),
+  );
+
+  $$PersonNotesTableProcessedTableManager get personNotesRefs {
+    final manager = $$PersonNotesTableTableManager(
+      $_db,
+      $_db.personNotes,
+    ).filter((f) => f.personId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_personNotesRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -3533,6 +3880,31 @@ class $$PeopleTableFilterComposer
           }) => $$TodoParticipantsTableFilterComposer(
             $db: $db,
             $table: $db.todoParticipants,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> personNotesRefs(
+    Expression<bool> Function($$PersonNotesTableFilterComposer f) f,
+  ) {
+    final $$PersonNotesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.personNotes,
+      getReferencedColumn: (t) => t.personId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PersonNotesTableFilterComposer(
+            $db: $db,
+            $table: $db.personNotes,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -3745,6 +4117,31 @@ class $$PeopleTableAnnotationComposer
     return f(composer);
   }
 
+  Expression<T> personNotesRefs<T extends Object>(
+    Expression<T> Function($$PersonNotesTableAnnotationComposer a) f,
+  ) {
+    final $$PersonNotesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.personNotes,
+      getReferencedColumn: (t) => t.personId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PersonNotesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.personNotes,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
   Expression<T> personalDatabaseFieldsRefs<T extends Object>(
     Expression<T> Function($$PersonalDatabaseFieldsTableAnnotationComposer a) f,
   ) {
@@ -3843,6 +4240,7 @@ class $$PeopleTableTableManager
           PrefetchHooks Function({
             bool todosRefs,
             bool todoParticipantsRefs,
+            bool personNotesRefs,
             bool personalDatabaseFieldsRefs,
             bool personalDatabasePersonFieldsRefs,
             bool personalDatabaseValuesRefs,
@@ -3905,6 +4303,7 @@ class $$PeopleTableTableManager
               ({
                 todosRefs = false,
                 todoParticipantsRefs = false,
+                personNotesRefs = false,
                 personalDatabaseFieldsRefs = false,
                 personalDatabasePersonFieldsRefs = false,
                 personalDatabaseValuesRefs = false,
@@ -3914,6 +4313,7 @@ class $$PeopleTableTableManager
                   explicitlyWatchedTables: [
                     if (todosRefs) db.todos,
                     if (todoParticipantsRefs) db.todoParticipants,
+                    if (personNotesRefs) db.personNotes,
                     if (personalDatabaseFieldsRefs) db.personalDatabaseFields,
                     if (personalDatabasePersonFieldsRefs)
                       db.personalDatabasePersonFields,
@@ -3954,6 +4354,27 @@ class $$PeopleTableTableManager
                                 table,
                                 p0,
                               ).todoParticipantsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.personId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (personNotesRefs)
+                        await $_getPrefetchedData<
+                          PeopleData,
+                          $PeopleTable,
+                          PersonNote
+                        >(
+                          currentTable: table,
+                          referencedTable: $$PeopleTableReferences
+                              ._personNotesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PeopleTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).personNotesRefs,
                           referencedItemsForCurrentItem:
                               (item, referencedItems) => referencedItems.where(
                                 (e) => e.personId == item.id,
@@ -4046,6 +4467,7 @@ typedef $$PeopleTableProcessedTableManager =
       PrefetchHooks Function({
         bool todosRefs,
         bool todoParticipantsRefs,
+        bool personNotesRefs,
         bool personalDatabaseFieldsRefs,
         bool personalDatabasePersonFieldsRefs,
         bool personalDatabaseValuesRefs,
@@ -5195,6 +5617,305 @@ typedef $$TodoParticipantsTableProcessedTableManager =
       (TodoParticipant, $$TodoParticipantsTableReferences),
       TodoParticipant,
       PrefetchHooks Function({bool todoId, bool personId})
+    >;
+typedef $$PersonNotesTableCreateCompanionBuilder =
+    PersonNotesCompanion Function({
+      required String personId,
+      Value<String> content,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$PersonNotesTableUpdateCompanionBuilder =
+    PersonNotesCompanion Function({
+      Value<String> personId,
+      Value<String> content,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$PersonNotesTableReferences
+    extends BaseReferences<_$AppDatabase, $PersonNotesTable, PersonNote> {
+  $$PersonNotesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $PeopleTable _personIdTable(_$AppDatabase db) => db.people.createAlias(
+    $_aliasNameGenerator(db.personNotes.personId, db.people.id),
+  );
+
+  $$PeopleTableProcessedTableManager get personId {
+    final $_column = $_itemColumn<String>('person_id')!;
+
+    final manager = $$PeopleTableTableManager(
+      $_db,
+      $_db.people,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_personIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$PersonNotesTableFilterComposer
+    extends Composer<_$AppDatabase, $PersonNotesTable> {
+  $$PersonNotesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$PeopleTableFilterComposer get personId {
+    final $$PeopleTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personId,
+      referencedTable: $db.people,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PeopleTableFilterComposer(
+            $db: $db,
+            $table: $db.people,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PersonNotesTableOrderingComposer
+    extends Composer<_$AppDatabase, $PersonNotesTable> {
+  $$PersonNotesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$PeopleTableOrderingComposer get personId {
+    final $$PeopleTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personId,
+      referencedTable: $db.people,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PeopleTableOrderingComposer(
+            $db: $db,
+            $table: $db.people,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PersonNotesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PersonNotesTable> {
+  $$PersonNotesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get content =>
+      $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$PeopleTableAnnotationComposer get personId {
+    final $$PeopleTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.personId,
+      referencedTable: $db.people,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PeopleTableAnnotationComposer(
+            $db: $db,
+            $table: $db.people,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PersonNotesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PersonNotesTable,
+          PersonNote,
+          $$PersonNotesTableFilterComposer,
+          $$PersonNotesTableOrderingComposer,
+          $$PersonNotesTableAnnotationComposer,
+          $$PersonNotesTableCreateCompanionBuilder,
+          $$PersonNotesTableUpdateCompanionBuilder,
+          (PersonNote, $$PersonNotesTableReferences),
+          PersonNote,
+          PrefetchHooks Function({bool personId})
+        > {
+  $$PersonNotesTableTableManager(_$AppDatabase db, $PersonNotesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PersonNotesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PersonNotesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PersonNotesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> personId = const Value.absent(),
+                Value<String> content = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PersonNotesCompanion(
+                personId: personId,
+                content: content,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String personId,
+                Value<String> content = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PersonNotesCompanion.insert(
+                personId: personId,
+                content: content,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$PersonNotesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({personId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (personId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.personId,
+                                referencedTable: $$PersonNotesTableReferences
+                                    ._personIdTable(db),
+                                referencedColumn: $$PersonNotesTableReferences
+                                    ._personIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$PersonNotesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PersonNotesTable,
+      PersonNote,
+      $$PersonNotesTableFilterComposer,
+      $$PersonNotesTableOrderingComposer,
+      $$PersonNotesTableAnnotationComposer,
+      $$PersonNotesTableCreateCompanionBuilder,
+      $$PersonNotesTableUpdateCompanionBuilder,
+      (PersonNote, $$PersonNotesTableReferences),
+      PersonNote,
+      PrefetchHooks Function({bool personId})
     >;
 typedef $$PersonalDatabaseFieldsTableCreateCompanionBuilder =
     PersonalDatabaseFieldsCompanion Function({
@@ -6747,6 +7468,8 @@ class $AppDatabaseManager {
       $$TodosTableTableManager(_db, _db.todos);
   $$TodoParticipantsTableTableManager get todoParticipants =>
       $$TodoParticipantsTableTableManager(_db, _db.todoParticipants);
+  $$PersonNotesTableTableManager get personNotes =>
+      $$PersonNotesTableTableManager(_db, _db.personNotes);
   $$PersonalDatabaseFieldsTableTableManager get personalDatabaseFields =>
       $$PersonalDatabaseFieldsTableTableManager(
         _db,

@@ -26,7 +26,7 @@
   <img src="assets/readme-imgs/trace_18.png" width="32%" alt="Personal Database View" />
 </p>
 
-> Vibe-Coding 98%
+> 98% Vibe-Coding
 
 ## Features
 - Conversation-style home screen that helps you scan people and their latest to-do context quickly.

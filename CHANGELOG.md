@@ -1,3 +1,19 @@
+## v1.7.0
+
+更新內容:
+- 新增人物備註分頁，可在人物頁直接編輯長文字筆記，並支援插入人物與媒體 token。
+- 新增 person notes 資料表、DAO、provider 與路由參數，備註會隨人物刪除並可透過 `tab=note` 直接開啟。
+- 新增 app 設定，可控制 personal database 與屬性管理頁的初始 property 展開或收合狀態。
+- 更新備份格式至 v8，匯出與匯入可保留人物備註、主題色、開場動畫與初始 property 展開設定。
+- 補強資料庫、備份、設定與人物頁測試，涵蓋備註儲存、token 操作、備份還原與初始展開行為。
+
+Updates:
+- Added a person note tab for editing long-form notes on each person page, with person and media tokens.
+- Added the person notes table, DAO, provider, and route parameter support so notes cascade with deleted people and can open directly through `tab=note`.
+- Added an app setting for the initial expanded or collapsed state of personal database and property manager rows.
+- Updated the backup format to v8 so exports and imports preserve person notes, theme seed, opening animation, and initial property expansion settings.
+- Added database, backup, settings, and person page coverage for note persistence, token behavior, backup restore, and initial expansion behavior.
+
 ## v1.6.0
 
 更新內容:

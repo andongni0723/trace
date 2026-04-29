@@ -9,6 +9,8 @@ class AppSettingsRepository {
   static const _themeSeedKey = 'app_settings.theme_seed';
   static const _openingAnimationEnabledKey =
       'app_settings.opening_animation_enabled';
+  static const _initialPropertyDisplayModeKey =
+      'app_settings.initial_property_display_mode';
 
   final SharedPreferences _sharedPreferences;
 
@@ -22,6 +24,10 @@ class AppSettingsRepository {
       ),
       openingAnimationEnabled:
           _sharedPreferences.getBool(_openingAnimationEnabledKey) ?? true,
+      initialPropertyDisplayMode:
+          AppInitialPropertyDisplayModePreferenceX.fromPreference(
+            _sharedPreferences.getString(_initialPropertyDisplayModeKey),
+          ),
     );
   }
 
@@ -31,6 +37,10 @@ class AppSettingsRepository {
     await _sharedPreferences.setBool(
       _openingAnimationEnabledKey,
       settings.openingAnimationEnabled,
+    );
+    await _sharedPreferences.setString(
+      _initialPropertyDisplayModeKey,
+      settings.initialPropertyDisplayMode.name,
     );
 
     return settings;

@@ -12,7 +12,9 @@ import 'package:trace/features/app_settings/biometric_lock/data/auth/biometric_a
 import 'package:trace/features/app_settings/biometric_lock/data/models/biometric_lock_settings.dart';
 import 'package:trace/features/app_settings/biometric_lock/domain/biometric_lock_service.dart';
 import 'package:trace/features/app_settings/biometric_lock/providers/biometric_lock_provider.dart';
+import 'package:trace/features/app_settings/data/models/app_settings.dart';
 import 'package:trace/features/app_settings/providers/app_data_transfer_provider.dart';
+import 'package:trace/features/app_settings/providers/app_settings_provider.dart';
 import 'package:trace/features/media_library/data/models/media_asset_kind.dart';
 import 'package:trace/features/media_library/providers/media_library_providers.dart';
 import 'package:trace/features/people/data/models/personal_database_media_value.dart';
@@ -72,6 +74,10 @@ void main() {
         colorValue: 0xFF111111,
         avatarPath: storedAvatarPath,
       );
+      await database.personNotesDao.upsertNote(
+        personId: 'owner',
+        content: 'Coffee preference',
+      );
       await database.personalDatabaseDao.createField(
         id: 'field-1',
         actorPersonId: 'owner',
@@ -96,12 +102,14 @@ void main() {
       expect(payload['personalDatabaseFields'], isA<List<dynamic>>());
       expect(payload['personalDatabasePersonFields'], isA<List<dynamic>>());
       expect(payload['personalDatabaseValues'], isA<List<dynamic>>());
+      expect(payload['personNotes'], isA<List<dynamic>>());
       expect((payload['personalDatabaseFields'] as List<dynamic>).length, 1);
       expect(
         (payload['personalDatabasePersonFields'] as List<dynamic>).length,
         1,
       );
       expect((payload['personalDatabaseValues'] as List<dynamic>).length, 1);
+      expect((payload['personNotes'] as List<dynamic>).length, 1);
       expect(payload['personAvatars'], hasLength(1));
       expect(payload['personAvatars'], containsPair('owner', isA<String>()));
     });
@@ -244,6 +252,10 @@ void main() {
         colorValue: 0xFF111111,
         avatarPath: storedAvatarPath,
       );
+      await sourceDatabase.personNotesDao.upsertNote(
+        personId: 'owner',
+        content: 'Favorite cafe: Echo',
+      );
       await sourceDatabase.personalDatabaseDao.createField(
         id: 'field-1',
         actorPersonId: 'owner',
@@ -298,6 +310,11 @@ void main() {
       expect(restoredAssignedIds, {restoredFields.single.id});
       expect(restoredFields.single.key, 'profile');
       expect(restoredFields.single.value, {'nickname': 'Cap'});
+      final restoredNote = await targetDatabase.personNotesDao.getNoteForPerson(
+        'owner',
+      );
+      expect(restoredNote, isNotNull);
+      expect(restoredNote!.content, 'Favorite cafe: Echo');
 
       final restoredPerson = await targetDatabase.peopleDao.getPersonById(
         'owner',
@@ -612,6 +629,9 @@ void main() {
         'exportedAt': DateTime(2026, 3, 30).toIso8601String(),
         'settings': {
           'themeMode': 'dark',
+          'themeSeed': 'teal',
+          'openingAnimationEnabled': false,
+          'initialPropertyDisplayMode': 'expanded',
           'biometricLock': {
             'enabled': true,
             'reauthInterval': BiometricReauthInterval.nextOpen.preferenceValue,
@@ -629,6 +649,14 @@ void main() {
 
       final refreshedState = await container.read(
         biometricLockStateProvider.future,
+      );
+      final importedSettings = await container.read(appSettingsProvider.future);
+      expect(importedSettings.themeMode, AppThemeMode.dark);
+      expect(importedSettings.themeSeed, AppThemeSeed.teal);
+      expect(importedSettings.openingAnimationEnabled, isFalse);
+      expect(
+        importedSettings.initialPropertyDisplayMode,
+        AppInitialPropertyDisplayMode.expanded,
       );
       expect(refreshedState.settings.enabled, isTrue);
       expect(

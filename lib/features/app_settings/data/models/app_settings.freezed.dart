@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$AppSettings {
 
- AppThemeMode get themeMode; AppThemeSeed get themeSeed; bool get openingAnimationEnabled;
+ AppThemeMode get themeMode; AppThemeSeed get themeSeed; bool get openingAnimationEnabled; AppInitialPropertyDisplayMode get initialPropertyDisplayMode;
 /// Create a copy of AppSettings
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $AppSettingsCopyWith<AppSettings> get copyWith => _$AppSettingsCopyWithImpl<AppS
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AppSettings&&(identical(other.themeMode, themeMode) || other.themeMode == themeMode)&&(identical(other.themeSeed, themeSeed) || other.themeSeed == themeSeed)&&(identical(other.openingAnimationEnabled, openingAnimationEnabled) || other.openingAnimationEnabled == openingAnimationEnabled));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AppSettings&&(identical(other.themeMode, themeMode) || other.themeMode == themeMode)&&(identical(other.themeSeed, themeSeed) || other.themeSeed == themeSeed)&&(identical(other.openingAnimationEnabled, openingAnimationEnabled) || other.openingAnimationEnabled == openingAnimationEnabled)&&(identical(other.initialPropertyDisplayMode, initialPropertyDisplayMode) || other.initialPropertyDisplayMode == initialPropertyDisplayMode));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,themeMode,themeSeed,openingAnimationEnabled);
+int get hashCode => Object.hash(runtimeType,themeMode,themeSeed,openingAnimationEnabled,initialPropertyDisplayMode);
 
 @override
 String toString() {
-  return 'AppSettings(themeMode: $themeMode, themeSeed: $themeSeed, openingAnimationEnabled: $openingAnimationEnabled)';
+  return 'AppSettings(themeMode: $themeMode, themeSeed: $themeSeed, openingAnimationEnabled: $openingAnimationEnabled, initialPropertyDisplayMode: $initialPropertyDisplayMode)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $AppSettingsCopyWith<$Res>  {
   factory $AppSettingsCopyWith(AppSettings value, $Res Function(AppSettings) _then) = _$AppSettingsCopyWithImpl;
 @useResult
 $Res call({
- AppThemeMode themeMode, AppThemeSeed themeSeed, bool openingAnimationEnabled
+ AppThemeMode themeMode, AppThemeSeed themeSeed, bool openingAnimationEnabled, AppInitialPropertyDisplayMode initialPropertyDisplayMode
 });
 
 
@@ -62,12 +62,13 @@ class _$AppSettingsCopyWithImpl<$Res>
 
 /// Create a copy of AppSettings
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? themeMode = null,Object? themeSeed = null,Object? openingAnimationEnabled = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? themeMode = null,Object? themeSeed = null,Object? openingAnimationEnabled = null,Object? initialPropertyDisplayMode = null,}) {
   return _then(_self.copyWith(
 themeMode: null == themeMode ? _self.themeMode : themeMode // ignore: cast_nullable_to_non_nullable
 as AppThemeMode,themeSeed: null == themeSeed ? _self.themeSeed : themeSeed // ignore: cast_nullable_to_non_nullable
 as AppThemeSeed,openingAnimationEnabled: null == openingAnimationEnabled ? _self.openingAnimationEnabled : openingAnimationEnabled // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,initialPropertyDisplayMode: null == initialPropertyDisplayMode ? _self.initialPropertyDisplayMode : initialPropertyDisplayMode // ignore: cast_nullable_to_non_nullable
+as AppInitialPropertyDisplayMode,
   ));
 }
 
@@ -152,10 +153,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( AppThemeMode themeMode,  AppThemeSeed themeSeed,  bool openingAnimationEnabled)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( AppThemeMode themeMode,  AppThemeSeed themeSeed,  bool openingAnimationEnabled,  AppInitialPropertyDisplayMode initialPropertyDisplayMode)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AppSettings() when $default != null:
-return $default(_that.themeMode,_that.themeSeed,_that.openingAnimationEnabled);case _:
+return $default(_that.themeMode,_that.themeSeed,_that.openingAnimationEnabled,_that.initialPropertyDisplayMode);case _:
   return orElse();
 
 }
@@ -173,10 +174,10 @@ return $default(_that.themeMode,_that.themeSeed,_that.openingAnimationEnabled);c
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( AppThemeMode themeMode,  AppThemeSeed themeSeed,  bool openingAnimationEnabled)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( AppThemeMode themeMode,  AppThemeSeed themeSeed,  bool openingAnimationEnabled,  AppInitialPropertyDisplayMode initialPropertyDisplayMode)  $default,) {final _that = this;
 switch (_that) {
 case _AppSettings():
-return $default(_that.themeMode,_that.themeSeed,_that.openingAnimationEnabled);case _:
+return $default(_that.themeMode,_that.themeSeed,_that.openingAnimationEnabled,_that.initialPropertyDisplayMode);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -193,10 +194,10 @@ return $default(_that.themeMode,_that.themeSeed,_that.openingAnimationEnabled);c
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( AppThemeMode themeMode,  AppThemeSeed themeSeed,  bool openingAnimationEnabled)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( AppThemeMode themeMode,  AppThemeSeed themeSeed,  bool openingAnimationEnabled,  AppInitialPropertyDisplayMode initialPropertyDisplayMode)?  $default,) {final _that = this;
 switch (_that) {
 case _AppSettings() when $default != null:
-return $default(_that.themeMode,_that.themeSeed,_that.openingAnimationEnabled);case _:
+return $default(_that.themeMode,_that.themeSeed,_that.openingAnimationEnabled,_that.initialPropertyDisplayMode);case _:
   return null;
 
 }
@@ -208,12 +209,13 @@ return $default(_that.themeMode,_that.themeSeed,_that.openingAnimationEnabled);c
 
 
 class _AppSettings implements AppSettings {
-  const _AppSettings({this.themeMode = AppThemeMode.dark, this.themeSeed = AppThemeSeed.classicDeepPurple, this.openingAnimationEnabled = true});
+  const _AppSettings({this.themeMode = AppThemeMode.dark, this.themeSeed = AppThemeSeed.classicDeepPurple, this.openingAnimationEnabled = true, this.initialPropertyDisplayMode = AppInitialPropertyDisplayMode.collapsed});
   
 
 @override@JsonKey() final  AppThemeMode themeMode;
 @override@JsonKey() final  AppThemeSeed themeSeed;
 @override@JsonKey() final  bool openingAnimationEnabled;
+@override@JsonKey() final  AppInitialPropertyDisplayMode initialPropertyDisplayMode;
 
 /// Create a copy of AppSettings
 /// with the given fields replaced by the non-null parameter values.
@@ -225,16 +227,16 @@ _$AppSettingsCopyWith<_AppSettings> get copyWith => __$AppSettingsCopyWithImpl<_
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AppSettings&&(identical(other.themeMode, themeMode) || other.themeMode == themeMode)&&(identical(other.themeSeed, themeSeed) || other.themeSeed == themeSeed)&&(identical(other.openingAnimationEnabled, openingAnimationEnabled) || other.openingAnimationEnabled == openingAnimationEnabled));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AppSettings&&(identical(other.themeMode, themeMode) || other.themeMode == themeMode)&&(identical(other.themeSeed, themeSeed) || other.themeSeed == themeSeed)&&(identical(other.openingAnimationEnabled, openingAnimationEnabled) || other.openingAnimationEnabled == openingAnimationEnabled)&&(identical(other.initialPropertyDisplayMode, initialPropertyDisplayMode) || other.initialPropertyDisplayMode == initialPropertyDisplayMode));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,themeMode,themeSeed,openingAnimationEnabled);
+int get hashCode => Object.hash(runtimeType,themeMode,themeSeed,openingAnimationEnabled,initialPropertyDisplayMode);
 
 @override
 String toString() {
-  return 'AppSettings(themeMode: $themeMode, themeSeed: $themeSeed, openingAnimationEnabled: $openingAnimationEnabled)';
+  return 'AppSettings(themeMode: $themeMode, themeSeed: $themeSeed, openingAnimationEnabled: $openingAnimationEnabled, initialPropertyDisplayMode: $initialPropertyDisplayMode)';
 }
 
 
@@ -245,7 +247,7 @@ abstract mixin class _$AppSettingsCopyWith<$Res> implements $AppSettingsCopyWith
   factory _$AppSettingsCopyWith(_AppSettings value, $Res Function(_AppSettings) _then) = __$AppSettingsCopyWithImpl;
 @override @useResult
 $Res call({
- AppThemeMode themeMode, AppThemeSeed themeSeed, bool openingAnimationEnabled
+ AppThemeMode themeMode, AppThemeSeed themeSeed, bool openingAnimationEnabled, AppInitialPropertyDisplayMode initialPropertyDisplayMode
 });
 
 
@@ -262,12 +264,13 @@ class __$AppSettingsCopyWithImpl<$Res>
 
 /// Create a copy of AppSettings
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? themeMode = null,Object? themeSeed = null,Object? openingAnimationEnabled = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? themeMode = null,Object? themeSeed = null,Object? openingAnimationEnabled = null,Object? initialPropertyDisplayMode = null,}) {
   return _then(_AppSettings(
 themeMode: null == themeMode ? _self.themeMode : themeMode // ignore: cast_nullable_to_non_nullable
 as AppThemeMode,themeSeed: null == themeSeed ? _self.themeSeed : themeSeed // ignore: cast_nullable_to_non_nullable
 as AppThemeSeed,openingAnimationEnabled: null == openingAnimationEnabled ? _self.openingAnimationEnabled : openingAnimationEnabled // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,initialPropertyDisplayMode: null == initialPropertyDisplayMode ? _self.initialPropertyDisplayMode : initialPropertyDisplayMode // ignore: cast_nullable_to_non_nullable
+as AppInitialPropertyDisplayMode,
   ));
 }
 

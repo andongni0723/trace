@@ -19,6 +19,13 @@ final personTodosProvider = StreamProvider.family<List<TodoWithPeople>, String>(
   },
 );
 
+final personNoteProvider = StreamProvider.family<PersonNote?, String>((
+  ref,
+  personId,
+) {
+  return ref.watch(personNotesDaoProvider).watchNoteForPerson(personId);
+});
+
 final personDetailActionsProvider = Provider<PersonDetailActions>((ref) {
   return PersonDetailActions(ref: ref);
 });
@@ -78,6 +85,15 @@ class PersonDetailActions {
         .read(personAvatarStorageProvider)
         .deleteManagedAvatar(person?.avatarPath);
     await _ref.read(peopleDaoProvider).deletePersonById(personId);
+  }
+
+  Future<void> updatePersonNote({
+    required String personId,
+    required String content,
+  }) {
+    return _ref
+        .read(personNotesDaoProvider)
+        .upsertNote(personId: personId, content: content);
   }
 }
 

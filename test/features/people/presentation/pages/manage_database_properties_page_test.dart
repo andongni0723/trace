@@ -3,6 +3,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trace/core/database/database.dart';
 import 'package:trace/features/people/data/models/personal_database_value_type.dart';
 import 'package:trace/features/people/presentation/pages/manage_database_properties_page.dart';
@@ -95,8 +96,10 @@ class _ManageDatabasePropertiesTestAssetLoader extends AssetLoader {
 
 Future<void> _pumpManageDatabasePropertiesPage(
   WidgetTester tester,
-  AppDatabase database,
-) async {
+  AppDatabase database, {
+  Map<String, Object> sharedPreferencesValues = const {},
+}) async {
+  SharedPreferences.setMockInitialValues(sharedPreferencesValues);
   await tester.pumpWidget(
     ProviderScope(
       overrides: [people_db.appDatabaseProvider.overrideWithValue(database)],
@@ -123,6 +126,10 @@ Future<void> _pumpManageDatabasePropertiesPage(
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
 
   testWidgets(
     'property tile does not show preview text and drag handle is leading',
@@ -198,7 +205,13 @@ void main() {
       jsonValue: '{}',
     );
 
-    await _pumpManageDatabasePropertiesPage(tester, database);
+    await _pumpManageDatabasePropertiesPage(
+      tester,
+      database,
+      sharedPreferencesValues: const {
+        'app_settings.initial_property_display_mode': 'expanded',
+      },
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('資料'));
     await tester.pumpAndSettle();
@@ -228,7 +241,13 @@ void main() {
       arrayElementTemplateJsonValue: '{"名字":""}',
     );
 
-    await _pumpManageDatabasePropertiesPage(tester, database);
+    await _pumpManageDatabasePropertiesPage(
+      tester,
+      database,
+      sharedPreferencesValues: const {
+        'app_settings.initial_property_display_mode': 'expanded',
+      },
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('物件'), findsOneWidget);
@@ -310,7 +329,9 @@ void main() {
     expect(rawDefinition.arrayElementTemplateJsonValue, isNull);
   });
 
-  testWidgets('tap chevron collapses subproperties', (tester) async {
+  testWidgets('default setting starts with subproperties collapsed', (
+    tester,
+  ) async {
     final database = AppDatabase(NativeDatabase.memory());
     addTearDown(database.close);
 
@@ -338,7 +359,7 @@ void main() {
     await _pumpManageDatabasePropertiesPage(tester, database);
     await tester.pumpAndSettle();
 
-    expect(find.text('暱稱'), findsOneWidget);
+    expect(find.text('暱稱'), findsNothing);
 
     await tester.tap(
       find.byKey(
@@ -347,7 +368,46 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('暱稱'), findsNothing);
+    expect(find.text('暱稱'), findsOneWidget);
+  });
+
+  testWidgets('expanded setting shows subproperties on first load', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await database.peopleDao.createPerson(
+      id: 'owner',
+      name: 'Owner',
+      colorValue: 0xFF111111,
+    );
+    await database.personalDatabaseDao.createFieldAndAssignToPerson(
+      id: 'field-profile',
+      personId: 'owner',
+      key: '資料',
+      type: PersonalDatabaseValueType.object,
+      jsonValue: '{}',
+    );
+    await database.personalDatabaseDao.createFieldAndAssignToPerson(
+      id: 'field-nickname',
+      personId: 'owner',
+      key: '暱稱',
+      type: PersonalDatabaseValueType.string,
+      jsonValue: '"Cap"',
+      parentFieldId: 'field-profile',
+    );
+
+    await _pumpManageDatabasePropertiesPage(
+      tester,
+      database,
+      sharedPreferencesValues: const {
+        'app_settings.initial_property_display_mode': 'expanded',
+      },
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('暱稱'), findsOneWidget);
   });
 
   testWidgets('drag reorder smoke test moves root properties', (tester) async {
@@ -376,7 +436,13 @@ void main() {
       sortOrder: 1,
     );
 
-    await _pumpManageDatabasePropertiesPage(tester, database);
+    await _pumpManageDatabasePropertiesPage(
+      tester,
+      database,
+      sharedPreferencesValues: const {
+        'app_settings.initial_property_display_mode': 'expanded',
+      },
+    );
     await tester.pumpAndSettle();
 
     final firstHandle = find.byKey(
@@ -428,7 +494,13 @@ void main() {
       sortOrder: 1,
     );
 
-    await _pumpManageDatabasePropertiesPage(tester, database);
+    await _pumpManageDatabasePropertiesPage(
+      tester,
+      database,
+      sharedPreferencesValues: const {
+        'app_settings.initial_property_display_mode': 'expanded',
+      },
+    );
     await tester.pumpAndSettle();
 
     final childHandle = find.byKey(
