@@ -799,7 +799,9 @@ void main() {
     final database = AppDatabase(NativeDatabase.memory());
     addTearDown(database.close);
 
-    final mediaFile = File('/private/tmp/trace_note_media_test_photo.jpg');
+    final mediaFile = File(
+      '${Directory.systemTemp.path}/trace_note_media_test_photo.jpg',
+    );
     addTearDown(() {
       if (mediaFile.existsSync()) {
         mediaFile.deleteSync();
