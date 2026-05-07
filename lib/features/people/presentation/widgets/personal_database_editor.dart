@@ -10,6 +10,7 @@ enum PersonalDatabaseEditorAction {
   addFromTemplate,
   editTemplate,
   edit,
+  clearValue,
   delete,
 }
 
@@ -28,6 +29,7 @@ class PersonalDatabaseEditorRowData {
     required this.isContainer,
     required this.isDefinitionBacked,
     required this.parentIsList,
+    this.isEmptyValue = false,
     this.isValueEnabled = true,
     this.canAddFromTemplate = false,
     this.canEditTemplate = false,
@@ -47,6 +49,7 @@ class PersonalDatabaseEditorRowData {
   final bool isContainer;
   final bool isDefinitionBacked;
   final bool parentIsList;
+  final bool isEmptyValue;
   final bool isValueEnabled;
   final bool canAddFromTemplate;
   final bool canEditTemplate;
@@ -169,6 +172,7 @@ class PersonalDatabasePropertyRow<T> extends StatelessWidget {
     this.valueFlex = 5,
     this.isContainer = false,
     this.isExpanded = false,
+    this.isEmptyValue = false,
     this.onPressedValue,
     this.onSelectedMenu,
     this.itemBuilder,
@@ -183,6 +187,7 @@ class PersonalDatabasePropertyRow<T> extends StatelessWidget {
   final int valueFlex;
   final bool isContainer;
   final bool isExpanded;
+  final bool isEmptyValue;
   final VoidCallback? onPressedValue;
   final PopupMenuItemSelected<T>? onSelectedMenu;
   final PopupMenuItemBuilder<T>? itemBuilder;
@@ -192,7 +197,9 @@ class PersonalDatabasePropertyRow<T> extends StatelessWidget {
     final paddingLeft = 12.0 + (depth * 16.0);
 
     return Material(
-      color: context.cs.surfaceContainerLow,
+      color: isEmptyValue
+          ? context.cs.surfaceContainerLowest
+          : context.cs.surfaceContainerLow,
       borderRadius: borderRadius,
       child: Padding(
         padding: EdgeInsets.fromLTRB(paddingLeft, 6, 6, 6),
@@ -278,44 +285,61 @@ class _PersonalDatabaseEditorRow extends StatelessWidget {
       depth: row.depth,
       isContainer: row.isContainer,
       isExpanded: row.isExpanded,
+      isEmptyValue: row.isEmptyValue,
       onPressedValue: row.isValueEnabled ? onPressedValue : null,
       onSelectedMenu: onPressedAction,
-      itemBuilder: (_) {
-        final addChildLabel = row.valueType == PersonalDatabaseValueType.list
-            ? 'personTodo.database.action.addElement'.tr()
-            : 'personTodo.database.action.addChild'.tr();
-        return [
-          if (row.canAddFromTemplate)
-            PopupMenuItem(
-              value: PersonalDatabaseEditorAction.addFromTemplate,
-              child: Text('personTodo.database.action.addFromTemplate'.tr()),
-            ),
-          if (row.isContainer)
-            PopupMenuItem(
-              value: PersonalDatabaseEditorAction.addChild,
-              child: Text(addChildLabel),
-            ),
-          if (row.canEditTemplate)
-            PopupMenuItem(
-              value: PersonalDatabaseEditorAction.editTemplate,
-              child: Text('personTodo.database.action.editTemplate'.tr()),
-            ),
-          PopupMenuItem(
-            value: PersonalDatabaseEditorAction.edit,
-            child: Text('personTodo.database.action.edit'.tr()),
-          ),
-          PopupMenuItem(
-            value: PersonalDatabaseEditorAction.delete,
-            child: Text('personTodo.database.action.delete'.tr()),
-          ),
-        ];
-      },
+      itemBuilder: _shouldShowActionMenu(row)
+          ? (_) {
+              final addChildLabel =
+                  row.valueType == PersonalDatabaseValueType.list
+                  ? 'personTodo.database.action.addElement'.tr()
+                  : 'personTodo.database.action.addChild'.tr();
+              return [
+                if (row.canAddFromTemplate)
+                  PopupMenuItem(
+                    value: PersonalDatabaseEditorAction.addFromTemplate,
+                    child: Text(
+                      'personTodo.database.action.addFromTemplate'.tr(),
+                    ),
+                  ),
+                if (row.isContainer &&
+                    (!row.isDefinitionBacked ||
+                        row.valueType == PersonalDatabaseValueType.list))
+                  PopupMenuItem(
+                    value: PersonalDatabaseEditorAction.addChild,
+                    child: Text(addChildLabel),
+                  ),
+                if (row.canEditTemplate)
+                  PopupMenuItem(
+                    value: PersonalDatabaseEditorAction.editTemplate,
+                    child: Text('personTodo.database.action.editTemplate'.tr()),
+                  ),
+                PopupMenuItem(
+                  value: PersonalDatabaseEditorAction.edit,
+                  child: Text('personTodo.database.action.edit'.tr()),
+                ),
+                if (row.valueType == PersonalDatabaseValueType.media)
+                  PopupMenuItem(
+                    value: PersonalDatabaseEditorAction.clearValue,
+                    child: Text('personTodo.database.action.clearField'.tr()),
+                  ),
+                if (!row.isDefinitionBacked)
+                  PopupMenuItem(
+                    value: PersonalDatabaseEditorAction.delete,
+                    child: Text('personTodo.database.action.delete'.tr()),
+                  ),
+              ];
+            }
+          : null,
       leading: Text(
         row.keyLabel,
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
         style: context.tt.titleSmall?.copyWith(
           fontWeight: row.depth == 0 ? FontWeight.w700 : FontWeight.w600,
+          color: row.isEmptyValue
+              ? context.cs.onSurfaceVariant.withValues(alpha: 0.62)
+              : null,
         ),
       ),
       value: _PersonalDatabaseEditorValueText(
@@ -324,6 +348,18 @@ class _PersonalDatabaseEditorRow extends StatelessWidget {
       ),
     );
   }
+}
+
+bool _shouldShowActionMenu(PersonalDatabaseEditorRowData row) {
+  return switch (row.valueType) {
+    PersonalDatabaseValueType.list ||
+    PersonalDatabaseValueType.media ||
+    PersonalDatabaseValueType.object => true,
+    PersonalDatabaseValueType.string ||
+    PersonalDatabaseValueType.number ||
+    PersonalDatabaseValueType.boolean ||
+    PersonalDatabaseValueType.nullType => !row.isDefinitionBacked,
+  };
 }
 
 class _PersonalDatabaseEditorValueText extends StatelessWidget {
@@ -338,7 +374,10 @@ class _PersonalDatabaseEditorValueText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final baseStyle = context.tt.bodyMedium?.copyWith(
-      color: context.cs.onSurfaceVariant,
+      color: row.isEmptyValue
+          ? context.cs.onSurfaceVariant.withValues(alpha: 0.58)
+          : context.cs.onSurfaceVariant,
+      fontStyle: row.isEmptyValue ? FontStyle.italic : null,
     );
     if (row.valueSegments.isEmpty) {
       return Text(

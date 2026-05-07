@@ -268,6 +268,7 @@ personTodo.database.action.addElement,新增元素,Add element
 personTodo.database.action.addFromTemplate,從既有模板新增元素,Add element from existing template
 personTodo.database.action.editTemplate,編輯模板,Edit template
 personTodo.database.action.edit,編輯,Edit
+personTodo.database.action.clearField,清空欄位,Clear field
 personTodo.database.action.delete,刪除,Delete
 personTodo.database.menu.more,更多操作,More actions
 personTodo.database.actionError,個人資料庫更新失敗。,Unable to update the personal database.

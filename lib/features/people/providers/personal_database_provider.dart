@@ -166,6 +166,17 @@ class PersonalDatabaseActions {
     );
   }
 
+  Future<void> ensureAllFieldDefinitionsAssignedToPerson({
+    required String personId,
+  }) async {
+    final dao = _ref.read(personalDatabaseDaoProvider);
+    final library = await dao.getFieldLibraryForPerson(personId);
+
+    for (final field in _flattenFields(library)) {
+      await dao.assignFieldToPerson(fieldId: field.id, personId: personId);
+    }
+  }
+
   Future<void> removeFieldFromPerson({
     required String personId,
     required String fieldId,
@@ -790,6 +801,15 @@ class PersonalDatabaseActions {
       }
     }
     return false;
+  }
+
+  Iterable<PersonalDatabaseFieldNode> _flattenFields(
+    List<PersonalDatabaseFieldNode> fields,
+  ) sync* {
+    for (final field in fields) {
+      yield field;
+      yield* _flattenFields(field.children);
+    }
   }
 
   List<String> _ancestorIdsForField({

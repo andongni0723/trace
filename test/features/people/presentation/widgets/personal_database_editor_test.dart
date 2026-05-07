@@ -18,6 +18,7 @@ class _PersonalDatabaseEditorTestAssetLoader extends AssetLoader {
           'addElement': '新增元素',
           'addFromTemplate': '從既有模板新增元素',
           'editTemplate': '編輯模板',
+          'clearField': '清空欄位',
         },
       },
     },

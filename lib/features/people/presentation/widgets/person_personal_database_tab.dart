@@ -40,13 +40,13 @@ class PersonPersonalDatabaseTab extends ConsumerStatefulWidget {
 class _PersonPersonalDatabaseTabState
     extends ConsumerState<PersonPersonalDatabaseTab> {
   final Set<String> _expandedNodeIds = <String>{};
-  bool _didScheduleBackfill = false;
+  bool _didScheduleInitialization = false;
   bool _didInitializeExpandState = false;
 
   @override
   void initState() {
     super.initState();
-    _scheduleNestedDefinitionBackfill();
+    _schedulePersonalDatabaseInitialization();
   }
 
   @override
@@ -55,8 +55,8 @@ class _PersonPersonalDatabaseTabState
     if (oldWidget.personId != widget.personId) {
       _expandedNodeIds.clear();
       _didInitializeExpandState = false;
-      _didScheduleBackfill = false;
-      _scheduleNestedDefinitionBackfill();
+      _didScheduleInitialization = false;
+      _schedulePersonalDatabaseInitialization();
     }
   }
 
@@ -252,16 +252,18 @@ class _PersonPersonalDatabaseTabState
     return byId;
   }
 
-  void _scheduleNestedDefinitionBackfill() {
-    if (_didScheduleBackfill) {
+  void _schedulePersonalDatabaseInitialization() {
+    if (_didScheduleInitialization) {
       return;
     }
-    _didScheduleBackfill = true;
+    _didScheduleInitialization = true;
 
     Future<void>.microtask(() async {
-      await ref
-          .read(personalDatabaseActionsProvider)
-          .ensureObjectSubtreeDefinitions(personId: widget.personId);
+      final actions = ref.read(personalDatabaseActionsProvider);
+      await actions.ensureObjectSubtreeDefinitions(personId: widget.personId);
+      await actions.ensureAllFieldDefinitionsAssignedToPerson(
+        personId: widget.personId,
+      );
     });
   }
 
@@ -277,6 +279,7 @@ class _PersonPersonalDatabaseTabState
     final isContainer =
         field.type == PersonalDatabaseValueType.object ||
         field.type == PersonalDatabaseValueType.list;
+    final isEmptyValue = _isEmptyFieldValue(field);
 
     rows.add(
       PersonalDatabaseEditorRowData(
@@ -285,7 +288,12 @@ class _PersonPersonalDatabaseTabState
         rootFieldId: field.id,
         path: const [],
         keyLabel: field.key,
-        valuePreview: _fieldValuePreview(field, mentionCodec: mentionCodec),
+        valuePreview: isEmptyValue
+            ? _emptyValuePreview(
+                field.type,
+                arrayElementType: field.arrayElementType,
+              )
+            : _fieldValuePreview(field, mentionCodec: mentionCodec),
         rawValue: field.value,
         valueType: field.type,
         depth: depth,
@@ -293,15 +301,18 @@ class _PersonPersonalDatabaseTabState
         isContainer: isContainer,
         isDefinitionBacked: true,
         parentIsList: false,
+        isEmptyValue: isEmptyValue,
         canAddFromTemplate:
             field.type == PersonalDatabaseValueType.list &&
             field.hasArrayElementTemplate,
         canEditTemplate: field.type == PersonalDatabaseValueType.list,
-        valueSegments: _valueSegments(
-          field.value,
-          peopleById: peopleById,
-          mentionCodec: mentionCodec,
-        ),
+        valueSegments: isEmptyValue
+            ? const []
+            : _valueSegments(
+                field.value,
+                peopleById: peopleById,
+                mentionCodec: mentionCodec,
+              ),
       ),
     );
 
@@ -364,6 +375,7 @@ class _PersonPersonalDatabaseTabState
     final isContainer =
         valueType == PersonalDatabaseValueType.object ||
         valueType == PersonalDatabaseValueType.list;
+    final isEmptyValue = _isEmptyValue(valueType, value);
 
     rows.add(
       PersonalDatabaseEditorRowData(
@@ -372,11 +384,16 @@ class _PersonPersonalDatabaseTabState
         rootFieldId: rootFieldId,
         path: path,
         keyLabel: keyLabel,
-        valuePreview: _valuePreview(
-          value,
-          arrayElementType: arrayTemplateMetadata?.elementType,
-          mentionCodec: mentionCodec,
-        ),
+        valuePreview: isEmptyValue
+            ? _emptyValuePreview(
+                valueType,
+                arrayElementType: arrayTemplateMetadata?.elementType,
+              )
+            : _valuePreview(
+                value,
+                arrayElementType: arrayTemplateMetadata?.elementType,
+                mentionCodec: mentionCodec,
+              ),
         rawValue: value,
         valueType: valueType,
         depth: depth,
@@ -384,17 +401,20 @@ class _PersonPersonalDatabaseTabState
         isContainer: isContainer,
         isDefinitionBacked: false,
         parentIsList: parentIsList,
+        isEmptyValue: isEmptyValue,
         canAddFromTemplate:
             valueType == PersonalDatabaseValueType.list &&
             arrayTemplateMetadata?.hasObjectTemplate == true,
         canEditTemplate:
             valueType == PersonalDatabaseValueType.list &&
             _canEditNestedArrayTemplate(rootField: rootField),
-        valueSegments: _valueSegments(
-          value,
-          peopleById: peopleById,
-          mentionCodec: mentionCodec,
-        ),
+        valueSegments: isEmptyValue
+            ? const []
+            : _valueSegments(
+                value,
+                peopleById: peopleById,
+                mentionCodec: mentionCodec,
+              ),
       ),
     );
 
@@ -438,6 +458,15 @@ class _PersonPersonalDatabaseTabState
         );
       }
     }
+  }
+
+  bool _isEmptyFieldValue(PersonalDatabaseFieldNode field) {
+    if (field.type == PersonalDatabaseValueType.object &&
+        field.children.isNotEmpty) {
+      return field.children.every(_isEmptyFieldValue) &&
+          _isEmptyValue(field.type, field.value);
+    }
+    return _isEmptyValue(field.type, field.value);
   }
 
   void _toggleExpand(
@@ -526,9 +555,49 @@ class _PersonPersonalDatabaseTabState
       case PersonalDatabaseEditorAction.edit:
         await _editRow(row, fieldsById);
         return;
+      case PersonalDatabaseEditorAction.clearValue:
+        await _clearRowValue(row, fieldsById);
+        return;
       case PersonalDatabaseEditorAction.delete:
         await _deleteRow(row, fieldsById);
         return;
+    }
+  }
+
+  Future<void> _clearRowValue(
+    PersonalDatabaseEditorRowData row,
+    Map<String, PersonalDatabaseFieldNode> fieldsById,
+  ) async {
+    if (row.valueType != PersonalDatabaseValueType.media) {
+      return;
+    }
+
+    final targetField = fieldsById[row.fieldId];
+    if (targetField == null) {
+      return;
+    }
+
+    try {
+      final actions = ref.read(personalDatabaseActionsProvider);
+      if (row.isDefinitionBacked) {
+        await actions.updatePropertyAndValueForPerson(
+          personId: widget.personId,
+          fieldId: targetField.id,
+          key: targetField.key,
+          type: targetField.type,
+          value: emptyPersonalDatabaseMediaValue,
+        );
+      } else {
+        await actions.updateNodeValue(
+          personId: widget.personId,
+          field: targetField,
+          path: row.path,
+          value: emptyPersonalDatabaseMediaValue,
+        );
+      }
+      AppHaptics.confirm();
+    } catch (_) {
+      _showError();
     }
   }
 
@@ -1326,12 +1395,24 @@ String _valuePreview(
     return '{${value.length}}';
   }
   if (value is List) {
-    final elementTypeLabel =
-        arrayElementType?.localizationKey.tr() ??
-        'databasePropertyManager.arrayElement.unspecified'.tr();
-    return '[${value.length}] <$elementTypeLabel>';
+    return '[${value.length}] <${_arrayElementTypeLabel(arrayElementType)}>';
   }
   return '$value';
+}
+
+String _emptyValuePreview(
+  PersonalDatabaseValueType type, {
+  PersonalDatabaseValueType? arrayElementType,
+}) {
+  if (type == PersonalDatabaseValueType.list) {
+    return '${type.localizationKey.tr()}<${_arrayElementTypeLabel(arrayElementType)}>';
+  }
+  return type.localizationKey.tr();
+}
+
+String _arrayElementTypeLabel(PersonalDatabaseValueType? elementType) {
+  return elementType?.localizationKey.tr() ??
+      'databasePropertyManager.arrayElement.unspecified'.tr();
 }
 
 String _mediaFileNamePreview(Object? value) {
@@ -1341,6 +1422,21 @@ String _mediaFileNamePreview(Object? value) {
     return 'personTodo.database.sheet.mediaEmpty'.tr();
   }
   return fileName;
+}
+
+bool _isEmptyValue(PersonalDatabaseValueType type, Object? value) {
+  return switch (type) {
+    PersonalDatabaseValueType.string =>
+      value is! String || value.trim().isEmpty,
+    PersonalDatabaseValueType.number => value is! num || value == 0,
+    PersonalDatabaseValueType.boolean => value != true,
+    PersonalDatabaseValueType.media => !personalDatabaseMediaValueFromObject(
+      value,
+    ).hasFile,
+    PersonalDatabaseValueType.nullType => true,
+    PersonalDatabaseValueType.list => value is! List || value.isEmpty,
+    PersonalDatabaseValueType.object => value is! Map || value.isEmpty,
+  };
 }
 
 List<PersonalDatabaseEditorValueSegment> _valueSegments(

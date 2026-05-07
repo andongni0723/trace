@@ -12,6 +12,7 @@ import 'package:trace/core/database/database.dart';
 import 'package:trace/features/media_library/data/models/media_asset_kind.dart';
 import 'package:trace/features/media_library/data/services/media_asset_opener.dart';
 import 'package:trace/features/media_library/providers/media_library_providers.dart';
+import 'package:trace/features/people/data/models/personal_database_media_value.dart';
 import 'package:trace/features/people/data/models/personal_database_mention.dart';
 import 'package:trace/features/people/data/models/personal_database_value_type.dart';
 import 'package:trace/features/people/presentation/widgets/person_personal_database_tab.dart';
@@ -55,6 +56,7 @@ class _PersonTodoTestAssetLoader extends AssetLoader {
           'addElement': '新增元素',
           'addFromTemplate': '從既有模板新增元素',
           'editTemplate': '編輯模板',
+          'clearField': '清空欄位',
         },
         'sheet': {
           'addChildTitle': '新增子項目',
@@ -69,6 +71,12 @@ class _PersonTodoTestAssetLoader extends AssetLoader {
           'title': '無法移除',
           'body': '屬性「{key}」還有未隱藏的子屬性，請先隱藏所有子屬性後再移除。這裡的移除只會對這個人隱藏，不會真的刪掉屬性定義。',
           'confirm': '知道了',
+        },
+        'deleteDialog': {
+          'title': '刪除屬性',
+          'body': '確定要刪除屬性「{key}」嗎？',
+          'cancel': '取消',
+          'delete': '刪除',
         },
       },
       'propertyChooser': {
@@ -114,7 +122,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('personal database FAB opens choose property page', (
+  testWidgets('personal database tab does not show add property FAB', (
     tester,
   ) async {
     final database = AppDatabase(NativeDatabase.memory());
@@ -155,25 +163,8 @@ void main() {
     await tester.tap(find.text('資料庫'));
     await tester.pumpAndSettle();
 
-    expect(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is FloatingActionButton &&
-            widget.heroTag == 'person-database-add-fab-owner',
-      ),
-      findsOneWidget,
-    );
-
-    await tester.tap(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is FloatingActionButton &&
-            widget.heroTag == 'person-database-add-fab-owner',
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('選擇屬性'), findsOneWidget);
+    expect(find.byType(FloatingActionButton), findsNothing);
+    expect(find.text('還沒有屬性'), findsOneWidget);
 
     await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
     await tester.pump();
@@ -181,7 +172,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 1));
   });
 
-  testWidgets('can assign multiple properties from chooser', (tester) async {
+  testWidgets('automatically assigns all properties on database entry', (
+    tester,
+  ) async {
     final database = AppDatabase(NativeDatabase.memory());
     addTearDown(database.close);
 
@@ -241,25 +234,7 @@ void main() {
 
     await tester.tap(find.text('資料庫'));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-
-    await tester.tap(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is FloatingActionButton &&
-            widget.heroTag == 'person-database-add-fab-owner',
-      ),
-    );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-
-    await tester.tap(find.text('暱稱'));
-    await tester.pump();
-    await tester.tap(find.text('年齡'));
-    await tester.pump();
-    await tester.tap(find.text('加入 2 個屬性'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 600));
 
     final assignments =
         await (database.select(database.personalDatabasePersonFields)
@@ -281,7 +256,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 1));
   });
 
-  testWidgets('chooser shows legacy object subproperties after backfill', (
+  testWidgets('database entry backfills legacy object subproperties', (
     tester,
   ) async {
     final database = AppDatabase(NativeDatabase.memory());
@@ -331,19 +306,255 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
 
-    await tester.tap(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is FloatingActionButton &&
-            widget.heroTag == 'person-database-add-fab-owner',
+    final fieldTree = await database.personalDatabaseDao.getFieldTreeForPerson(
+      'owner',
+    );
+    expect(fieldTree.single.key, '資料');
+    expect(fieldTree.single.children.single.key, '暱稱');
+    expect(fieldTree.single.children.single.value, 'Cap');
+
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
+    await tester.pump(const Duration(milliseconds: 1));
+  });
+
+  testWidgets('empty personal database values show type previews', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await database.peopleDao.createPerson(
+      id: 'owner',
+      name: 'Owner',
+      colorValue: 0xFF111111,
+    );
+    await database.personalDatabaseDao.createFieldDefinition(
+      id: 'field-identity',
+      key: 'identity',
+      type: PersonalDatabaseValueType.string,
+      isPublic: true,
+    );
+    await database.personalDatabaseDao.createFieldDefinition(
+      id: 'field-age',
+      key: 'age',
+      type: PersonalDatabaseValueType.number,
+      isPublic: true,
+    );
+    await database.personalDatabaseDao.createFieldDefinition(
+      id: 'field-right',
+      key: 'right',
+      type: PersonalDatabaseValueType.boolean,
+      isPublic: true,
+    );
+    await database.personalDatabaseDao.createFieldDefinition(
+      id: 'field-friends',
+      key: 'friends',
+      type: PersonalDatabaseValueType.list,
+      isPublic: true,
+      arrayElementType: PersonalDatabaseValueType.string,
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appDatabaseProvider.overrideWithValue(database)],
+        child: EasyLocalization(
+          supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+          path: 'unused',
+          assetLoader: const _PersonTodoTestAssetLoader(),
+          fallbackLocale: const Locale('zh', 'TW'),
+          startLocale: const Locale('zh', 'TW'),
+          child: Builder(
+            builder: (context) {
+              return MaterialApp(
+                supportedLocales: context.supportedLocales,
+                localizationsDelegates: context.localizationDelegates,
+                locale: context.locale,
+                home: const Scaffold(
+                  body: PersonPersonalDatabaseTab(personId: 'owner'),
+                ),
+              );
+            },
+          ),
+        ),
       ),
     );
+
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
 
-    expect(find.text('選擇屬性'), findsOneWidget);
-    expect(find.text('資料'), findsOneWidget);
-    expect(find.text('暱稱'), findsOneWidget);
+    expect(find.text('identity'), findsOneWidget);
+    expect(find.text('字串'), findsOneWidget);
+    expect(find.text('age'), findsOneWidget);
+    expect(find.text('數字'), findsOneWidget);
+    expect(find.text('right'), findsOneWidget);
+    expect(find.text('布林'), findsOneWidget);
+    expect(find.text('friends'), findsOneWidget);
+    expect(find.text('陣列<字串>'), findsOneWidget);
+    expect(find.text('""'), findsNothing);
+    expect(find.text('0'), findsNothing);
+    expect(find.text('false'), findsNothing);
+    expect(find.text('[0] <字串>'), findsNothing);
+
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
+    await tester.pump(const Duration(milliseconds: 1));
+  });
+
+  testWidgets('only array media and object rows show property action menu', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await database.peopleDao.createPerson(
+      id: 'owner',
+      name: 'Owner',
+      colorValue: 0xFF111111,
+    );
+    await database.personalDatabaseDao.createFieldDefinition(
+      id: 'field-identity',
+      key: 'identity',
+      type: PersonalDatabaseValueType.string,
+      isPublic: true,
+    );
+    await database.personalDatabaseDao.createFieldDefinition(
+      id: 'field-age',
+      key: 'age',
+      type: PersonalDatabaseValueType.number,
+      isPublic: true,
+    );
+    await database.personalDatabaseDao.createFieldDefinition(
+      id: 'field-right',
+      key: 'right',
+      type: PersonalDatabaseValueType.boolean,
+      isPublic: true,
+    );
+    await database.personalDatabaseDao.createFieldDefinition(
+      id: 'field-picture',
+      key: 'picture',
+      type: PersonalDatabaseValueType.media,
+      isPublic: true,
+    );
+    await database.personalDatabaseDao.createFieldDefinition(
+      id: 'field-friends',
+      key: 'friends',
+      type: PersonalDatabaseValueType.list,
+      isPublic: true,
+      arrayElementType: PersonalDatabaseValueType.string,
+    );
+    await database.personalDatabaseDao.createFieldDefinition(
+      id: 'field-profile',
+      key: 'profile',
+      type: PersonalDatabaseValueType.object,
+      isPublic: true,
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appDatabaseProvider.overrideWithValue(database)],
+        child: EasyLocalization(
+          supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+          path: 'unused',
+          assetLoader: const _PersonTodoTestAssetLoader(),
+          fallbackLocale: const Locale('zh', 'TW'),
+          startLocale: const Locale('zh', 'TW'),
+          child: Builder(
+            builder: (context) {
+              return MaterialApp(
+                supportedLocales: context.supportedLocales,
+                localizationsDelegates: context.localizationDelegates,
+                locale: context.locale,
+                home: const Scaffold(
+                  body: PersonPersonalDatabaseTab(personId: 'owner'),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(find.text('identity'), findsOneWidget);
+    expect(find.text('age'), findsOneWidget);
+    expect(find.text('right'), findsOneWidget);
+    expect(find.text('picture'), findsOneWidget);
+    expect(find.text('friends'), findsOneWidget);
+    expect(find.text('profile'), findsOneWidget);
+    expect(find.byIcon(Icons.more_vert_rounded), findsNWidgets(3));
+
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
+    await tester.pump(const Duration(milliseconds: 1));
+  });
+
+  testWidgets('media property menu clears the field value', (tester) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await database.peopleDao.createPerson(
+      id: 'owner',
+      name: 'Owner',
+      colorValue: 0xFF111111,
+    );
+    await database.personalDatabaseDao.createFieldAndAssignToPerson(
+      id: 'field-picture',
+      personId: 'owner',
+      key: 'picture',
+      type: PersonalDatabaseValueType.media,
+      jsonValue:
+          '{"mediaAssetId":"asset-1","fileName":"photo.jpg","kind":"image"}',
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appDatabaseProvider.overrideWithValue(database)],
+        child: EasyLocalization(
+          supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+          path: 'unused',
+          assetLoader: const _PersonTodoTestAssetLoader(),
+          fallbackLocale: const Locale('zh', 'TW'),
+          startLocale: const Locale('zh', 'TW'),
+          child: Builder(
+            builder: (context) {
+              return MaterialApp(
+                supportedLocales: context.supportedLocales,
+                localizationsDelegates: context.localizationDelegates,
+                locale: context.locale,
+                home: const Scaffold(
+                  body: PersonPersonalDatabaseTab(personId: 'owner'),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('photo.jpg'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.more_vert_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('清空欄位'));
+    await tester.pumpAndSettle();
+
+    final fieldTree = await database.personalDatabaseDao.getFieldTreeForPerson(
+      'owner',
+    );
+    expect(
+      personalDatabaseMediaValueFromObject(fieldTree.single.value),
+      emptyPersonalDatabaseMediaValue,
+    );
+    expect(find.text('媒體'), findsOneWidget);
 
     await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
     await tester.pump();
@@ -390,14 +601,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is FloatingActionButton &&
-            widget.heroTag == 'person-database-add-fab-owner',
-      ),
-      findsOneWidget,
-    );
+    expect(find.byType(FloatingActionButton), findsNothing);
     expect(find.text('資料庫'), findsOneWidget);
 
     await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
@@ -879,89 +1083,81 @@ void main() {
     await tester.pump(const Duration(milliseconds: 1));
   });
 
-  testWidgets(
-    'cannot delete object property while visible subproperties still exist',
-    (tester) async {
-      final database = AppDatabase(NativeDatabase.memory());
-      addTearDown(database.close);
+  testWidgets('definition-backed object property menu does not expose delete', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
 
-      await database.peopleDao.createPerson(
-        id: 'owner',
-        name: 'Owner',
-        colorValue: 0xFF111111,
-      );
-      await database.personalDatabaseDao.createFieldAndAssignToPerson(
-        id: 'field-profile',
-        personId: 'owner',
-        key: '資料',
-        type: PersonalDatabaseValueType.object,
-        jsonValue: '{}',
-      );
-      await database.personalDatabaseDao.createFieldAndAssignToPerson(
-        id: 'field-nickname',
-        personId: 'owner',
-        key: '暱稱',
-        type: PersonalDatabaseValueType.string,
-        jsonValue: '"Cap"',
-        parentFieldId: 'field-profile',
-      );
+    await database.peopleDao.createPerson(
+      id: 'owner',
+      name: 'Owner',
+      colorValue: 0xFF111111,
+    );
+    await database.personalDatabaseDao.createFieldAndAssignToPerson(
+      id: 'field-profile',
+      personId: 'owner',
+      key: '資料',
+      type: PersonalDatabaseValueType.object,
+      jsonValue: '{}',
+    );
+    await database.personalDatabaseDao.createFieldAndAssignToPerson(
+      id: 'field-nickname',
+      personId: 'owner',
+      key: '暱稱',
+      type: PersonalDatabaseValueType.string,
+      jsonValue: '"Cap"',
+      parentFieldId: 'field-profile',
+    );
 
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [appDatabaseProvider.overrideWithValue(database)],
-          child: EasyLocalization(
-            supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
-            path: 'unused',
-            assetLoader: const _PersonTodoTestAssetLoader(),
-            fallbackLocale: const Locale('zh', 'TW'),
-            startLocale: const Locale('zh', 'TW'),
-            child: Builder(
-              builder: (context) {
-                return MaterialApp(
-                  supportedLocales: context.supportedLocales,
-                  localizationsDelegates: context.localizationDelegates,
-                  locale: context.locale,
-                  home: const Scaffold(
-                    body: PersonPersonalDatabaseTab(personId: 'owner'),
-                  ),
-                );
-              },
-            ),
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appDatabaseProvider.overrideWithValue(database)],
+        child: EasyLocalization(
+          supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+          path: 'unused',
+          assetLoader: const _PersonTodoTestAssetLoader(),
+          fallbackLocale: const Locale('zh', 'TW'),
+          startLocale: const Locale('zh', 'TW'),
+          child: Builder(
+            builder: (context) {
+              return MaterialApp(
+                supportedLocales: context.supportedLocales,
+                localizationsDelegates: context.localizationDelegates,
+                locale: context.locale,
+                home: const Scaffold(
+                  body: PersonPersonalDatabaseTab(personId: 'owner'),
+                ),
+              );
+            },
           ),
         ),
-      );
+      ),
+    );
 
-      await tester.pump();
-      await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.more_vert_rounded).first);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('刪除'));
-      await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.more_vert_rounded).first);
+    await tester.pumpAndSettle();
 
-      expect(find.text('無法移除'), findsOneWidget);
-      expect(
-        find.text('屬性「資料」還有未隱藏的子屬性，請先隱藏所有子屬性後再移除。這裡的移除只會對這個人隱藏，不會真的刪掉屬性定義。'),
-        findsOneWidget,
-      );
+    expect(find.text('刪除'), findsNothing);
+    expect(find.text('新增子項目'), findsNothing);
+    expect(find.text('編輯'), findsOneWidget);
 
-      final assignments = await (database.select(
-        database.personalDatabasePersonFields,
-      )..where((table) => table.personId.equals('owner'))).get();
-      expect(assignments.map((row) => row.fieldId).toSet(), {
-        'field-profile',
-        'field-nickname',
-      });
+    final assignments = await (database.select(
+      database.personalDatabasePersonFields,
+    )..where((table) => table.personId.equals('owner'))).get();
+    expect(assignments.map((row) => row.fieldId).toSet(), {
+      'field-profile',
+      'field-nickname',
+    });
 
-      await tester.tap(find.text('知道了'));
-      await tester.pumpAndSettle();
-
-      await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 1));
-      await tester.pump(const Duration(milliseconds: 1));
-    },
-  );
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
+    await tester.pump(const Duration(milliseconds: 1));
+  });
 
   testWidgets('editing personal database property only updates value', (
     tester,
@@ -1010,9 +1206,7 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.more_vert_rounded).first);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('編輯'));
+    await tester.tap(find.textContaining('Old value', findRichText: true));
     await tester.pumpAndSettle();
 
     expect(find.text('Key'), findsOneWidget);
@@ -1087,9 +1281,7 @@ void main() {
       await tester.tap(find.textContaining('[1]'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.more_vert_rounded).at(1));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('編輯'));
+      await tester.tap(find.textContaining('Old item', findRichText: true));
       await tester.pumpAndSettle();
 
       expect(
@@ -1112,6 +1304,76 @@ void main() {
       await tester.pump(const Duration(milliseconds: 1));
     },
   );
+
+  testWidgets('list scalar child menu can delete the child value', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await database.peopleDao.createPerson(
+      id: 'owner',
+      name: 'Owner',
+      colorValue: 0xFF111111,
+    );
+    await database.personalDatabaseDao.createFieldAndAssignToPerson(
+      id: 'field-tags',
+      personId: 'owner',
+      key: '標籤',
+      type: PersonalDatabaseValueType.list,
+      jsonValue: '["Alpha","Beta"]',
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appDatabaseProvider.overrideWithValue(database)],
+        child: EasyLocalization(
+          supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+          path: 'unused',
+          assetLoader: const _PersonTodoTestAssetLoader(),
+          fallbackLocale: const Locale('zh', 'TW'),
+          startLocale: const Locale('zh', 'TW'),
+          child: Builder(
+            builder: (context) {
+              return MaterialApp(
+                supportedLocales: context.supportedLocales,
+                localizationsDelegates: context.localizationDelegates,
+                locale: context.locale,
+                home: const Scaffold(
+                  body: PersonPersonalDatabaseTab(personId: 'owner'),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.textContaining('[2]'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Alpha', findRichText: true), findsOneWidget);
+    expect(find.byIcon(Icons.more_vert_rounded), findsNWidgets(3));
+
+    await tester.tap(find.byIcon(Icons.more_vert_rounded).at(1));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('刪除'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('刪除'));
+    await tester.pumpAndSettle();
+
+    final ownerFields = await database.personalDatabaseDao
+        .getFieldTreeForPerson('owner');
+    expect(ownerFields.single.value, ['Beta']);
+
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
+    await tester.pump(const Duration(milliseconds: 1));
+  });
 
   testWidgets('list row with string element type only adds string elements', (
     tester,

@@ -293,6 +293,43 @@ void main() {
     );
   });
 
+  testWidgets('dismissing element type chooser keeps current element type', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await database.peopleDao.createPerson(
+      id: 'owner',
+      name: 'Owner',
+      colorValue: 0xFF111111,
+    );
+    await database.personalDatabaseDao.createFieldAndAssignToPerson(
+      id: 'field-tags',
+      personId: 'owner',
+      key: '標籤',
+      type: PersonalDatabaseValueType.list,
+      jsonValue: '[]',
+      arrayElementType: PersonalDatabaseValueType.string,
+    );
+
+    await _pumpManageDatabasePropertiesPage(tester, database);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('字串'));
+    await tester.pumpAndSettle();
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+
+    final rawDefinition = await database.personalDatabaseDao.getFieldById(
+      'field-tags',
+    );
+
+    expect(rawDefinition, isNotNull);
+    expect(rawDefinition!.arrayElementType, 'string');
+    expect(rawDefinition.arrayElementTemplateJsonValue, isNull);
+  });
+
   testWidgets('saving unspecified element type keeps definition unchanged', (
     tester,
   ) async {

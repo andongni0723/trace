@@ -632,7 +632,7 @@ class _ManageDatabasePropertiesPageState
   Future<void> _showArrayElementTypeSheet(
     PersonalDatabaseFieldNode field,
   ) async {
-    final selectedType = await showModalBottomSheet<PersonalDatabaseValueType?>(
+    final result = await showModalBottomSheet<_ArrayElementTypeSheetResult>(
       context: context,
       isScrollControlled: true,
       requestFocus: false,
@@ -642,6 +642,11 @@ class _ManageDatabasePropertiesPageState
           _ArrayElementTypeSheet(initialType: field.arrayElementType),
     );
 
+    if (result == null) {
+      return;
+    }
+
+    final selectedType = result.elementType;
     if (selectedType == field.arrayElementType) {
       return;
     }
@@ -1353,6 +1358,12 @@ class _ArrayElementTypeSheet extends StatefulWidget {
   State<_ArrayElementTypeSheet> createState() => _ArrayElementTypeSheetState();
 }
 
+class _ArrayElementTypeSheetResult {
+  const _ArrayElementTypeSheetResult(this.elementType);
+
+  final PersonalDatabaseValueType? elementType;
+}
+
 class _ArrayElementTypeSheetState extends State<_ArrayElementTypeSheet> {
   PersonalDatabaseValueType? _selectedType;
 
@@ -1406,7 +1417,9 @@ class _ArrayElementTypeSheetState extends State<_ArrayElementTypeSheet> {
           ),
           const SizedBox(height: 20),
           FilledButton(
-            onPressed: () => Navigator.of(context).pop(_selectedType),
+            onPressed: () => Navigator.of(
+              context,
+            ).pop(_ArrayElementTypeSheetResult(_selectedType)),
             child: Text('databasePropertyManager.elementTypeDialog.save'.tr()),
           ),
         ],

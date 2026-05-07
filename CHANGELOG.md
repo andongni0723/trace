@@ -1,3 +1,21 @@
+## v1.8.0
+
+更新內容:
+- 調整人物 personal database 入口，進入資料庫分頁時會自動指派可用的屬性定義，並移除原本的人物頁新增屬性 FAB。
+- 改善空白個人資料欄位顯示，未填值時以欄位型別作為預覽，讓字串、數字、布林、媒體與陣列欄位更容易掃描。
+- 調整 personal database row 操作選單，保留巢狀純量值的刪除能力，並限制 definition-backed 物件欄位的刪除與新增子項目入口。
+- 新增媒體欄位清空操作，可直接從欄位選單移除已選媒體值。
+- 修正陣列元素型別選擇器被關閉時誤覆寫原本元素型別的問題。
+- 補強人物資料庫與屬性管理頁測試，涵蓋自動指派、空值預覽、媒體清空、巢狀純量刪除與元素型別保留。
+
+Updates:
+- Updated the person personal database entry flow so opening the database tab automatically assigns available property definitions and removes the old add-property FAB from the person page.
+- Improved empty personal database field previews by showing the field type when no value is set, making string, number, boolean, media, and list fields easier to scan.
+- Adjusted personal database row action menus to preserve deletion for nested scalar values while limiting delete and add-child actions on definition-backed object fields.
+- Added a media field clear action so selected media values can be removed directly from the field menu.
+- Fixed the array element type chooser so dismissing it no longer overwrites the existing element type.
+- Expanded person database and property manager tests for automatic assignment, empty previews, media clearing, nested scalar deletion, and element type preservation.
+
 ## v1.7.1
 
 更新內容:
