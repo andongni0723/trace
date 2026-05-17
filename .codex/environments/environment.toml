@@ -12,3 +12,11 @@ command = '''
 flutter analyze
 flutter test
 '''
+
+[[actions]]
+name = "Build and Run"
+icon = "tool"
+command = '''
+emulator -avd Pixel_9_Pro_XL_API_36 &
+flutter run
+'''

@@ -7,6 +7,7 @@ import '../../../../core/database/tables/people.dart';
 import '../../../../core/database/tables/personal_database_fields.dart';
 import '../../../../core/database/tables/personal_database_person_fields.dart';
 import '../../../../core/database/tables/personal_database_values.dart';
+import '../models/personal_database_array_template_metadata.dart';
 import '../models/personal_database_field_node.dart';
 import '../models/personal_database_media_value.dart';
 import '../models/personal_database_value_type.dart';
@@ -250,7 +251,7 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
         valueType: type.dbKey,
         arrayElementType: Value(_arrayElementTypeDbKey(type, arrayElementType)),
         arrayElementTemplateJsonValue: Value(
-          _normalizeArrayElementTemplateJsonValue(
+          normalizePersonalDatabaseArrayTemplateJsonValue(
             fieldType: type,
             arrayElementType: arrayElementType,
             jsonValue: arrayElementTemplateJsonValue,
@@ -301,7 +302,7 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
             _arrayElementTypeDbKey(type, arrayElementType),
           ),
           arrayElementTemplateJsonValue: Value(
-            _normalizeArrayElementTemplateJsonValue(
+            normalizePersonalDatabaseArrayTemplateJsonValue(
               fieldType: type,
               arrayElementType: arrayElementType,
               jsonValue: arrayElementTemplateJsonValue,
@@ -435,13 +436,11 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
       PersonalDatabaseFieldsCompanion(
         arrayElementType: Value(normalizedElementType?.dbKey),
         arrayElementTemplateJsonValue: Value(
-          normalizedElementType == PersonalDatabaseValueType.object
-              ? _normalizeArrayElementTemplateJsonValue(
-                  fieldType: fieldType,
-                  arrayElementType: normalizedElementType,
-                  jsonValue: field.arrayElementTemplateJsonValue,
-                )
-              : null,
+          normalizePersonalDatabaseArrayTemplateJsonValue(
+            fieldType: fieldType,
+            arrayElementType: normalizedElementType,
+            jsonValue: field.arrayElementTemplateJsonValue,
+          ),
         ),
         updatedAt: Value(DateTime.now()),
       ),
@@ -473,12 +472,38 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
     )..where((table) => table.id.equals(fieldId))).write(
       PersonalDatabaseFieldsCompanion(
         arrayElementTemplateJsonValue: Value(
-          _normalizeArrayElementTemplateJsonValue(
+          normalizePersonalDatabaseArrayTemplateJsonValue(
             fieldType: fieldType,
             arrayElementType: arrayElementType,
             jsonValue: jsonValue,
           ),
         ),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  Future<void> updateArrayElementMetadata({
+    required String fieldId,
+    required PersonalDatabaseArrayTemplateMetadata? metadata,
+  }) async {
+    final field = await getFieldById(fieldId);
+    if (field == null) {
+      return;
+    }
+
+    final fieldType = personalDatabaseValueTypeFromDb(field.valueType);
+    if (fieldType != PersonalDatabaseValueType.list) {
+      await updateArrayElementType(fieldId: fieldId, elementType: null);
+      return;
+    }
+
+    await (update(
+      personalDatabaseFields,
+    )..where((table) => table.id.equals(fieldId))).write(
+      PersonalDatabaseFieldsCompanion(
+        arrayElementType: Value(metadata?.elementType.dbKey),
+        arrayElementTemplateJsonValue: Value(metadata?.toDefinitionJsonValue()),
         updatedAt: Value(DateTime.now()),
       ),
     );
@@ -846,11 +871,12 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
       sortOrder: field.sortOrder,
       rawJsonValue: type.defaultJsonValue,
       arrayElementType: arrayElementType,
-      arrayElementTemplateJsonValue: _normalizeArrayElementTemplateJsonValue(
-        fieldType: type,
-        arrayElementType: arrayElementType,
-        jsonValue: field.arrayElementTemplateJsonValue,
-      ),
+      arrayElementTemplateJsonValue:
+          normalizePersonalDatabaseArrayTemplateJsonValue(
+            fieldType: type,
+            arrayElementType: arrayElementType,
+            jsonValue: field.arrayElementTemplateJsonValue,
+          ),
     );
   }
 
@@ -880,11 +906,12 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
             : field.sortOrder,
         rawJsonValue: valueForPerson?.jsonValue ?? type.defaultJsonValue,
         arrayElementType: arrayElementType,
-        arrayElementTemplateJsonValue: _normalizeArrayElementTemplateJsonValue(
-          fieldType: type,
-          arrayElementType: arrayElementType,
-          jsonValue: field.arrayElementTemplateJsonValue,
-        ),
+        arrayElementTemplateJsonValue:
+            normalizePersonalDatabaseArrayTemplateJsonValue(
+              fieldType: type,
+              arrayElementType: arrayElementType,
+              jsonValue: field.arrayElementTemplateJsonValue,
+            ),
       );
     }
 
@@ -954,7 +981,13 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
         children: children,
         arrayElementType: row.arrayElementType,
         arrayElementTemplateJsonValue: row.arrayElementTemplateJsonValue,
-        arrayElementTemplate: _decodeArrayElementTemplate(
+        arrayElementMetadata:
+            PersonalDatabaseArrayTemplateMetadata.fromDefinition(
+              fieldType: row.type,
+              elementType: row.arrayElementType,
+              jsonValue: row.arrayElementTemplateJsonValue,
+            ),
+        arrayElementTemplate: decodePersonalDatabaseArrayElementObjectTemplate(
           fieldType: row.type,
           arrayElementType: row.arrayElementType,
           jsonValue: row.arrayElementTemplateJsonValue,
@@ -1083,54 +1116,6 @@ class PersonalDatabaseDao extends DatabaseAccessor<AppDatabase>
       return null;
     }
     return personalDatabaseValueTypeFromDb(dbKey);
-  }
-
-  String? _normalizeArrayElementTemplateJsonValue({
-    required PersonalDatabaseValueType fieldType,
-    required PersonalDatabaseValueType? arrayElementType,
-    required String? jsonValue,
-  }) {
-    if (fieldType != PersonalDatabaseValueType.list ||
-        arrayElementType != PersonalDatabaseValueType.object ||
-        jsonValue == null) {
-      return null;
-    }
-
-    try {
-      final decoded = jsonDecode(jsonValue);
-      final object = _asStringKeyedMap(decoded);
-      return object == null ? null : jsonEncode(object);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Map<String, Object?>? _decodeArrayElementTemplate({
-    required PersonalDatabaseValueType fieldType,
-    required PersonalDatabaseValueType? arrayElementType,
-    required String? jsonValue,
-  }) {
-    final normalized = _normalizeArrayElementTemplateJsonValue(
-      fieldType: fieldType,
-      arrayElementType: arrayElementType,
-      jsonValue: jsonValue,
-    );
-    if (normalized == null) {
-      return null;
-    }
-
-    final decoded = jsonDecode(normalized);
-    return _asStringKeyedMap(decoded);
-  }
-
-  Map<String, Object?>? _asStringKeyedMap(Object? value) {
-    if (value is Map<String, dynamic>) {
-      return Map<String, Object?>.from(value);
-    }
-    if (value is Map) {
-      return {for (final entry in value.entries) '${entry.key}': entry.value};
-    }
-    return null;
   }
 }
 

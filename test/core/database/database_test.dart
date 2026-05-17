@@ -382,6 +382,44 @@ void main() {
       },
     );
 
+    test('stores recursive list element metadata on definitions', () async {
+      await database.personalDatabaseDao.createFieldAndAssignToPerson(
+        id: 'field-matrix',
+        personId: 'owner',
+        key: 'matrix',
+        type: PersonalDatabaseValueType.list,
+        jsonValue: '[]',
+        arrayElementType: PersonalDatabaseValueType.list,
+        arrayElementTemplateJsonValue:
+            '{"elementType":"object","template":{"name":""}}',
+      );
+
+      final rawDefinition = await database.personalDatabaseDao.getFieldById(
+        'field-matrix',
+      );
+      final ownerFields = await database.personalDatabaseDao
+          .watchFieldTreeForPerson('owner')
+          .first;
+      final metadata = ownerFields.single.arrayElementMetadata;
+
+      expect(rawDefinition!.arrayElementType, 'list');
+      expect(
+        rawDefinition.arrayElementTemplateJsonValue,
+        '{"elementType":"object","template":{"name":""}}',
+      );
+      expect(
+        ownerFields.single.arrayElementType,
+        PersonalDatabaseValueType.list,
+      );
+      expect(ownerFields.single.arrayElementTemplate, isNull);
+      expect(metadata?.elementType, PersonalDatabaseValueType.list);
+      expect(
+        metadata?.elementMetadata?.elementType,
+        PersonalDatabaseValueType.object,
+      );
+      expect(metadata?.elementMetadata?.template, {'name': ''});
+    });
+
     test('list fields default to unspecified array element metadata', () async {
       await database.personalDatabaseDao.createFieldAndAssignToPerson(
         id: 'field-list',

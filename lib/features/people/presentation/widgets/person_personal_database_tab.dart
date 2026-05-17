@@ -15,6 +15,7 @@ import '../../data/models/personal_database_field_node.dart';
 import '../../data/models/personal_database_media_value.dart';
 import '../../data/models/personal_database_mention.dart';
 import '../../data/models/personal_database_mention_suggestion.dart';
+import '../../data/models/personal_database_array_template_metadata.dart';
 import '../../data/models/personal_database_value_type.dart';
 import '../../providers/people_provider.dart';
 import '../../providers/personal_database_provider.dart';
@@ -305,7 +306,10 @@ class _PersonPersonalDatabaseTabState
         canAddFromTemplate:
             field.type == PersonalDatabaseValueType.list &&
             field.hasArrayElementTemplate,
-        canEditTemplate: field.type == PersonalDatabaseValueType.list,
+        canEditTemplate:
+            field.type == PersonalDatabaseValueType.list &&
+            field.arrayElementMetadata?.elementType !=
+                PersonalDatabaseValueType.list,
         valueSegments: isEmptyValue
             ? const []
             : _valueSegments(
@@ -407,7 +411,9 @@ class _PersonPersonalDatabaseTabState
             arrayTemplateMetadata?.hasObjectTemplate == true,
         canEditTemplate:
             valueType == PersonalDatabaseValueType.list &&
-            _canEditNestedArrayTemplate(rootField: rootField),
+            _canEditNestedArrayTemplate(rootField: rootField) &&
+            arrayTemplateMetadata?.elementType !=
+                PersonalDatabaseValueType.list,
         valueSegments: isEmptyValue
             ? const []
             : _valueSegments(
@@ -649,19 +655,19 @@ class _PersonPersonalDatabaseTabState
         return;
       }
 
-      final updatedTemplate = _upsertNestedArrayTemplate(
-        rootField: targetField,
+      final updatedMetadata = _upsertNestedArrayTemplateMetadata(
+        rootMetadata: targetField.arrayElementMetadata,
         path: row.path,
         template: result,
       );
-      if (updatedTemplate == null) {
+      if (updatedMetadata == null) {
         _showError();
         return;
       }
 
-      await actions.updateArrayElementTemplate(
+      await actions.updateArrayElementMetadata(
         fieldId: targetField.id,
-        template: updatedTemplate,
+        metadata: updatedMetadata,
       );
     } catch (_) {
       _showError();
@@ -678,10 +684,7 @@ class _PersonPersonalDatabaseTabState
     }
 
     final metadata = row.isDefinitionBacked
-        ? _ArrayTemplateMetadataView(
-            elementType: targetField.arrayElementType,
-            template: targetField.arrayElementTemplate,
-          )
+        ? targetField.arrayElementMetadata
         : _resolveArrayTemplateMetadata(rootField: targetField, path: row.path);
     if (metadata?.hasObjectTemplate != true) {
       return;
@@ -1074,16 +1077,6 @@ class _PersonPersonalDatabaseTabState
   }
 }
 
-class _ArrayTemplateMetadataView {
-  const _ArrayTemplateMetadataView({this.elementType, this.template});
-
-  final PersonalDatabaseValueType? elementType;
-  final Map<String, Object?>? template;
-
-  bool get hasObjectTemplate =>
-      elementType == PersonalDatabaseValueType.object && template != null;
-}
-
 String _nodeId({required String rootFieldId, required List<Object> path}) {
   return '$rootFieldId:${jsonEncode(path)}';
 }
@@ -1092,10 +1085,10 @@ bool _canEditNestedArrayTemplate({
   required PersonalDatabaseFieldNode rootField,
 }) {
   return rootField.type == PersonalDatabaseValueType.list &&
-      rootField.arrayElementType == PersonalDatabaseValueType.object;
+      rootField.arrayElementMetadata != null;
 }
 
-_ArrayTemplateMetadataView? _resolveArrayTemplateMetadata({
+PersonalDatabaseArrayTemplateMetadata? _resolveArrayTemplateMetadata({
   required PersonalDatabaseFieldNode rootField,
   required List<Object> path,
 }) {
@@ -1103,18 +1096,28 @@ _ArrayTemplateMetadataView? _resolveArrayTemplateMetadata({
     return null;
   }
 
-  var currentList = _ArrayTemplateMetadataView(
-    elementType: rootField.arrayElementType,
-    template: rootField.arrayElementTemplate,
-  );
+  var currentList = rootField.arrayElementMetadata;
   if (path.isEmpty) {
     return currentList;
   }
 
   Map<String, Object?>? currentObjectTemplate;
 
-  for (final segment in path) {
+  for (var index = 0; index < path.length; index++) {
+    final segment = path[index];
+    final isLast = index == path.length - 1;
     if (segment is int) {
+      if (currentList == null) {
+        return null;
+      }
+      if (currentList.elementType == PersonalDatabaseValueType.list) {
+        currentList = currentList.elementMetadata;
+        currentObjectTemplate = null;
+        if (isLast) {
+          return currentList;
+        }
+        continue;
+      }
       if (currentList.elementType != PersonalDatabaseValueType.object ||
           currentList.template == null) {
         return null;
@@ -1129,10 +1132,14 @@ _ArrayTemplateMetadataView? _resolveArrayTemplateMetadata({
 
     final propertyValue = currentObjectTemplate[segment];
     if (propertyValue is List) {
-      currentList =
-          _readArrayTemplateMetadataForKey(currentObjectTemplate, segment) ??
-          const _ArrayTemplateMetadataView();
+      currentList = _readArrayTemplateMetadataForKey(
+        currentObjectTemplate,
+        segment,
+      );
       currentObjectTemplate = null;
+      if (isLast) {
+        return currentList;
+      }
       continue;
     }
 
@@ -1152,119 +1159,179 @@ _ArrayTemplateMetadataView? _resolveArrayTemplateMetadata({
   return currentList;
 }
 
-_ArrayTemplateMetadataView? _readArrayTemplateMetadataForKey(
+PersonalDatabaseArrayTemplateMetadata? _readArrayTemplateMetadataForKey(
   Map<String, Object?> objectTemplate,
   String key,
 ) {
   final metadataRoot = _mutableTemplateMap(
     objectTemplate[personalDatabaseArrayTemplateMetadataKey],
   );
-  final rawMetadata = _mutableTemplateMap(metadataRoot?[key]);
-  final dbKey = rawMetadata?['elementType'];
-  if (dbKey is! String) {
-    return null;
-  }
-
-  final elementType = personalDatabaseValueTypeFromDb(dbKey);
-  return _ArrayTemplateMetadataView(
-    elementType: elementType,
-    template: elementType == PersonalDatabaseValueType.object
-        ? _mutableTemplateMap(rawMetadata?['template']) ??
-              const <String, Object?>{}
-        : null,
-  );
+  return PersonalDatabaseArrayTemplateMetadata.tryParse(metadataRoot?[key]);
 }
 
-Map<String, Object?>? _upsertNestedArrayTemplate({
-  required PersonalDatabaseFieldNode rootField,
+PersonalDatabaseArrayTemplateMetadata? _upsertNestedArrayTemplateMetadata({
+  required PersonalDatabaseArrayTemplateMetadata? rootMetadata,
   required List<Object> path,
   required Map<String, Object?> template,
 }) {
-  if (!_canEditNestedArrayTemplate(rootField: rootField) || path.isEmpty) {
+  if (rootMetadata == null || path.isEmpty) {
     return null;
   }
 
-  final rootTemplateValue = _deepCloneJson(
-    rootField.arrayElementTemplate ?? const <String, Object?>{},
+  return _upsertListMetadataAtPath(
+    currentMetadata: rootMetadata,
+    path: path,
+    template: template,
   );
-  final rootTemplate = _mutableTemplateMap(rootTemplateValue);
-  if (rootTemplate == null) {
-    return null;
-  }
-
-  Map<String, Object?>? currentObjectTemplate;
-
-  for (var index = 0; index < path.length; index++) {
-    final segment = path[index];
-    if (segment is int) {
-      currentObjectTemplate ??= rootTemplate;
-      continue;
-    }
-
-    if (segment is! String || currentObjectTemplate == null) {
-      return null;
-    }
-
-    final isLast = index == path.length - 1;
-    if (isLast) {
-      if (currentObjectTemplate[segment] is! List) {
-        currentObjectTemplate[segment] = <Object?>[];
-      }
-      _writeArrayTemplateMetadataForKey(
-        currentObjectTemplate,
-        segment,
-        template: template,
-      );
-      return rootTemplate;
-    }
-
-    final nextSegment = path[index + 1];
-    if (nextSegment is int) {
-      if (currentObjectTemplate[segment] is! List) {
-        currentObjectTemplate[segment] = <Object?>[];
-      }
-      currentObjectTemplate = _writeArrayTemplateMetadataForKey(
-        currentObjectTemplate,
-        segment,
-      ).template;
-      continue;
-    }
-
-    final existingObject = _mutableTemplateMap(currentObjectTemplate[segment]);
-    if (existingObject != null) {
-      currentObjectTemplate = existingObject;
-      continue;
-    }
-
-    final createdObject = <String, Object?>{};
-    currentObjectTemplate[segment] = createdObject;
-    currentObjectTemplate = createdObject;
-  }
-
-  return rootTemplate;
 }
 
-_ArrayTemplateMetadataView _writeArrayTemplateMetadataForKey(
+PersonalDatabaseArrayTemplateMetadata? _upsertListMetadataAtPath({
+  required PersonalDatabaseArrayTemplateMetadata currentMetadata,
+  required List<Object> path,
+  required Map<String, Object?> template,
+}) {
+  if (path.isEmpty) {
+    return PersonalDatabaseArrayTemplateMetadata(
+      elementType: PersonalDatabaseValueType.object,
+      template: _cloneTemplateMap(template),
+    );
+  }
+
+  final segment = path.first;
+  if (segment is! int) {
+    return null;
+  }
+
+  final rest = path.sublist(1);
+  return switch (currentMetadata.elementType) {
+    PersonalDatabaseValueType.object => _upsertObjectElementMetadataAtPath(
+      currentMetadata: currentMetadata,
+      path: rest,
+      template: template,
+    ),
+    PersonalDatabaseValueType.list => _upsertListElementMetadataAtPath(
+      currentMetadata: currentMetadata,
+      path: rest,
+      template: template,
+    ),
+    _ => null,
+  };
+}
+
+PersonalDatabaseArrayTemplateMetadata? _upsertObjectElementMetadataAtPath({
+  required PersonalDatabaseArrayTemplateMetadata currentMetadata,
+  required List<Object> path,
+  required Map<String, Object?> template,
+}) {
+  if (path.isEmpty) {
+    return null;
+  }
+
+  final objectTemplate = _cloneTemplateMap(
+    currentMetadata.template ?? const <String, Object?>{},
+  );
+  final updatedTemplate = _upsertArrayMetadataInObjectTemplate(
+    objectTemplate: objectTemplate,
+    path: path,
+    template: template,
+  );
+  if (updatedTemplate == null) {
+    return null;
+  }
+
+  return PersonalDatabaseArrayTemplateMetadata(
+    elementType: PersonalDatabaseValueType.object,
+    template: updatedTemplate,
+  );
+}
+
+PersonalDatabaseArrayTemplateMetadata? _upsertListElementMetadataAtPath({
+  required PersonalDatabaseArrayTemplateMetadata currentMetadata,
+  required List<Object> path,
+  required Map<String, Object?> template,
+}) {
+  final nextElementMetadata = path.isEmpty
+      ? PersonalDatabaseArrayTemplateMetadata(
+          elementType: PersonalDatabaseValueType.object,
+          template: _cloneTemplateMap(template),
+        )
+      : _upsertListMetadataAtPath(
+          currentMetadata:
+              currentMetadata.elementMetadata ??
+              const PersonalDatabaseArrayTemplateMetadata(
+                elementType: PersonalDatabaseValueType.list,
+              ),
+          path: path,
+          template: template,
+        );
+  if (nextElementMetadata == null) {
+    return null;
+  }
+
+  return PersonalDatabaseArrayTemplateMetadata(
+    elementType: PersonalDatabaseValueType.list,
+    elementMetadata: nextElementMetadata,
+  );
+}
+
+Map<String, Object?>? _upsertArrayMetadataInObjectTemplate({
+  required Map<String, Object?> objectTemplate,
+  required List<Object> path,
+  required Map<String, Object?> template,
+}) {
+  final segment = path.firstOrNull;
+  if (segment is! String) {
+    return null;
+  }
+
+  if (path.length == 1) {
+    if (objectTemplate[segment] is! List) {
+      objectTemplate[segment] = <Object?>[];
+    }
+    _writeArrayTemplateMetadataForKey(
+      objectTemplate,
+      segment,
+      metadata: PersonalDatabaseArrayTemplateMetadata(
+        elementType: PersonalDatabaseValueType.object,
+        template: _cloneTemplateMap(template),
+      ),
+    );
+    return objectTemplate;
+  }
+
+  if (objectTemplate[segment] is! List) {
+    objectTemplate[segment] = <Object?>[];
+  }
+
+  final nextMetadata = _upsertListMetadataAtPath(
+    currentMetadata:
+        _readArrayTemplateMetadataForKey(objectTemplate, segment) ??
+        const PersonalDatabaseArrayTemplateMetadata(
+          elementType: PersonalDatabaseValueType.list,
+        ),
+    path: path.sublist(1),
+    template: template,
+  );
+  if (nextMetadata == null) {
+    return null;
+  }
+
+  _writeArrayTemplateMetadataForKey(
+    objectTemplate,
+    segment,
+    metadata: nextMetadata,
+  );
+  return objectTemplate;
+}
+
+PersonalDatabaseArrayTemplateMetadata _writeArrayTemplateMetadataForKey(
   Map<String, Object?> objectTemplate,
   String key, {
-  Map<String, Object?>? template,
+  required PersonalDatabaseArrayTemplateMetadata metadata,
 }) {
   final metadataRoot = _ensureArrayTemplateMetadataRoot(objectTemplate);
-  final metadata =
-      _mutableTemplateMap(metadataRoot[key]) ?? <String, Object?>{};
-  final nextTemplate =
-      _mutableTemplateMap(metadata['template']) ??
-      _deepCloneJson(template ?? const <String, Object?>{})
-          as Map<String, Object?>;
-
-  metadata['elementType'] = PersonalDatabaseValueType.object.dbKey;
-  metadata['template'] = nextTemplate;
-  metadataRoot[key] = metadata;
-
-  return _ArrayTemplateMetadataView(
-    elementType: PersonalDatabaseValueType.object,
-    template: nextTemplate,
-  );
+  metadataRoot[key] = metadata.toJson();
+  return metadata;
 }
 
 Map<String, Object?> _ensureArrayTemplateMetadataRoot(
@@ -1297,6 +1364,10 @@ Object? _deepCloneJson(Object? value) {
     return null;
   }
   return jsonDecode(jsonEncode(value));
+}
+
+Map<String, Object?> _cloneTemplateMap(Map<String, Object?> template) {
+  return _mutableTemplateMap(_deepCloneJson(template)) ?? <String, Object?>{};
 }
 
 Object? _materializeTemplateValue(Object? value) {

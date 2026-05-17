@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/database/database.dart';
+import '../data/models/personal_database_array_template_metadata.dart';
 import '../data/models/personal_database_field_node.dart';
 import '../data/models/personal_database_management_error.dart';
 import '../data/models/personal_database_media_value.dart';
@@ -224,6 +225,15 @@ class PersonalDatabaseActions {
           fieldId: fieldId,
           jsonValue: jsonEncode(template),
         );
+  }
+
+  Future<void> updateArrayElementMetadata({
+    required String fieldId,
+    required PersonalDatabaseArrayTemplateMetadata? metadata,
+  }) {
+    return _ref
+        .read(personalDatabaseDaoProvider)
+        .updateArrayElementMetadata(fieldId: fieldId, metadata: metadata);
   }
 
   Future<void> addArrayElementFromTemplate({

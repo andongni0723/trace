@@ -10,6 +10,7 @@ import '../../../../core/utils/useful_extension.dart';
 import '../../../../shared/widgets/bottom_sheet_keyboard_inset.dart';
 import '../../../app_settings/data/models/app_settings.dart';
 import '../../../app_settings/providers/app_settings_provider.dart';
+import '../../data/models/personal_database_array_template_metadata.dart';
 import '../../data/models/personal_database_field_node.dart';
 import '../../data/models/personal_database_management_error.dart';
 import '../../data/models/personal_database_value_type.dart';
@@ -639,22 +640,20 @@ class _ManageDatabasePropertiesPageState
       showDragHandle: true,
       backgroundColor: context.cs.surface,
       builder: (_) =>
-          _ArrayElementTypeSheet(initialType: field.arrayElementType),
+          _ArrayElementTypeSheet(initialMetadata: field.arrayElementMetadata),
     );
 
     if (result == null) {
       return;
     }
 
-    final selectedType = result.elementType;
-    if (selectedType == field.arrayElementType) {
-      return;
-    }
-
     try {
       await ref
           .read(personalDatabasePropertyManagementActionsProvider)
-          .updateArrayElementType(fieldId: field.id, elementType: selectedType);
+          .updateArrayElementMetadata(
+            fieldId: field.id,
+            metadata: result.metadata,
+          );
       await _reloadLibrary();
     } catch (_) {
       if (!mounted) {
@@ -787,17 +786,11 @@ class _ManageDatabasePropertiesPageState
 
     final reordered = List<_ManagedPropertyRow>.of(_visibleRows);
     final movedRow = reordered.removeAt(oldIndex);
-    if (!_isValidSameLevelInsertion(
+    final moveTarget = _inferMoveTarget(
       rows: reordered,
       insertionIndex: newIndex,
       movedRow: movedRow,
-    )) {
-      await _showBlockedDialog(
-        title: 'databasePropertyManager.error.moveBlockedTitle'.tr(),
-        body: 'databasePropertyManager.error.moveScopeConflictBody'.tr(),
-      );
-      return;
-    }
+    );
 
     reordered.insert(newIndex, movedRow);
 
@@ -806,18 +799,12 @@ class _ManageDatabasePropertiesPageState
     });
 
     try {
-      final newSortOrder = _inferNewSortOrder(
-        rows: reordered,
-        movedIndex: newIndex,
-        parentFieldId: movedRow.parentFieldId,
-      );
-
       await ref
           .read(personalDatabasePropertyManagementActionsProvider)
           .movePropertyDefinition(
             fieldId: movedRow.field.id,
-            newParentFieldId: movedRow.parentFieldId,
-            newSortOrder: newSortOrder,
+            newParentFieldId: moveTarget.parentFieldId,
+            newSortOrder: moveTarget.sortOrder,
           );
       await _reloadLibrary();
     } on PersonalDatabaseManagementException catch (error) {
@@ -847,77 +834,76 @@ class _ManageDatabasePropertiesPageState
     }
   }
 
-  bool _isValidSameLevelInsertion({
+  _PropertyMoveTarget _inferMoveTarget({
     required List<_ManagedPropertyRow> rows,
     required int insertionIndex,
     required _ManagedPropertyRow movedRow,
   }) {
     if (rows.isEmpty) {
-      return true;
+      return const _PropertyMoveTarget(parentFieldId: null, sortOrder: 0);
     }
 
-    if (insertionIndex < rows.length &&
-        rows[insertionIndex].depth > movedRow.depth) {
-      return false;
-    }
-
-    final previousSibling = _findSiblingBefore(
+    final previousRow = _visibleRowBefore(
       rows: rows,
       insertionIndex: insertionIndex,
-      depth: movedRow.depth,
     );
-    final nextSibling = _findSiblingAfter(
+    final nextRow = _visibleRowAfter(
       rows: rows,
       insertionIndex: insertionIndex,
-      depth: movedRow.depth,
     );
+    String? parentFieldId;
 
-    return previousSibling?.parentFieldId == movedRow.parentFieldId ||
-        nextSibling?.parentFieldId == movedRow.parentFieldId;
-  }
-
-  _ManagedPropertyRow? _findSiblingBefore({
-    required List<_ManagedPropertyRow> rows,
-    required int insertionIndex,
-    required int depth,
-  }) {
-    for (var index = insertionIndex - 1; index >= 0; index--) {
-      final row = rows[index];
-      if (row.depth > depth) {
-        continue;
-      }
-      return row.depth == depth ? row : null;
+    if (previousRow != null &&
+        previousRow.field.isObject &&
+        previousRow.field.id != movedRow.field.id) {
+      parentFieldId = previousRow.isCollapsed
+          ? previousRow.parentFieldId
+          : previousRow.field.id;
+    } else if (nextRow != null &&
+        (previousRow == null || nextRow.depth >= previousRow.depth)) {
+      parentFieldId = nextRow.parentFieldId;
+    } else {
+      parentFieldId = previousRow?.parentFieldId;
     }
-    return null;
-  }
 
-  _ManagedPropertyRow? _findSiblingAfter({
-    required List<_ManagedPropertyRow> rows,
-    required int insertionIndex,
-    required int depth,
-  }) {
-    for (var index = insertionIndex; index < rows.length; index++) {
-      final row = rows[index];
-      if (row.depth > depth) {
-        continue;
-      }
-      return row.depth == depth ? row : null;
-    }
-    return null;
-  }
-
-  int _inferNewSortOrder({
-    required List<_ManagedPropertyRow> rows,
-    required int movedIndex,
-    required String? parentFieldId,
-  }) {
     var sortOrder = 0;
-    for (var index = 0; index < movedIndex; index++) {
-      if (rows[index].parentFieldId == parentFieldId) {
+    for (var index = 0; index < insertionIndex; index++) {
+      final row = rows[index];
+      if (row.parentFieldId == parentFieldId) {
         sortOrder += 1;
       }
     }
-    return sortOrder;
+
+    return _PropertyMoveTarget(
+      parentFieldId: parentFieldId,
+      sortOrder: sortOrder,
+    );
+  }
+
+  _ManagedPropertyRow? _visibleRowBefore({
+    required List<_ManagedPropertyRow> rows,
+    required int insertionIndex,
+  }) {
+    for (var index = insertionIndex - 1; index >= 0; index--) {
+      final row = rows[index];
+      if (row.isVisible) {
+        return row;
+      }
+    }
+    return null;
+  }
+
+  _ManagedPropertyRow? _visibleRowAfter({
+    required List<_ManagedPropertyRow> rows,
+    required int insertionIndex,
+  }) {
+    for (var index = insertionIndex; index < rows.length; index++) {
+      final row = rows[index];
+      if (row.isVisible) {
+        return row;
+      }
+    }
+    return null;
   }
 
   void _toggleCollapsed(PersonalDatabaseFieldNode field) {
@@ -951,6 +937,16 @@ class _ManagedPropertyRow {
   final String? parentFieldId;
   final bool isCollapsed;
   final bool isVisible;
+}
+
+class _PropertyMoveTarget {
+  const _PropertyMoveTarget({
+    required this.parentFieldId,
+    required this.sortOrder,
+  });
+
+  final String? parentFieldId;
+  final int sortOrder;
 }
 
 class _AnimatedPropertyRow extends StatefulWidget {
@@ -1350,27 +1346,29 @@ class _RetypePropertySheetState extends State<_RetypePropertySheet> {
 }
 
 class _ArrayElementTypeSheet extends StatefulWidget {
-  const _ArrayElementTypeSheet({required this.initialType});
+  const _ArrayElementTypeSheet({required this.initialMetadata});
 
-  final PersonalDatabaseValueType? initialType;
+  final PersonalDatabaseArrayTemplateMetadata? initialMetadata;
 
   @override
   State<_ArrayElementTypeSheet> createState() => _ArrayElementTypeSheetState();
 }
 
 class _ArrayElementTypeSheetResult {
-  const _ArrayElementTypeSheetResult(this.elementType);
+  const _ArrayElementTypeSheetResult(this.metadata);
 
-  final PersonalDatabaseValueType? elementType;
+  final PersonalDatabaseArrayTemplateMetadata? metadata;
 }
 
 class _ArrayElementTypeSheetState extends State<_ArrayElementTypeSheet> {
   PersonalDatabaseValueType? _selectedType;
+  PersonalDatabaseArrayTemplateMetadata? _listElementMetadata;
 
   @override
   void initState() {
     super.initState();
-    _selectedType = widget.initialType;
+    _selectedType = widget.initialMetadata?.elementType;
+    _listElementMetadata = widget.initialMetadata?.elementMetadata;
   }
 
   @override
@@ -1415,15 +1413,65 @@ class _ArrayElementTypeSheetState extends State<_ArrayElementTypeSheet> {
               ),
             ],
           ),
+          if (_selectedType == PersonalDatabaseValueType.list) ...[
+            const SizedBox(height: 12),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.format_list_bulleted_rounded),
+              title: Text(
+                'databasePropertyManager.action.changeElementType'.tr(),
+              ),
+              subtitle: Text(
+                _listElementMetadata?.elementType.localizationKey.tr() ??
+                    'databasePropertyManager.arrayElement.unspecified'.tr(),
+              ),
+              onTap: _editListElementMetadata,
+            ),
+          ],
           const SizedBox(height: 20),
           FilledButton(
             onPressed: () => Navigator.of(
               context,
-            ).pop(_ArrayElementTypeSheetResult(_selectedType)),
+            ).pop(_ArrayElementTypeSheetResult(_buildMetadata())),
             child: Text('databasePropertyManager.elementTypeDialog.save'.tr()),
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _editListElementMetadata() async {
+    final result = await showModalBottomSheet<_ArrayElementTypeSheetResult>(
+      context: context,
+      isScrollControlled: true,
+      requestFocus: false,
+      showDragHandle: true,
+      backgroundColor: context.cs.surface,
+      builder: (_) =>
+          _ArrayElementTypeSheet(initialMetadata: _listElementMetadata),
+    );
+    if (result == null) {
+      return;
+    }
+    setState(() {
+      _listElementMetadata = result.metadata;
+    });
+  }
+
+  PersonalDatabaseArrayTemplateMetadata? _buildMetadata() {
+    final selectedType = _selectedType;
+    if (selectedType == null) {
+      return null;
+    }
+
+    return PersonalDatabaseArrayTemplateMetadata(
+      elementType: selectedType,
+      template: selectedType == PersonalDatabaseValueType.object
+          ? widget.initialMetadata?.template ?? const <String, Object?>{}
+          : null,
+      elementMetadata: selectedType == PersonalDatabaseValueType.list
+          ? _listElementMetadata
+          : null,
     );
   }
 }

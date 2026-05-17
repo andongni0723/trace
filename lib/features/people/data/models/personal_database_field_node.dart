@@ -1,3 +1,4 @@
+import 'personal_database_array_template_metadata.dart';
 import 'personal_database_value_type.dart';
 
 class PersonalDatabaseFieldNode {
@@ -12,6 +13,7 @@ class PersonalDatabaseFieldNode {
     required this.value,
     required this.children,
     this.arrayElementType,
+    this.arrayElementMetadata,
     this.arrayElementTemplateJsonValue,
     this.arrayElementTemplate,
   });
@@ -26,12 +28,12 @@ class PersonalDatabaseFieldNode {
   final Object? value;
   final List<PersonalDatabaseFieldNode> children;
   final PersonalDatabaseValueType? arrayElementType;
+  final PersonalDatabaseArrayTemplateMetadata? arrayElementMetadata;
   final String? arrayElementTemplateJsonValue;
   final Map<String, Object?>? arrayElementTemplate;
 
   bool get isObject => type == PersonalDatabaseValueType.object;
 
   bool get hasArrayElementTemplate =>
-      arrayElementType == PersonalDatabaseValueType.object &&
-      arrayElementTemplate != null;
+      arrayElementMetadata?.hasObjectTemplate == true;
 }

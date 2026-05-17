@@ -6,8 +6,10 @@ import '../../features/media_library/presentation/pages/media_library_page.dart'
 import '../../features/people/presentation/pages/manage_database_properties_page.dart';
 import '../../shared/pages/messages_home_page.dart';
 import '../../shared/pages/person_todo.dart';
+import '../widgets/app_keyboard_focus_guard.dart';
 
 final router = GoRouter(
+  observers: [appKeyboardFocusRouteObserver],
   routes: [
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {

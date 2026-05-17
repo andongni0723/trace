@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/routing/router.dart';
 import 'core/theme/typography.dart';
+import 'core/widgets/app_keyboard_focus_guard.dart';
 import 'features/app_settings/biometric_lock/presentation/widgets/biometric_lock_gate.dart';
 import 'features/app_settings/data/models/app_settings.dart';
 import 'features/app_settings/providers/app_settings_provider.dart';
@@ -47,7 +48,9 @@ class App extends ConsumerWidget {
       ),
       themeMode: _themeModeOf(appSettings.themeMode),
       builder: (context, child) {
-        return BiometricLockGate(child: child ?? const SizedBox.shrink());
+        return AppKeyboardFocusGuard(
+          child: BiometricLockGate(child: child ?? const SizedBox.shrink()),
+        );
       },
       routerConfig: router,
     );

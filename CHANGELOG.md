@@ -1,3 +1,21 @@
+## v1.9.0
+
+更新內容:
+- 擴充 personal database 清單元素 metadata 為遞迴模型，支援 `list -> list -> object` 的元素型別與模板設定、儲存與讀取。
+- 修正人物資料庫巢狀清單模板編輯寫回路徑，避免編輯內層模板時清掉 root list metadata。
+- 改善管理資料庫屬性的拖曳排序，可在 root 與 object 子層級間移動 property，並保留收合 object 的邊界判斷。
+- 移除已無入口的舊屬性選擇頁、過時文案與相關測試，改由管理資料庫屬性作為唯一定義入口。
+- 新增全域 keyboard focus guard，路由切換或鍵盤收起時會解除目前輸入焦點。
+- 補強資料庫、屬性管理頁、模板編輯頁、人物資料庫與 keyboard focus 測試，涵蓋 recursive metadata 與焦點清理情境。
+
+Updates:
+- Expanded personal database list element metadata into a recursive model that supports `list -> list -> object` element type and template configuration, persistence, and decoding.
+- Fixed the person database nested list template write-back path so editing an inner template no longer clears root list metadata.
+- Improved Manage database properties drag reordering so properties can move between root and object child levels while preserving collapsed object boundaries.
+- Removed the obsolete property chooser page, stale copy, and related tests now that Manage database properties is the only definition entry.
+- Added a global keyboard focus guard that unfocuses active inputs on route changes or when the keyboard is dismissed.
+- Expanded database, property manager, template editor, person database, and keyboard focus tests for recursive metadata and focus cleanup scenarios.
+
 ## v1.8.0
 
 更新內容:

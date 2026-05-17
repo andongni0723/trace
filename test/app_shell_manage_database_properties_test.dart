@@ -38,6 +38,11 @@ class _AppShellManageDatabasePropertiesAssetLoader extends AssetLoader {
       'emptyBody': '點右上角按鈕新增音訊、影片或圖片。',
       'emptySearchTitle': '找不到符合的媒體',
       'emptySearchBody': '試著換個檔名或媒體類型再搜尋。',
+      'uploadSheet': {
+        'audioTitle': '音訊',
+        'videoTitle': '影片',
+        'imageTitle': '圖片',
+      },
     },
     'common': {'cancel': '取消'},
     'messages': {

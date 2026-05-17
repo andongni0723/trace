@@ -38,7 +38,7 @@ class _PersonTodoTestAssetLoader extends AssetLoader {
       'database': {
         'title': '個人資料庫',
         'emptyTitle': '還沒有屬性',
-        'emptyBody': '從屬性庫選擇或建立屬性，開始記錄這個人的資料與情境資訊。',
+        'emptyBody': '請先到管理資料庫屬性建立欄位；進入此分頁後會自動指派可用的定義。',
         'loadError': '讀取個人資料庫失敗。',
         'type': {
           'string': '字串',
@@ -79,21 +79,19 @@ class _PersonTodoTestAssetLoader extends AssetLoader {
           'delete': '刪除',
         },
       },
-      'propertyChooser': {
-        'title': '選擇屬性',
-        'subtitle': '從屬性庫挑選一個要加入這個人的項目，或建立新的屬性。',
-        'searchHint': '搜尋屬性',
-        'libraryLabel': '屬性庫',
-        'apply': '加入 {count} 個屬性',
-        'createNew': '＋ 建立新屬性',
-        'createNewTitle': '建立新屬性',
-        'emptyTitle': '尚未有屬性',
-        'emptyBody': '先建立第一個屬性，之後就能重複加入不同人物。',
-        'added': '已加入此人',
-      },
     },
     'databasePropertyManager': {
+      'elementTypeDialog': {'title': '元素型別', 'save': '儲存'},
+      'action': {'changeElementType': '變更元素型別'},
       'arrayElement': {'unspecified': '未指定'},
+    },
+    'personalDatabaseTemplateEditor': {
+      'rootTitle': '編輯「{key}」元素模板',
+      'nestedTitle': '編輯「{key}」元素模板',
+      'save': '儲存',
+      'addProperty': '新增屬性',
+      'emptyTitle': '尚未定義模板屬性',
+      'action': {'editTemplate': '編輯元素模板', 'editProperty': '編輯屬性'},
     },
   };
 
@@ -1788,6 +1786,81 @@ void main() {
     await tester.pump(const Duration(milliseconds: 1));
     await tester.pump(const Duration(milliseconds: 1));
   });
+
+  testWidgets(
+    'editing recursive nested list template preserves root metadata',
+    (tester) async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+
+      await database.peopleDao.createPerson(
+        id: 'owner',
+        name: 'Owner',
+        colorValue: 0xFF111111,
+      );
+      await database.personalDatabaseDao.createFieldAndAssignToPerson(
+        id: 'field-family',
+        personId: 'owner',
+        key: '家族',
+        type: PersonalDatabaseValueType.list,
+        jsonValue: '[[]]',
+        arrayElementType: PersonalDatabaseValueType.list,
+        arrayElementTemplateJsonValue:
+            '{"elementType":"object","template":{"名字":"小孩"}}',
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [appDatabaseProvider.overrideWithValue(database)],
+          child: EasyLocalization(
+            supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+            path: 'unused',
+            assetLoader: const _PersonTodoTestAssetLoader(),
+            fallbackLocale: const Locale('zh', 'TW'),
+            startLocale: const Locale('zh', 'TW'),
+            child: Builder(
+              builder: (context) {
+                return MaterialApp(
+                  supportedLocales: context.supportedLocales,
+                  localizationsDelegates: context.localizationDelegates,
+                  locale: context.locale,
+                  home: const Scaffold(
+                    body: PersonPersonalDatabaseTab(personId: 'owner'),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.textContaining('[1]'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.more_vert_rounded).last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('編輯模板'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, '儲存'));
+      await tester.pumpAndSettle();
+
+      final rawDefinition = await database.personalDatabaseDao.getFieldById(
+        'field-family',
+      );
+      expect(rawDefinition!.arrayElementType, 'list');
+      expect(
+        rawDefinition.arrayElementTemplateJsonValue,
+        '{"elementType":"object","template":{"名字":"小孩"}}',
+      );
+
+      await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1));
+      await tester.pump(const Duration(milliseconds: 1));
+    },
+  );
 
   testWidgets('self mention does not push another person route', (
     tester,

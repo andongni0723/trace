@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/models/personal_database_field_node.dart';
+import '../data/models/personal_database_array_template_metadata.dart';
 import '../data/models/personal_database_value_type.dart';
 import 'people_database_providers.dart';
 import 'personal_database_provider.dart';
@@ -99,6 +100,15 @@ class PersonalDatabasePropertyManagementActions {
     return _ref
         .read(personalDatabaseActionsProvider)
         .updateArrayElementTemplate(fieldId: fieldId, template: template);
+  }
+
+  Future<void> updateArrayElementMetadata({
+    required String fieldId,
+    required PersonalDatabaseArrayTemplateMetadata? metadata,
+  }) {
+    return _ref
+        .read(personalDatabaseActionsProvider)
+        .updateArrayElementMetadata(fieldId: fieldId, metadata: metadata);
   }
 
   Future<bool> canDeletePropertyDefinition(String fieldId) async {

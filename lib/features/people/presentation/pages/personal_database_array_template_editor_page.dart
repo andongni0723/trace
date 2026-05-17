@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/utils/useful_extension.dart';
 import '../../../../shared/widgets/bottom_sheet_keyboard_inset.dart';
+import '../../data/models/personal_database_array_template_metadata.dart';
 import '../../data/models/personal_database_value_type.dart';
 import '../../providers/personal_database_provider.dart';
 import '../widgets/personal_database_editor.dart';
@@ -59,7 +60,7 @@ class _PersonalDatabaseArrayTemplateEditorPageState
   ];
 
   late Map<String, Object?> _values;
-  late Map<String, _ArrayTemplateMetadata> _arrayMetadata;
+  late Map<String, PersonalDatabaseArrayTemplateMetadata> _arrayMetadata;
   late Map<String, Object?> _initialDocumentJson;
 
   @override
@@ -276,7 +277,7 @@ class _PersonalDatabaseArrayTemplateEditorPageState
   }
 
   Future<void> _showArrayElementTypeSheet(String key) async {
-    final selectedType = await showModalBottomSheet<PersonalDatabaseValueType?>(
+    final result = await showModalBottomSheet<_TemplateTypeSheetResult>(
       context: context,
       isScrollControlled: true,
       requestFocus: false,
@@ -284,26 +285,20 @@ class _PersonalDatabaseArrayTemplateEditorPageState
       backgroundColor: context.cs.surface,
       builder: (_) => _TemplateTypeSheet(
         title: 'databasePropertyManager.elementTypeDialog.title'.tr(),
-        initialType: _arrayMetadata[key]?.elementType,
+        initialMetadata: _arrayMetadata[key],
       ),
     );
 
-    if (!mounted || selectedType == _arrayMetadata[key]?.elementType) {
+    if (!mounted || result == null) {
       return;
     }
 
     setState(() {
-      final current = _arrayMetadata[key];
-      if (selectedType == null) {
+      if (result.metadata == null) {
         _arrayMetadata.remove(key);
         return;
       }
-      _arrayMetadata[key] = _ArrayTemplateMetadata(
-        elementType: selectedType,
-        template: selectedType == PersonalDatabaseValueType.object
-            ? current?.template ?? const <String, Object?>{}
-            : null,
-      );
+      _arrayMetadata[key] = result.metadata!;
     });
   }
 
@@ -315,7 +310,7 @@ class _PersonalDatabaseArrayTemplateEditorPageState
     final current = _arrayMetadata[key];
     if (current?.elementType != PersonalDatabaseValueType.object) {
       setState(() {
-        _arrayMetadata[key] = const _ArrayTemplateMetadata(
+        _arrayMetadata[key] = const PersonalDatabaseArrayTemplateMetadata(
           elementType: PersonalDatabaseValueType.object,
           template: <String, Object?>{},
         );
@@ -336,7 +331,7 @@ class _PersonalDatabaseArrayTemplateEditorPageState
     }
 
     setState(() {
-      _arrayMetadata[key] = _ArrayTemplateMetadata(
+      _arrayMetadata[key] = PersonalDatabaseArrayTemplateMetadata(
         elementType: PersonalDatabaseValueType.object,
         template: result,
       );
@@ -447,7 +442,7 @@ class _TemplatePropertyTile extends StatelessWidget {
 
   final String name;
   final Object? value;
-  final _ArrayTemplateMetadata? arrayMetadata;
+  final PersonalDatabaseArrayTemplateMetadata? arrayMetadata;
   final BorderRadius borderRadius;
   final VoidCallback? onPressedArrayElementType;
   final VoidCallback onPressedValue;
@@ -568,22 +563,33 @@ class _EmptyTemplateState extends StatelessWidget {
 }
 
 class _TemplateTypeSheet extends StatefulWidget {
-  const _TemplateTypeSheet({required this.title, required this.initialType});
+  const _TemplateTypeSheet({
+    required this.title,
+    required this.initialMetadata,
+  });
 
   final String title;
-  final PersonalDatabaseValueType? initialType;
+  final PersonalDatabaseArrayTemplateMetadata? initialMetadata;
 
   @override
   State<_TemplateTypeSheet> createState() => _TemplateTypeSheetState();
 }
 
+class _TemplateTypeSheetResult {
+  const _TemplateTypeSheetResult(this.metadata);
+
+  final PersonalDatabaseArrayTemplateMetadata? metadata;
+}
+
 class _TemplateTypeSheetState extends State<_TemplateTypeSheet> {
   PersonalDatabaseValueType? _selectedType;
+  PersonalDatabaseArrayTemplateMetadata? _listElementMetadata;
 
   @override
   void initState() {
     super.initState();
-    _selectedType = widget.initialType;
+    _selectedType = widget.initialMetadata?.elementType;
+    _listElementMetadata = widget.initialMetadata?.elementMetadata;
   }
 
   @override
@@ -628,13 +634,67 @@ class _TemplateTypeSheetState extends State<_TemplateTypeSheet> {
               ),
             ],
           ),
+          if (_selectedType == PersonalDatabaseValueType.list) ...[
+            const SizedBox(height: 12),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.format_list_bulleted_rounded),
+              title: Text(
+                'databasePropertyManager.action.changeElementType'.tr(),
+              ),
+              subtitle: Text(
+                _listElementMetadata?.elementType.localizationKey.tr() ??
+                    'databasePropertyManager.arrayElement.unspecified'.tr(),
+              ),
+              onTap: _editListElementMetadata,
+            ),
+          ],
           const SizedBox(height: 20),
           FilledButton(
-            onPressed: () => Navigator.of(context).pop(_selectedType),
+            onPressed: () => Navigator.of(
+              context,
+            ).pop(_TemplateTypeSheetResult(_buildMetadata())),
             child: Text('databasePropertyManager.elementTypeDialog.save'.tr()),
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _editListElementMetadata() async {
+    final result = await showModalBottomSheet<_TemplateTypeSheetResult>(
+      context: context,
+      isScrollControlled: true,
+      requestFocus: false,
+      showDragHandle: true,
+      backgroundColor: context.cs.surface,
+      builder: (_) => _TemplateTypeSheet(
+        title: 'databasePropertyManager.elementTypeDialog.title'.tr(),
+        initialMetadata: _listElementMetadata,
+      ),
+    );
+    if (result == null) {
+      return;
+    }
+    setState(() {
+      _listElementMetadata = result.metadata;
+    });
+  }
+
+  PersonalDatabaseArrayTemplateMetadata? _buildMetadata() {
+    final selectedType = _selectedType;
+    if (selectedType == null) {
+      return null;
+    }
+
+    return PersonalDatabaseArrayTemplateMetadata(
+      elementType: selectedType,
+      template: selectedType == PersonalDatabaseValueType.object
+          ? widget.initialMetadata?.template ?? const <String, Object?>{}
+          : null,
+      elementMetadata: selectedType == PersonalDatabaseValueType.list
+          ? _listElementMetadata
+          : null,
     );
   }
 }
@@ -670,7 +730,7 @@ class _TemplateDocument {
 
   factory _TemplateDocument.parse(Map<String, Object?> raw) {
     final values = <String, Object?>{};
-    final metadata = <String, _ArrayTemplateMetadata>{};
+    final metadata = <String, PersonalDatabaseArrayTemplateMetadata>{};
     final rawMetadata = _asStringKeyedMap(
       raw[personalDatabaseArrayTemplateMetadataKey],
     );
@@ -684,7 +744,9 @@ class _TemplateDocument {
 
     if (rawMetadata != null) {
       for (final entry in rawMetadata.entries) {
-        final item = _ArrayTemplateMetadata.tryParse(entry.value);
+        final item = PersonalDatabaseArrayTemplateMetadata.tryParse(
+          entry.value,
+        );
         if (item != null) {
           metadata[entry.key] = item;
         }
@@ -695,7 +757,7 @@ class _TemplateDocument {
   }
 
   final Map<String, Object?> values;
-  final Map<String, _ArrayTemplateMetadata> arrayMetadata;
+  final Map<String, PersonalDatabaseArrayTemplateMetadata> arrayMetadata;
 
   Map<String, Object?> toJson() {
     final json = <String, Object?>{...values};
@@ -713,39 +775,6 @@ class _TemplateDocument {
       json[personalDatabaseArrayTemplateMetadataKey] = metadataJson;
     }
     return json;
-  }
-}
-
-class _ArrayTemplateMetadata {
-  const _ArrayTemplateMetadata({required this.elementType, this.template});
-
-  static _ArrayTemplateMetadata? tryParse(Object? value) {
-    final map = _asStringKeyedMap(value);
-    if (map == null) {
-      return null;
-    }
-    final elementTypeKey = map['elementType'];
-    if (elementTypeKey is! String) {
-      return null;
-    }
-    final elementType = personalDatabaseValueTypeFromDb(elementTypeKey);
-    return _ArrayTemplateMetadata(
-      elementType: elementType,
-      template: elementType == PersonalDatabaseValueType.object
-          ? _asStringKeyedMap(map['template']) ?? const <String, Object?>{}
-          : null,
-    );
-  }
-
-  final PersonalDatabaseValueType elementType;
-  final Map<String, Object?>? template;
-
-  Map<String, Object?> toJson() {
-    return {
-      'elementType': elementType.dbKey,
-      if (elementType == PersonalDatabaseValueType.object)
-        'template': template ?? const <String, Object?>{},
-    };
   }
 }
 

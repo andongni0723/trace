@@ -83,7 +83,7 @@ class _ManageDatabasePropertiesTestAssetLoader extends AssetLoader {
         'deleteBlockedTitle': '無法刪除屬性',
         'deleteBlockedBody': '還有人正在使用這個 property，所以現在不能刪除。',
         'moveBlockedTitle': '無法移動屬性',
-        'moveScopeConflictBody': '屬性只能在同一層級重新排序，不能離開或加入其他 object。',
+        'moveScopeConflictBody': '這個屬性不能直接移到這個層級底下，請換一個位置再試一次。',
       },
     },
   };
@@ -366,6 +366,59 @@ void main() {
     expect(rawDefinition.arrayElementTemplateJsonValue, isNull);
   });
 
+  testWidgets('can save recursive list element metadata', (tester) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await database.peopleDao.createPerson(
+      id: 'owner',
+      name: 'Owner',
+      colorValue: 0xFF111111,
+    );
+    await database.personalDatabaseDao.createFieldAndAssignToPerson(
+      id: 'field-matrix',
+      personId: 'owner',
+      key: '矩陣',
+      type: PersonalDatabaseValueType.list,
+      jsonValue: '[]',
+    );
+
+    await _pumpManageDatabasePropertiesPage(tester, database);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('未指定'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(DropdownMenu<PersonalDatabaseValueType?>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('清單').last);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.format_list_bulleted_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byType(DropdownMenu<PersonalDatabaseValueType?>).last,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('物件').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '儲存').last);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, '儲存').last);
+    await tester.pumpAndSettle();
+
+    final rawDefinition = await database.personalDatabaseDao.getFieldById(
+      'field-matrix',
+    );
+
+    expect(rawDefinition, isNotNull);
+    expect(rawDefinition!.arrayElementType, 'list');
+    expect(
+      rawDefinition.arrayElementTemplateJsonValue,
+      '{"elementType":"object","template":{}}',
+    );
+  });
+
   testWidgets('default setting starts with subproperties collapsed', (
     tester,
   ) async {
@@ -495,7 +548,7 @@ void main() {
     expect(topLeftB.dy, lessThan(topLeftA.dy));
   });
 
-  testWidgets('drag reorder keeps child property in the same parent', (
+  testWidgets('drag reorder can move a child property to the root level', (
     tester,
   ) async {
     final database = AppDatabase(NativeDatabase.memory());
@@ -549,10 +602,150 @@ void main() {
     await tester.pumpAndSettle();
 
     final library = await database.personalDatabaseDao.getFieldLibrary();
-    final profile = library.firstWhere((field) => field.id == 'field-profile');
-    final nickname = profile.children.firstWhere(
-      (field) => field.id == 'field-nickname',
+    expect(library.map((field) => field.id), [
+      'field-nickname',
+      'field-profile',
+      'field-other',
+    ]);
+    expect(library.first.parentFieldId, isNull);
+    expect(
+      library.firstWhere((field) => field.id == 'field-profile').children,
+      isEmpty,
     );
-    expect(nickname.parentFieldId, 'field-profile');
+  });
+
+  testWidgets(
+    'dragging to a collapsed object bottom keeps the moved root at root level',
+    (tester) async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+
+      await database.peopleDao.createPerson(
+        id: 'owner',
+        name: 'Owner',
+        colorValue: 0xFF111111,
+      );
+      await database.personalDatabaseDao.createFieldAndAssignToPerson(
+        id: 'field-profile',
+        personId: 'owner',
+        key: '資料',
+        type: PersonalDatabaseValueType.object,
+        jsonValue: '{}',
+        sortOrder: 0,
+      );
+      await database.personalDatabaseDao.createFieldDefinition(
+        id: 'field-nickname',
+        key: '暱稱',
+        type: PersonalDatabaseValueType.string,
+        isPublic: true,
+        parentFieldId: 'field-profile',
+        sortOrder: 0,
+      );
+      await database.personalDatabaseDao.createFieldAndAssignToPerson(
+        id: 'field-other',
+        personId: 'owner',
+        key: '其他',
+        type: PersonalDatabaseValueType.string,
+        jsonValue: '"X"',
+        sortOrder: 1,
+      );
+
+      await _pumpManageDatabasePropertiesPage(
+        tester,
+        database,
+        sharedPreferencesValues: const {
+          'app_settings.initial_property_display_mode': 'collapsed',
+        },
+      );
+      await tester.pumpAndSettle();
+
+      final otherHandle = find.byKey(
+        const ValueKey('manage-database-property-drag-field-other'),
+      );
+      expect(otherHandle, findsOneWidget);
+
+      await tester.drag(otherHandle, const Offset(0, -70));
+      await tester.pumpAndSettle();
+
+      final library = await database.personalDatabaseDao.getFieldLibrary();
+      final profile = library.firstWhere(
+        (field) => field.id == 'field-profile',
+      );
+      final other = library.firstWhere((field) => field.id == 'field-other');
+      expect(library.map((field) => field.id), [
+        'field-profile',
+        'field-other',
+      ]);
+      expect(profile.children.map((field) => field.id), ['field-nickname']);
+      expect(other.parentFieldId, isNull);
+    },
+  );
+
+  testWidgets('drag reorder can move a root property under an object parent', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await database.peopleDao.createPerson(
+      id: 'owner',
+      name: 'Owner',
+      colorValue: 0xFF111111,
+    );
+    await database.personalDatabaseDao.createFieldAndAssignToPerson(
+      id: 'field-profile',
+      personId: 'owner',
+      key: '資料',
+      type: PersonalDatabaseValueType.object,
+      jsonValue: '{}',
+      sortOrder: 0,
+    );
+    await database.personalDatabaseDao.createFieldDefinition(
+      id: 'field-nickname',
+      key: '暱稱',
+      type: PersonalDatabaseValueType.string,
+      isPublic: true,
+      parentFieldId: 'field-profile',
+      sortOrder: 0,
+    );
+    await database.personalDatabaseDao.createFieldAndAssignToPerson(
+      id: 'field-other',
+      personId: 'owner',
+      key: '其他',
+      type: PersonalDatabaseValueType.string,
+      jsonValue: '"X"',
+      sortOrder: 1,
+    );
+
+    await _pumpManageDatabasePropertiesPage(
+      tester,
+      database,
+      sharedPreferencesValues: const {
+        'app_settings.initial_property_display_mode': 'expanded',
+      },
+    );
+    await tester.pumpAndSettle();
+
+    final otherHandle = find.byKey(
+      const ValueKey('manage-database-property-drag-field-other'),
+    );
+    expect(otherHandle, findsOneWidget);
+
+    await tester.drag(otherHandle, const Offset(0, -130));
+    await tester.pumpAndSettle();
+
+    final library = await database.personalDatabaseDao.getFieldLibrary();
+    final profile = library.singleWhere((field) => field.id == 'field-profile');
+    expect(library.map((field) => field.id), ['field-profile']);
+    expect(profile.children.map((field) => field.id), [
+      'field-other',
+      'field-nickname',
+    ]);
+    expect(
+      profile.children
+          .singleWhere((field) => field.id == 'field-other')
+          .parentFieldId,
+      'field-profile',
+    );
   });
 }
