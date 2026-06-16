@@ -1,3 +1,21 @@
+## v1.10.0
+
+更新內容:
+- 新增全 app 修改紀錄功能，可記錄人物、待辦、人物備註、personal database、媒體庫、設定與匯入/匯出的資料變更。
+- 新增 `RevisionLogs` 資料表與 revision log DAO/provider，schema 升級至 v9，並以毫秒精度保存修改時間。
+- 在側邊欄加入「修改紀錄」入口與 `/revision-log` route，提供厚圓角紀錄卡片、中文 action label、毫秒級時間與清空紀錄操作。
+- 點擊紀錄可開啟中文修改詳情 bottom sheet，顯示動作、資料、摘要、變更欄位，以及變更前/變更後 JSON，並新增明確關閉按鈕。
+- 更新備份格式至 v9，匯出包含 revision logs，匯入 v8 備份可相容，匯入完成後會追加本機匯入紀錄。
+- 補強資料庫、provider/service、資料匯入匯出、設定、drawer 導航與 revision log UI 測試。
+
+Updates:
+- Added an app-wide revision log feature for people, todos, person notes, personal database data, media library actions, settings, and import/export mutations.
+- Added the `RevisionLogs` table plus revision log DAO/provider support, upgraded the schema to v9, and preserved timestamps with millisecond precision.
+- Added the drawer entry and `/revision-log` route with rounded log cards, localized action labels, millisecond timestamps, and clear-log controls.
+- Added a localized revision detail bottom sheet with action, entity, summary, changed fields, before/after JSON, and explicit close controls.
+- Updated backups to v9 so exports include revision logs, v8 imports remain compatible, and completed imports append a local import log.
+- Expanded database, provider/service, data transfer, settings, drawer navigation, and revision log UI test coverage.
+
 ## v1.9.0
 
 更新內容:

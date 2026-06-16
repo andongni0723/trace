@@ -3514,6 +3514,647 @@ class PersonalDatabaseValuesCompanion
   }
 }
 
+class $RevisionLogsTable extends RevisionLogs
+    with TableInfo<$RevisionLogsTable, RevisionLog> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RevisionLogsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _actionMeta = const VerificationMeta('action');
+  @override
+  late final GeneratedColumn<String> action = GeneratedColumn<String>(
+    'action',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 32,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _entityTypeMeta = const VerificationMeta(
+    'entityType',
+  );
+  @override
+  late final GeneratedColumn<String> entityType = GeneratedColumn<String>(
+    'entity_type',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 64,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _entityIdMeta = const VerificationMeta(
+    'entityId',
+  );
+  @override
+  late final GeneratedColumn<String> entityId = GeneratedColumn<String>(
+    'entity_id',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 160,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _entityLabelMeta = const VerificationMeta(
+    'entityLabel',
+  );
+  @override
+  late final GeneratedColumn<String> entityLabel = GeneratedColumn<String>(
+    'entity_label',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _summaryMeta = const VerificationMeta(
+    'summary',
+  );
+  @override
+  late final GeneratedColumn<String> summary = GeneratedColumn<String>(
+    'summary',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 500,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _changedFieldsJsonMeta = const VerificationMeta(
+    'changedFieldsJson',
+  );
+  @override
+  late final GeneratedColumn<String> changedFieldsJson =
+      GeneratedColumn<String>(
+        'changed_fields_json',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('[]'),
+      );
+  static const VerificationMeta _beforeJsonMeta = const VerificationMeta(
+    'beforeJson',
+  );
+  @override
+  late final GeneratedColumn<String> beforeJson = GeneratedColumn<String>(
+    'before_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _afterJsonMeta = const VerificationMeta(
+    'afterJson',
+  );
+  @override
+  late final GeneratedColumn<String> afterJson = GeneratedColumn<String>(
+    'after_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime, int> happenedAt =
+      GeneratedColumn<int>(
+        'happened_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      ).withConverter<DateTime>($RevisionLogsTable.$converterhappenedAt);
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    action,
+    entityType,
+    entityId,
+    entityLabel,
+    summary,
+    changedFieldsJson,
+    beforeJson,
+    afterJson,
+    happenedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'revision_logs';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RevisionLog> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('action')) {
+      context.handle(
+        _actionMeta,
+        action.isAcceptableOrUnknown(data['action']!, _actionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_actionMeta);
+    }
+    if (data.containsKey('entity_type')) {
+      context.handle(
+        _entityTypeMeta,
+        entityType.isAcceptableOrUnknown(data['entity_type']!, _entityTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityTypeMeta);
+    }
+    if (data.containsKey('entity_id')) {
+      context.handle(
+        _entityIdMeta,
+        entityId.isAcceptableOrUnknown(data['entity_id']!, _entityIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityIdMeta);
+    }
+    if (data.containsKey('entity_label')) {
+      context.handle(
+        _entityLabelMeta,
+        entityLabel.isAcceptableOrUnknown(
+          data['entity_label']!,
+          _entityLabelMeta,
+        ),
+      );
+    }
+    if (data.containsKey('summary')) {
+      context.handle(
+        _summaryMeta,
+        summary.isAcceptableOrUnknown(data['summary']!, _summaryMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_summaryMeta);
+    }
+    if (data.containsKey('changed_fields_json')) {
+      context.handle(
+        _changedFieldsJsonMeta,
+        changedFieldsJson.isAcceptableOrUnknown(
+          data['changed_fields_json']!,
+          _changedFieldsJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('before_json')) {
+      context.handle(
+        _beforeJsonMeta,
+        beforeJson.isAcceptableOrUnknown(data['before_json']!, _beforeJsonMeta),
+      );
+    }
+    if (data.containsKey('after_json')) {
+      context.handle(
+        _afterJsonMeta,
+        afterJson.isAcceptableOrUnknown(data['after_json']!, _afterJsonMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RevisionLog map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RevisionLog(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      action: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}action'],
+      )!,
+      entityType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity_type'],
+      )!,
+      entityId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity_id'],
+      )!,
+      entityLabel: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity_label'],
+      ),
+      summary: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}summary'],
+      )!,
+      changedFieldsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}changed_fields_json'],
+      )!,
+      beforeJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}before_json'],
+      ),
+      afterJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}after_json'],
+      ),
+      happenedAt: $RevisionLogsTable.$converterhappenedAt.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}happened_at'],
+        )!,
+      ),
+    );
+  }
+
+  @override
+  $RevisionLogsTable createAlias(String alias) {
+    return $RevisionLogsTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<DateTime, int> $converterhappenedAt =
+      const DateTimeMillisConverter();
+}
+
+class RevisionLog extends DataClass implements Insertable<RevisionLog> {
+  final String id;
+  final String action;
+  final String entityType;
+  final String entityId;
+  final String? entityLabel;
+  final String summary;
+  final String changedFieldsJson;
+  final String? beforeJson;
+  final String? afterJson;
+  final DateTime happenedAt;
+  const RevisionLog({
+    required this.id,
+    required this.action,
+    required this.entityType,
+    required this.entityId,
+    this.entityLabel,
+    required this.summary,
+    required this.changedFieldsJson,
+    this.beforeJson,
+    this.afterJson,
+    required this.happenedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['action'] = Variable<String>(action);
+    map['entity_type'] = Variable<String>(entityType);
+    map['entity_id'] = Variable<String>(entityId);
+    if (!nullToAbsent || entityLabel != null) {
+      map['entity_label'] = Variable<String>(entityLabel);
+    }
+    map['summary'] = Variable<String>(summary);
+    map['changed_fields_json'] = Variable<String>(changedFieldsJson);
+    if (!nullToAbsent || beforeJson != null) {
+      map['before_json'] = Variable<String>(beforeJson);
+    }
+    if (!nullToAbsent || afterJson != null) {
+      map['after_json'] = Variable<String>(afterJson);
+    }
+    {
+      map['happened_at'] = Variable<int>(
+        $RevisionLogsTable.$converterhappenedAt.toSql(happenedAt),
+      );
+    }
+    return map;
+  }
+
+  RevisionLogsCompanion toCompanion(bool nullToAbsent) {
+    return RevisionLogsCompanion(
+      id: Value(id),
+      action: Value(action),
+      entityType: Value(entityType),
+      entityId: Value(entityId),
+      entityLabel: entityLabel == null && nullToAbsent
+          ? const Value.absent()
+          : Value(entityLabel),
+      summary: Value(summary),
+      changedFieldsJson: Value(changedFieldsJson),
+      beforeJson: beforeJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(beforeJson),
+      afterJson: afterJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(afterJson),
+      happenedAt: Value(happenedAt),
+    );
+  }
+
+  factory RevisionLog.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RevisionLog(
+      id: serializer.fromJson<String>(json['id']),
+      action: serializer.fromJson<String>(json['action']),
+      entityType: serializer.fromJson<String>(json['entityType']),
+      entityId: serializer.fromJson<String>(json['entityId']),
+      entityLabel: serializer.fromJson<String?>(json['entityLabel']),
+      summary: serializer.fromJson<String>(json['summary']),
+      changedFieldsJson: serializer.fromJson<String>(json['changedFieldsJson']),
+      beforeJson: serializer.fromJson<String?>(json['beforeJson']),
+      afterJson: serializer.fromJson<String?>(json['afterJson']),
+      happenedAt: serializer.fromJson<DateTime>(json['happenedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'action': serializer.toJson<String>(action),
+      'entityType': serializer.toJson<String>(entityType),
+      'entityId': serializer.toJson<String>(entityId),
+      'entityLabel': serializer.toJson<String?>(entityLabel),
+      'summary': serializer.toJson<String>(summary),
+      'changedFieldsJson': serializer.toJson<String>(changedFieldsJson),
+      'beforeJson': serializer.toJson<String?>(beforeJson),
+      'afterJson': serializer.toJson<String?>(afterJson),
+      'happenedAt': serializer.toJson<DateTime>(happenedAt),
+    };
+  }
+
+  RevisionLog copyWith({
+    String? id,
+    String? action,
+    String? entityType,
+    String? entityId,
+    Value<String?> entityLabel = const Value.absent(),
+    String? summary,
+    String? changedFieldsJson,
+    Value<String?> beforeJson = const Value.absent(),
+    Value<String?> afterJson = const Value.absent(),
+    DateTime? happenedAt,
+  }) => RevisionLog(
+    id: id ?? this.id,
+    action: action ?? this.action,
+    entityType: entityType ?? this.entityType,
+    entityId: entityId ?? this.entityId,
+    entityLabel: entityLabel.present ? entityLabel.value : this.entityLabel,
+    summary: summary ?? this.summary,
+    changedFieldsJson: changedFieldsJson ?? this.changedFieldsJson,
+    beforeJson: beforeJson.present ? beforeJson.value : this.beforeJson,
+    afterJson: afterJson.present ? afterJson.value : this.afterJson,
+    happenedAt: happenedAt ?? this.happenedAt,
+  );
+  RevisionLog copyWithCompanion(RevisionLogsCompanion data) {
+    return RevisionLog(
+      id: data.id.present ? data.id.value : this.id,
+      action: data.action.present ? data.action.value : this.action,
+      entityType: data.entityType.present
+          ? data.entityType.value
+          : this.entityType,
+      entityId: data.entityId.present ? data.entityId.value : this.entityId,
+      entityLabel: data.entityLabel.present
+          ? data.entityLabel.value
+          : this.entityLabel,
+      summary: data.summary.present ? data.summary.value : this.summary,
+      changedFieldsJson: data.changedFieldsJson.present
+          ? data.changedFieldsJson.value
+          : this.changedFieldsJson,
+      beforeJson: data.beforeJson.present
+          ? data.beforeJson.value
+          : this.beforeJson,
+      afterJson: data.afterJson.present ? data.afterJson.value : this.afterJson,
+      happenedAt: data.happenedAt.present
+          ? data.happenedAt.value
+          : this.happenedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RevisionLog(')
+          ..write('id: $id, ')
+          ..write('action: $action, ')
+          ..write('entityType: $entityType, ')
+          ..write('entityId: $entityId, ')
+          ..write('entityLabel: $entityLabel, ')
+          ..write('summary: $summary, ')
+          ..write('changedFieldsJson: $changedFieldsJson, ')
+          ..write('beforeJson: $beforeJson, ')
+          ..write('afterJson: $afterJson, ')
+          ..write('happenedAt: $happenedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    action,
+    entityType,
+    entityId,
+    entityLabel,
+    summary,
+    changedFieldsJson,
+    beforeJson,
+    afterJson,
+    happenedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RevisionLog &&
+          other.id == this.id &&
+          other.action == this.action &&
+          other.entityType == this.entityType &&
+          other.entityId == this.entityId &&
+          other.entityLabel == this.entityLabel &&
+          other.summary == this.summary &&
+          other.changedFieldsJson == this.changedFieldsJson &&
+          other.beforeJson == this.beforeJson &&
+          other.afterJson == this.afterJson &&
+          other.happenedAt == this.happenedAt);
+}
+
+class RevisionLogsCompanion extends UpdateCompanion<RevisionLog> {
+  final Value<String> id;
+  final Value<String> action;
+  final Value<String> entityType;
+  final Value<String> entityId;
+  final Value<String?> entityLabel;
+  final Value<String> summary;
+  final Value<String> changedFieldsJson;
+  final Value<String?> beforeJson;
+  final Value<String?> afterJson;
+  final Value<DateTime> happenedAt;
+  final Value<int> rowid;
+  const RevisionLogsCompanion({
+    this.id = const Value.absent(),
+    this.action = const Value.absent(),
+    this.entityType = const Value.absent(),
+    this.entityId = const Value.absent(),
+    this.entityLabel = const Value.absent(),
+    this.summary = const Value.absent(),
+    this.changedFieldsJson = const Value.absent(),
+    this.beforeJson = const Value.absent(),
+    this.afterJson = const Value.absent(),
+    this.happenedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RevisionLogsCompanion.insert({
+    required String id,
+    required String action,
+    required String entityType,
+    required String entityId,
+    this.entityLabel = const Value.absent(),
+    required String summary,
+    this.changedFieldsJson = const Value.absent(),
+    this.beforeJson = const Value.absent(),
+    this.afterJson = const Value.absent(),
+    required DateTime happenedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       action = Value(action),
+       entityType = Value(entityType),
+       entityId = Value(entityId),
+       summary = Value(summary),
+       happenedAt = Value(happenedAt);
+  static Insertable<RevisionLog> custom({
+    Expression<String>? id,
+    Expression<String>? action,
+    Expression<String>? entityType,
+    Expression<String>? entityId,
+    Expression<String>? entityLabel,
+    Expression<String>? summary,
+    Expression<String>? changedFieldsJson,
+    Expression<String>? beforeJson,
+    Expression<String>? afterJson,
+    Expression<int>? happenedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (action != null) 'action': action,
+      if (entityType != null) 'entity_type': entityType,
+      if (entityId != null) 'entity_id': entityId,
+      if (entityLabel != null) 'entity_label': entityLabel,
+      if (summary != null) 'summary': summary,
+      if (changedFieldsJson != null) 'changed_fields_json': changedFieldsJson,
+      if (beforeJson != null) 'before_json': beforeJson,
+      if (afterJson != null) 'after_json': afterJson,
+      if (happenedAt != null) 'happened_at': happenedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RevisionLogsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? action,
+    Value<String>? entityType,
+    Value<String>? entityId,
+    Value<String?>? entityLabel,
+    Value<String>? summary,
+    Value<String>? changedFieldsJson,
+    Value<String?>? beforeJson,
+    Value<String?>? afterJson,
+    Value<DateTime>? happenedAt,
+    Value<int>? rowid,
+  }) {
+    return RevisionLogsCompanion(
+      id: id ?? this.id,
+      action: action ?? this.action,
+      entityType: entityType ?? this.entityType,
+      entityId: entityId ?? this.entityId,
+      entityLabel: entityLabel ?? this.entityLabel,
+      summary: summary ?? this.summary,
+      changedFieldsJson: changedFieldsJson ?? this.changedFieldsJson,
+      beforeJson: beforeJson ?? this.beforeJson,
+      afterJson: afterJson ?? this.afterJson,
+      happenedAt: happenedAt ?? this.happenedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (action.present) {
+      map['action'] = Variable<String>(action.value);
+    }
+    if (entityType.present) {
+      map['entity_type'] = Variable<String>(entityType.value);
+    }
+    if (entityId.present) {
+      map['entity_id'] = Variable<String>(entityId.value);
+    }
+    if (entityLabel.present) {
+      map['entity_label'] = Variable<String>(entityLabel.value);
+    }
+    if (summary.present) {
+      map['summary'] = Variable<String>(summary.value);
+    }
+    if (changedFieldsJson.present) {
+      map['changed_fields_json'] = Variable<String>(changedFieldsJson.value);
+    }
+    if (beforeJson.present) {
+      map['before_json'] = Variable<String>(beforeJson.value);
+    }
+    if (afterJson.present) {
+      map['after_json'] = Variable<String>(afterJson.value);
+    }
+    if (happenedAt.present) {
+      map['happened_at'] = Variable<int>(
+        $RevisionLogsTable.$converterhappenedAt.toSql(happenedAt.value),
+      );
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RevisionLogsCompanion(')
+          ..write('id: $id, ')
+          ..write('action: $action, ')
+          ..write('entityType: $entityType, ')
+          ..write('entityId: $entityId, ')
+          ..write('entityLabel: $entityLabel, ')
+          ..write('summary: $summary, ')
+          ..write('changedFieldsJson: $changedFieldsJson, ')
+          ..write('beforeJson: $beforeJson, ')
+          ..write('afterJson: $afterJson, ')
+          ..write('happenedAt: $happenedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3530,6 +4171,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $PersonalDatabasePersonFieldsTable(this);
   late final $PersonalDatabaseValuesTable personalDatabaseValues =
       $PersonalDatabaseValuesTable(this);
+  late final $RevisionLogsTable revisionLogs = $RevisionLogsTable(this);
   late final PeopleDao peopleDao = PeopleDao(this as AppDatabase);
   late final TodosDao todosDao = TodosDao(this as AppDatabase);
   late final PersonNotesDao personNotesDao = PersonNotesDao(
@@ -3539,6 +4181,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this as AppDatabase,
   );
   late final MediaAssetsDao mediaAssetsDao = MediaAssetsDao(
+    this as AppDatabase,
+  );
+  late final RevisionLogsDao revisionLogsDao = RevisionLogsDao(
     this as AppDatabase,
   );
   @override
@@ -3554,6 +4199,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     personalDatabaseFields,
     personalDatabasePersonFields,
     personalDatabaseValues,
+    revisionLogs,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -7456,6 +8102,313 @@ typedef $$PersonalDatabaseValuesTableProcessedTableManager =
       PersonalDatabaseValue,
       PrefetchHooks Function({bool fieldId, bool personId})
     >;
+typedef $$RevisionLogsTableCreateCompanionBuilder =
+    RevisionLogsCompanion Function({
+      required String id,
+      required String action,
+      required String entityType,
+      required String entityId,
+      Value<String?> entityLabel,
+      required String summary,
+      Value<String> changedFieldsJson,
+      Value<String?> beforeJson,
+      Value<String?> afterJson,
+      required DateTime happenedAt,
+      Value<int> rowid,
+    });
+typedef $$RevisionLogsTableUpdateCompanionBuilder =
+    RevisionLogsCompanion Function({
+      Value<String> id,
+      Value<String> action,
+      Value<String> entityType,
+      Value<String> entityId,
+      Value<String?> entityLabel,
+      Value<String> summary,
+      Value<String> changedFieldsJson,
+      Value<String?> beforeJson,
+      Value<String?> afterJson,
+      Value<DateTime> happenedAt,
+      Value<int> rowid,
+    });
+
+class $$RevisionLogsTableFilterComposer
+    extends Composer<_$AppDatabase, $RevisionLogsTable> {
+  $$RevisionLogsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get action => $composableBuilder(
+    column: $table.action,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entityId => $composableBuilder(
+    column: $table.entityId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entityLabel => $composableBuilder(
+    column: $table.entityLabel,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get summary => $composableBuilder(
+    column: $table.summary,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get changedFieldsJson => $composableBuilder(
+    column: $table.changedFieldsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get beforeJson => $composableBuilder(
+    column: $table.beforeJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get afterJson => $composableBuilder(
+    column: $table.afterJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<DateTime, DateTime, int> get happenedAt =>
+      $composableBuilder(
+        column: $table.happenedAt,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+}
+
+class $$RevisionLogsTableOrderingComposer
+    extends Composer<_$AppDatabase, $RevisionLogsTable> {
+  $$RevisionLogsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get action => $composableBuilder(
+    column: $table.action,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entityId => $composableBuilder(
+    column: $table.entityId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entityLabel => $composableBuilder(
+    column: $table.entityLabel,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get summary => $composableBuilder(
+    column: $table.summary,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get changedFieldsJson => $composableBuilder(
+    column: $table.changedFieldsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get beforeJson => $composableBuilder(
+    column: $table.beforeJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get afterJson => $composableBuilder(
+    column: $table.afterJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get happenedAt => $composableBuilder(
+    column: $table.happenedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RevisionLogsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RevisionLogsTable> {
+  $$RevisionLogsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get action =>
+      $composableBuilder(column: $table.action, builder: (column) => column);
+
+  GeneratedColumn<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get entityId =>
+      $composableBuilder(column: $table.entityId, builder: (column) => column);
+
+  GeneratedColumn<String> get entityLabel => $composableBuilder(
+    column: $table.entityLabel,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get summary =>
+      $composableBuilder(column: $table.summary, builder: (column) => column);
+
+  GeneratedColumn<String> get changedFieldsJson => $composableBuilder(
+    column: $table.changedFieldsJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get beforeJson => $composableBuilder(
+    column: $table.beforeJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get afterJson =>
+      $composableBuilder(column: $table.afterJson, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime, int> get happenedAt =>
+      $composableBuilder(
+        column: $table.happenedAt,
+        builder: (column) => column,
+      );
+}
+
+class $$RevisionLogsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RevisionLogsTable,
+          RevisionLog,
+          $$RevisionLogsTableFilterComposer,
+          $$RevisionLogsTableOrderingComposer,
+          $$RevisionLogsTableAnnotationComposer,
+          $$RevisionLogsTableCreateCompanionBuilder,
+          $$RevisionLogsTableUpdateCompanionBuilder,
+          (
+            RevisionLog,
+            BaseReferences<_$AppDatabase, $RevisionLogsTable, RevisionLog>,
+          ),
+          RevisionLog,
+          PrefetchHooks Function()
+        > {
+  $$RevisionLogsTableTableManager(_$AppDatabase db, $RevisionLogsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RevisionLogsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RevisionLogsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RevisionLogsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> action = const Value.absent(),
+                Value<String> entityType = const Value.absent(),
+                Value<String> entityId = const Value.absent(),
+                Value<String?> entityLabel = const Value.absent(),
+                Value<String> summary = const Value.absent(),
+                Value<String> changedFieldsJson = const Value.absent(),
+                Value<String?> beforeJson = const Value.absent(),
+                Value<String?> afterJson = const Value.absent(),
+                Value<DateTime> happenedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RevisionLogsCompanion(
+                id: id,
+                action: action,
+                entityType: entityType,
+                entityId: entityId,
+                entityLabel: entityLabel,
+                summary: summary,
+                changedFieldsJson: changedFieldsJson,
+                beforeJson: beforeJson,
+                afterJson: afterJson,
+                happenedAt: happenedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String action,
+                required String entityType,
+                required String entityId,
+                Value<String?> entityLabel = const Value.absent(),
+                required String summary,
+                Value<String> changedFieldsJson = const Value.absent(),
+                Value<String?> beforeJson = const Value.absent(),
+                Value<String?> afterJson = const Value.absent(),
+                required DateTime happenedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => RevisionLogsCompanion.insert(
+                id: id,
+                action: action,
+                entityType: entityType,
+                entityId: entityId,
+                entityLabel: entityLabel,
+                summary: summary,
+                changedFieldsJson: changedFieldsJson,
+                beforeJson: beforeJson,
+                afterJson: afterJson,
+                happenedAt: happenedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RevisionLogsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RevisionLogsTable,
+      RevisionLog,
+      $$RevisionLogsTableFilterComposer,
+      $$RevisionLogsTableOrderingComposer,
+      $$RevisionLogsTableAnnotationComposer,
+      $$RevisionLogsTableCreateCompanionBuilder,
+      $$RevisionLogsTableUpdateCompanionBuilder,
+      (
+        RevisionLog,
+        BaseReferences<_$AppDatabase, $RevisionLogsTable, RevisionLog>,
+      ),
+      RevisionLog,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -7486,4 +8439,6 @@ class $AppDatabaseManager {
         _db,
         _db.personalDatabaseValues,
       );
+  $$RevisionLogsTableTableManager get revisionLogs =>
+      $$RevisionLogsTableTableManager(_db, _db.revisionLogs);
 }

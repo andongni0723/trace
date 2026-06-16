@@ -11,6 +11,8 @@ import '../../../core/database/database.dart';
 import '../../media_library/providers/media_library_providers.dart';
 import '../../people/data/models/personal_database_value_type.dart';
 import '../../people/providers/people_database_providers.dart';
+import '../../revision_log/data/models/revision_log_action.dart';
+import '../../revision_log/providers/revision_log_provider.dart';
 import '../biometric_lock/data/models/biometric_lock_settings.dart';
 import '../biometric_lock/data/repositories/biometric_lock_settings_repository.dart';
 import '../biometric_lock/providers/biometric_lock_provider.dart';
@@ -24,8 +26,8 @@ final appDataTransferProvider = Provider<AppDataTransferService>((ref) {
 const _backupAppId = 'trace';
 const _legacyBackupAppIds = {'people_todolist'};
 const _backupType = 'app_backup';
-const _backupVersion = 8;
-const _supportedBackupVersions = {1, 2, 3, 4, 5, 6, 7, 8};
+const _backupVersion = 9;
+const _supportedBackupVersions = {1, 2, 3, 4, 5, 6, 7, 8, 9};
 
 class AppDataTransferService {
   AppDataTransferService(this._ref);
@@ -50,6 +52,12 @@ class AppDataTransferService {
         bytes: bytes,
       );
 
+      if (savedPath != null) {
+        await _recordDataTransferLog(
+          action: RevisionLogAction.exportData,
+          summary: 'Exported backup $fileName',
+        );
+      }
       return savedPath != null;
     } catch (_) {
       final tempFile = File('${Directory.systemTemp.path}/$fileName');
@@ -59,6 +67,10 @@ class AppDataTransferService {
         ShareParams(files: [XFile(tempFile.path)], title: 'trace backup'),
       );
 
+      await _recordDataTransferLog(
+        action: RevisionLogAction.exportData,
+        summary: 'Exported backup $fileName',
+      );
       return true;
     }
   }
@@ -100,6 +112,7 @@ class AppDataTransferService {
         .select(database.personalDatabaseValues)
         .get();
     final mediaAssets = await database.select(database.mediaAssets).get();
+    final revisionLogs = await database.select(database.revisionLogs).get();
     final personAvatars = await _ref
         .read(personAvatarStorageProvider)
         .buildBackupPayload(
@@ -162,6 +175,9 @@ class AppDataTransferService {
       'personalDatabaseValues': exportablePersonalDatabaseValues
           .map((value) => value.toJson())
           .toList(growable: false),
+      'revisionLogs': revisionLogs
+          .map((log) => log.toJson())
+          .toList(growable: false),
     };
   }
 
@@ -180,6 +196,8 @@ class AppDataTransferService {
         (rawJson['personalDatabasePersonFields'] as List<dynamic>? ?? const []);
     final personalDatabaseValuesJson =
         (rawJson['personalDatabaseValues'] as List<dynamic>? ?? const []);
+    final revisionLogsJson =
+        (rawJson['revisionLogs'] as List<dynamic>? ?? const []);
     final mediaAssetsJson =
         (rawJson['mediaAssets'] as List<dynamic>? ?? const []);
     final mediaFilesJson = rawJson['mediaFiles'] as Map<String, dynamic>?;
@@ -294,9 +312,16 @@ class AppDataTransferService {
       personalDatabaseFields: personalDatabaseFields,
       availableMediaAssetIds: availableMediaAssetIds,
     );
+    final revisionLogs = revisionLogsJson
+        .map(
+          (item) =>
+              RevisionLog.fromJson(Map<String, dynamic>.from(item as Map)),
+        )
+        .toList(growable: false);
 
     try {
       await database.transaction(() async {
+        await database.delete(database.revisionLogs).go();
         await database.delete(database.personalDatabaseValues).go();
         await database.delete(database.personalDatabasePersonFields).go();
         await database.delete(database.personalDatabaseFields).go();
@@ -339,6 +364,9 @@ class AppDataTransferService {
           }
           if (mediaAssets.isNotEmpty) {
             batch.insertAll(database.mediaAssets, mediaAssets);
+          }
+          if (revisionLogs.isNotEmpty) {
+            batch.insertAll(database.revisionLogs, revisionLogs);
           }
         });
       });
@@ -385,6 +413,18 @@ class AppDataTransferService {
       restoredMediaPaths,
     );
     await _cleanupMediaPaths(mediaPathsToDelete);
+
+    await _recordDataTransferLog(
+      action: RevisionLogAction.importData,
+      summary:
+          'Imported backup with ${people.length} people and ${todos.length} todos',
+      after: {
+        'people': people.length,
+        'todos': todos.length,
+        'mediaAssets': mediaAssets.length,
+        'personalDatabaseFields': personalDatabaseFields.length,
+      },
+    );
   }
 
   Future<AppSettings> _readCurrentSettings() async {
@@ -426,7 +466,9 @@ class AppDataTransferService {
         (rawJson['personalDatabasePersonFields'] == null ||
             rawJson['personalDatabasePersonFields'] is List<dynamic>) &&
         (rawJson['personalDatabaseValues'] == null ||
-            rawJson['personalDatabaseValues'] is List<dynamic>);
+            rawJson['personalDatabaseValues'] is List<dynamic>) &&
+        (rawJson['revisionLogs'] == null ||
+            rawJson['revisionLogs'] is List<dynamic>);
 
     final isKnownAppId =
         appId == _backupAppId || _legacyBackupAppIds.contains(appId);
@@ -554,5 +596,23 @@ class AppDataTransferService {
     for (final mediaPath in mediaPaths) {
       await mediaStorage.deleteManagedMediaFile(mediaPath);
     }
+  }
+
+  Future<void> _recordDataTransferLog({
+    required String action,
+    required String summary,
+    Object? after,
+  }) {
+    return _ref
+        .read(revisionLogActionsProvider)
+        .record(
+          action: action,
+          entityType: 'backup',
+          entityId: 'trace_backup',
+          entityLabel: 'Trace backup',
+          summary: summary,
+          changedFields: const ['backup'],
+          after: after,
+        );
   }
 }

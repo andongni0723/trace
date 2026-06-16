@@ -1,20 +1,35 @@
+import 'package:drift/drift.dart' show driftRuntimeOptions;
+import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:trace/core/database/database.dart';
 import 'package:trace/features/app_settings/data/models/app_settings.dart';
 import 'package:trace/features/app_settings/providers/app_settings_provider.dart';
+import 'package:trace/features/people/providers/people_database_providers.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  test('app settings defaults to dark theme mode', () async {
-    final container = ProviderContainer();
+  ProviderContainer createContainer() {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    final container = ProviderContainer(
+      overrides: [appDatabaseProvider.overrideWithValue(database)],
+    );
     addTearDown(container.dispose);
+    return container;
+  }
+
+  test('app settings defaults to dark theme mode', () async {
+    final container = createContainer();
 
     final settings = await container.read(appSettingsProvider.future);
 
@@ -26,8 +41,7 @@ void main() {
   });
 
   test('setThemeMode persists the selected theme mode', () async {
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
+    final container = createContainer();
 
     await container.read(appSettingsProvider.future);
     await container
@@ -52,8 +66,7 @@ void main() {
   });
 
   test('setInitialPropertyDisplayMode persists the selected mode', () async {
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
+    final container = createContainer();
 
     await container.read(appSettingsProvider.future);
     await container

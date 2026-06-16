@@ -20,6 +20,7 @@ import 'package:trace/features/media_library/providers/media_library_providers.d
 import 'package:trace/features/people/data/models/personal_database_media_value.dart';
 import 'package:trace/features/people/data/models/personal_database_value_type.dart';
 import 'package:trace/features/people/providers/people_database_providers.dart';
+import 'package:trace/features/revision_log/data/models/revision_log_action.dart';
 
 import '../../people/test_person_avatar_storage.dart';
 import '../../media_library/test_media_asset_storage.dart';
@@ -159,6 +160,43 @@ void main() {
       expect(payload['mediaFiles'], isA<Map<String, dynamic>>());
       expect((payload['mediaAssets'] as List<dynamic>), hasLength(1));
       expect(payload['mediaFiles'], containsPair('media-1', isA<String>()));
+    });
+
+    test('buildBackupPayload includes revision logs', () async {
+      SharedPreferences.setMockInitialValues({});
+
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+
+      await database.revisionLogsDao.insertLog(
+        id: 'log-1',
+        action: RevisionLogAction.update,
+        entityType: 'person',
+        entityId: 'owner',
+        entityLabel: 'Owner',
+        summary: 'Updated person Owner',
+        changedFieldsJson: '["name"]',
+        beforeJson: '{"name":"Old"}',
+        afterJson: '{"name":"Owner"}',
+        happenedAt: DateTime(2026, 6, 10, 21, 27, 22, 792),
+      );
+
+      final container = ProviderContainer(
+        overrides: [appDatabaseProvider.overrideWithValue(database)],
+      );
+      addTearDown(container.dispose);
+
+      final payload = await container
+          .read(appDataTransferProvider)
+          .buildBackupPayload();
+
+      expect(payload['version'], 9);
+      expect(payload['revisionLogs'], isA<List<dynamic>>());
+      expect((payload['revisionLogs'] as List<dynamic>), hasLength(1));
+      expect(
+        (payload['revisionLogs'] as List<dynamic>).single,
+        containsPair('summary', 'Updated person Owner'),
+      );
     });
 
     test(
@@ -394,6 +432,88 @@ void main() {
       expect(restoredMedia!.displayName, 'photo');
       expect(restoredMedia.kind, MediaAssetKind.image);
       expect(await File(restoredMedia.filePath).readAsBytes(), [7, 7, 8, 8]);
+    });
+
+    test(
+      'importPayload accepts v8 payloads and appends an import log',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+
+        final database = AppDatabase(NativeDatabase.memory());
+        addTearDown(database.close);
+        final avatarStorage = TestPersonAvatarStorage();
+        addTearDown(avatarStorage.clearManagedAvatars);
+        final mediaStorage = TestMediaAssetStorage();
+        addTearDown(mediaStorage.clearManagedMediaFiles);
+        final now = DateTime(2026, 6, 10, 21, 27, 22, 792);
+
+        final payload = <String, dynamic>{
+          'appId': 'trace',
+          'backupType': 'app_backup',
+          'version': 8,
+          'exportedAt': now.toIso8601String(),
+          'settings': {'themeMode': 'system'},
+          'people': [
+            PeopleData(
+              id: 'owner',
+              name: 'Owner',
+              colorValue: 0xFF111111,
+              createdAt: now,
+              updatedAt: now,
+            ).toJson(),
+          ],
+          'personNotes': const [],
+          'personAvatars': const <String, String>{},
+          'mediaAssets': const [],
+          'mediaFiles': const <String, String>{},
+          'todos': const [],
+          'todoParticipants': const [],
+          'personalDatabaseFields': const [],
+          'personalDatabasePersonFields': const [],
+          'personalDatabaseValues': const [],
+        };
+
+        final container = ProviderContainer(
+          overrides: [
+            appDatabaseProvider.overrideWithValue(database),
+            personAvatarStorageProvider.overrideWithValue(avatarStorage),
+            mediaAssetStorageProvider.overrideWithValue(mediaStorage),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await container.read(appDataTransferProvider).importPayload(payload);
+
+        final people = await database.peopleDao.getPeople();
+        final logs = await database.revisionLogsDao.getRecentLogs();
+
+        expect(people.single.name, 'Owner');
+        expect(logs, hasLength(1));
+        expect(logs.single.action, RevisionLogAction.importData);
+        expect(logs.single.summary, contains('Imported backup'));
+      },
+    );
+
+    test('settings actions record revision logs', () async {
+      SharedPreferences.setMockInitialValues({});
+
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+      final container = ProviderContainer(
+        overrides: [appDatabaseProvider.overrideWithValue(database)],
+      );
+      addTearDown(container.dispose);
+
+      await container
+          .read(appSettingsActionsProvider)
+          .setThemeMode(AppThemeMode.dark);
+
+      final logs = await database.revisionLogsDao.getRecentLogs();
+
+      expect(logs.single.action, RevisionLogAction.settings);
+      expect(logs.single.entityType, 'appSettings');
+      expect(logs.single.changedFieldsJson, contains('themeMode'));
+      expect(logs.single.afterJson, contains('dark'));
     });
 
     test(

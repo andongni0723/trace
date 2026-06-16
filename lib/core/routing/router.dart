@@ -4,6 +4,7 @@ import '../../app_shell.dart';
 import '../../features/app_settings/presentation/pages/app_settings_page.dart';
 import '../../features/media_library/presentation/pages/media_library_page.dart';
 import '../../features/people/presentation/pages/manage_database_properties_page.dart';
+import '../../features/revision_log/presentation/pages/revision_log_page.dart';
 import '../../shared/pages/messages_home_page.dart';
 import '../../shared/pages/person_todo.dart';
 import '../widgets/app_keyboard_focus_guard.dart';
@@ -49,6 +50,10 @@ final router = GoRouter(
     GoRoute(
       path: '/media-library',
       builder: (context, state) => const MediaLibraryPage(),
+    ),
+    GoRoute(
+      path: '/revision-log',
+      builder: (context, state) => const RevisionLogPage(),
     ),
   ],
 );

@@ -3,6 +3,8 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/database/database.dart';
 import '../../people/providers/people_database_providers.dart';
+import '../../revision_log/data/models/revision_log_action.dart';
+import '../../revision_log/providers/revision_log_provider.dart';
 import '../data/daos/media_assets_dao.dart';
 import '../data/models/media_asset_kind.dart';
 import '../data/models/media_library_filter.dart';
@@ -77,23 +79,74 @@ class MediaLibraryActions {
 
   Future<List<MediaAsset>> importMediaFiles({
     required MediaAssetPickerMode mode,
-  }) {
-    return _ref
+  }) async {
+    final importedAssets = await _ref
         .read(mediaLibraryServiceProvider)
         .importPickedMediaFiles(mode: mode);
+    for (final asset in importedAssets) {
+      await _ref
+          .read(revisionLogActionsProvider)
+          .record(
+            action: RevisionLogAction.create,
+            entityType: 'mediaAsset',
+            entityId: asset.id,
+            entityLabel: asset.displayName,
+            summary: 'Imported media asset ${asset.displayName}',
+            changedFields: const [
+              'displayName',
+              'originalFileName',
+              'kind',
+              'mimeType',
+              'sizeBytes',
+              'filePath',
+            ],
+            after: asset.toJson(),
+          );
+    }
+    return importedAssets;
   }
 
   Future<void> renameMediaAsset({
     required String assetId,
     required String displayName,
-  }) {
-    return _ref
+  }) async {
+    final mediaAssetsDao = _ref.read(mediaAssetsDaoProvider);
+    final before = await mediaAssetsDao.getMediaAssetById(assetId);
+    await _ref
         .read(mediaLibraryServiceProvider)
         .renameMediaAsset(assetId: assetId, displayName: displayName);
+    final after = await mediaAssetsDao.getMediaAssetById(assetId);
+    await _ref
+        .read(revisionLogActionsProvider)
+        .record(
+          action: RevisionLogAction.update,
+          entityType: 'mediaAsset',
+          entityId: assetId,
+          entityLabel: after?.displayName ?? before?.displayName ?? assetId,
+          summary:
+              'Renamed media asset ${after?.displayName ?? before?.displayName ?? assetId}',
+          changedFields: const ['displayName'],
+          before: before?.toJson(),
+          after: after?.toJson(),
+        );
   }
 
-  Future<void> deleteMediaAsset(String assetId) {
-    return _ref.read(mediaLibraryServiceProvider).deleteMediaAsset(assetId);
+  Future<void> deleteMediaAsset(String assetId) async {
+    final before = await _ref
+        .read(mediaAssetsDaoProvider)
+        .getMediaAssetById(assetId);
+    await _ref.read(mediaLibraryServiceProvider).deleteMediaAsset(assetId);
+    await _ref
+        .read(revisionLogActionsProvider)
+        .record(
+          action: RevisionLogAction.delete,
+          entityType: 'mediaAsset',
+          entityId: assetId,
+          entityLabel: before?.displayName,
+          summary: 'Deleted media asset ${before?.displayName ?? assetId}',
+          changedFields: const ['mediaAsset'],
+          before: before?.toJson(),
+        );
   }
 
   void setSearchQuery(String query) {

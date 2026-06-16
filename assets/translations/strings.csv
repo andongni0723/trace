@@ -6,6 +6,7 @@ appShell.drawer.openMenu,開啟側邊選單,Open navigation menu
 appShell.drawer.mainPage,主頁,Main page
 appShell.drawer.manageDatabaseProperties,管理資料庫屬性,Manage database properties
 appShell.drawer.mediaLibrary,媒體資料管理,Media library
+appShell.drawer.revisionLog,修改紀錄,Logs
 appShell.drawer.settings,設定,Settings
 appShell.drawer.feedback,意見回饋,Feedback
 common.cancel,取消,Cancel
@@ -225,6 +226,31 @@ mediaLibrary.uploadSheet.visualTitle,圖片與影片,Photos and videos
 mediaLibrary.uploadSheet.visualBody,從系統相簿選擇圖片或影片。,Choose photos or videos from the system library.
 mediaLibrary.uploadSheet.audioTitle,音訊,Audio
 mediaLibrary.uploadSheet.audioBody,選擇音訊檔案匯入媒體庫。,Choose audio files to import.
+revisionLog.title,修改紀錄,Logs
+revisionLog.emptyTitle,還沒有修改紀錄,No logs yet
+revisionLog.emptyBody,資料修改後會顯示在這裡。,Data changes will appear here.
+revisionLog.closeTooltip,關閉修改紀錄,Close logs
+revisionLog.clearTooltip,清空紀錄,Clear logs
+revisionLog.clearDialog.title,清空修改紀錄,Clear logs
+revisionLog.clearDialog.body,確定要清空所有修改紀錄嗎？,Clear all revision logs?
+revisionLog.clearDialog.cancel,取消,Cancel
+revisionLog.clearDialog.confirm,清空,Clear
+revisionLog.details.title,修改詳情,Request Details
+revisionLog.details.closeTooltip,關閉詳情,Close details
+revisionLog.details.time,時間,Time
+revisionLog.details.entity,資料,Entity
+revisionLog.details.action,動作,Action
+revisionLog.details.summary,摘要,Summary
+revisionLog.details.changedFields,變更欄位,Changed Fields
+revisionLog.details.before,變更前,Before
+revisionLog.details.after,變更後,After
+revisionLog.actions.create,新增,Create
+revisionLog.actions.update,更新,Update
+revisionLog.actions.delete,刪除,Delete
+revisionLog.actions.import,匯入,Import
+revisionLog.actions.export,匯出,Export
+revisionLog.actions.settings,設定,Settings
+revisionLog.actions.clearLogs,清空紀錄,Clear logs
 personTodo.noteTitle,人物備註,Person note
 personTodo.noteEmpty,還沒有記錄這個人的備註。,No note has been recorded for this person yet.
 personTodo.noteFallback,"{name} 的個人備註尚未建立，最後更新時間是 {date}。","A detailed note for {name} has not been added yet. Last updated on {date}."

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/database/database.dart';
+import '../../revision_log/data/models/revision_log_action.dart';
+import '../../revision_log/providers/revision_log_provider.dart';
 import 'people_database_providers.dart';
 
 const _legacyFakePersonIds = ['alex', 'lina', 'maya', 'sam'];
@@ -89,6 +91,19 @@ class PeopleActions {
           name: trimmedName,
           colorValue: avatarColor.toARGB32(),
           avatarPath: storedAvatarPath,
+        );
+
+    final person = await _ref.read(peopleDaoProvider).getPersonById(personId);
+    await _ref
+        .read(revisionLogActionsProvider)
+        .record(
+          action: RevisionLogAction.create,
+          entityType: 'person',
+          entityId: personId,
+          entityLabel: trimmedName,
+          summary: 'Created person $trimmedName',
+          changedFields: const ['name', 'colorValue', 'avatarPath'],
+          after: person?.toJson(),
         );
   }
 }

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/database/database.dart';
+import '../../revision_log/data/models/revision_log_action.dart';
+import '../../revision_log/providers/revision_log_provider.dart';
 import '../data/models/todo_with_people.dart';
 import 'people_database_providers.dart';
 
@@ -77,6 +79,25 @@ class PersonDetailActions {
           colorValue: person.colorValue,
           avatarPath: Value(storedAvatarPath),
         );
+
+    final updatedPerson = await _ref
+        .read(peopleDaoProvider)
+        .getPersonById(person.id);
+    await _ref
+        .read(revisionLogActionsProvider)
+        .record(
+          action: RevisionLogAction.update,
+          entityType: 'person',
+          entityId: person.id,
+          entityLabel: updatedPerson?.name ?? trimmedName,
+          summary: 'Updated person ${updatedPerson?.name ?? trimmedName}',
+          changedFields: [
+            if (hasNameChanged) 'name',
+            if (hasAvatarChanged) 'avatarPath',
+          ],
+          before: person.toJson(),
+          after: updatedPerson?.toJson(),
+        );
   }
 
   Future<void> deletePerson(String personId) async {
@@ -85,15 +106,41 @@ class PersonDetailActions {
         .read(personAvatarStorageProvider)
         .deleteManagedAvatar(person?.avatarPath);
     await _ref.read(peopleDaoProvider).deletePersonById(personId);
+    await _ref
+        .read(revisionLogActionsProvider)
+        .record(
+          action: RevisionLogAction.delete,
+          entityType: 'person',
+          entityId: personId,
+          entityLabel: person?.name,
+          summary: 'Deleted person ${person?.name ?? personId}',
+          changedFields: const ['person'],
+          before: person?.toJson(),
+        );
   }
 
   Future<void> updatePersonNote({
     required String personId,
     required String content,
-  }) {
-    return _ref
-        .read(personNotesDaoProvider)
-        .upsertNote(personId: personId, content: content);
+  }) async {
+    final notesDao = _ref.read(personNotesDaoProvider);
+    final before = await notesDao.getNoteForPerson(personId);
+    await notesDao.upsertNote(personId: personId, content: content);
+    final after = await notesDao.getNoteForPerson(personId);
+    await _ref
+        .read(revisionLogActionsProvider)
+        .record(
+          action: before == null
+              ? RevisionLogAction.create
+              : RevisionLogAction.update,
+          entityType: 'personNote',
+          entityId: personId,
+          entityLabel: personId,
+          summary: 'Updated person note',
+          changedFields: const ['content'],
+          before: before?.toJson(),
+          after: after?.toJson(),
+        );
   }
 }
 
@@ -105,17 +152,48 @@ class PersonTodoActions {
   final Ref _ref;
   final Uuid _uuid;
 
-  Future<void> toggleTodoDone({required String todoId, required bool done}) {
-    return _ref.read(todosDaoProvider).setTodoDone(todoId: todoId, done: done);
+  Future<void> toggleTodoDone({
+    required String todoId,
+    required bool done,
+  }) async {
+    final todosDao = _ref.read(todosDaoProvider);
+    final before = await todosDao.getTodoById(todoId);
+    await todosDao.setTodoDone(todoId: todoId, done: done);
+    final after = await todosDao.getTodoById(todoId);
+    await _ref
+        .read(revisionLogActionsProvider)
+        .record(
+          action: RevisionLogAction.update,
+          entityType: 'todo',
+          entityId: todoId,
+          entityLabel: after?.title ?? before?.title ?? todoId,
+          summary: 'Updated todo ${after?.title ?? before?.title ?? todoId}',
+          changedFields: const ['done'],
+          before: before?.toJson(),
+          after: after?.toJson(),
+        );
   }
 
   Future<void> toggleTodoStarred({
     required String todoId,
     required bool starred,
-  }) {
-    return _ref
-        .read(todosDaoProvider)
-        .setTodoStarred(todoId: todoId, starred: starred);
+  }) async {
+    final todosDao = _ref.read(todosDaoProvider);
+    final before = await todosDao.getTodoById(todoId);
+    await todosDao.setTodoStarred(todoId: todoId, starred: starred);
+    final after = await todosDao.getTodoById(todoId);
+    await _ref
+        .read(revisionLogActionsProvider)
+        .record(
+          action: RevisionLogAction.update,
+          entityType: 'todo',
+          entityId: todoId,
+          entityLabel: after?.title ?? before?.title ?? todoId,
+          summary: 'Updated todo ${after?.title ?? before?.title ?? todoId}',
+          changedFields: const ['starred'],
+          before: before?.toJson(),
+          after: after?.toJson(),
+        );
   }
 
   Future<void> createTodo({
@@ -132,16 +210,35 @@ class PersonTodoActions {
       return;
     }
 
+    final todoId = _uuid.v4();
     await _ref
         .read(todosDaoProvider)
         .createTodo(
-          id: _uuid.v4(),
+          id: todoId,
           personId: personId,
           title: trimmedTitle,
           note: trimmedNote == null || trimmedNote.isEmpty ? null : trimmedNote,
           starred: starred,
           dueAt: dueAt,
           participantPersonIds: participantPersonIds,
+        );
+    final todo = await _ref.read(todosDaoProvider).getTodoById(todoId);
+    await _ref
+        .read(revisionLogActionsProvider)
+        .record(
+          action: RevisionLogAction.create,
+          entityType: 'todo',
+          entityId: todoId,
+          entityLabel: trimmedTitle,
+          summary: 'Created todo $trimmedTitle',
+          changedFields: const [
+            'title',
+            'note',
+            'dueAt',
+            'starred',
+            'participantPersonIds',
+          ],
+          after: todo?.toJson(),
         );
   }
 
@@ -159,17 +256,36 @@ class PersonTodoActions {
       return;
     }
 
+    final todosDao = _ref.read(todosDaoProvider);
+    final before = await todosDao.getTodoById(todoId);
+    await todosDao.updateTodo(
+      id: todoId,
+      title: trimmedTitle,
+      note: Value(
+        trimmedNote == null || trimmedNote.isEmpty ? null : trimmedNote,
+      ),
+      starred: starred,
+      dueAt: Value(dueAt),
+      participantPersonIds: participantPersonIds,
+    );
+    final after = await todosDao.getTodoById(todoId);
     await _ref
-        .read(todosDaoProvider)
-        .updateTodo(
-          id: todoId,
-          title: trimmedTitle,
-          note: Value(
-            trimmedNote == null || trimmedNote.isEmpty ? null : trimmedNote,
-          ),
-          starred: starred,
-          dueAt: Value(dueAt),
-          participantPersonIds: participantPersonIds,
+        .read(revisionLogActionsProvider)
+        .record(
+          action: RevisionLogAction.update,
+          entityType: 'todo',
+          entityId: todoId,
+          entityLabel: after?.title ?? trimmedTitle,
+          summary: 'Updated todo ${after?.title ?? trimmedTitle}',
+          changedFields: const [
+            'title',
+            'note',
+            'dueAt',
+            'starred',
+            'participantPersonIds',
+          ],
+          before: before?.toJson(),
+          after: after?.toJson(),
         );
   }
 }

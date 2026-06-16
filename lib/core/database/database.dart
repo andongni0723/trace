@@ -11,12 +11,15 @@ import '../../features/people/data/daos/personal_database_dao.dart';
 import '../../features/people/data/daos/todos_dao.dart';
 import '../../features/media_library/data/daos/media_assets_dao.dart';
 import '../../features/media_library/data/models/media_asset_kind.dart';
+import '../../features/revision_log/data/daos/revision_logs_dao.dart';
+import 'date_time_millis_converter.dart';
 import 'tables/people.dart';
 import 'tables/media_assets.dart';
 import 'tables/personal_database_fields.dart';
 import 'tables/personal_database_person_fields.dart';
 import 'tables/personal_database_values.dart';
 import 'tables/person_notes.dart';
+import 'tables/revision_logs.dart';
 import 'tables/todo_participants.dart';
 import 'tables/todos.dart';
 
@@ -34,6 +37,7 @@ typedef MediaAssetData = MediaAsset;
     PersonalDatabaseFields,
     PersonalDatabasePersonFields,
     PersonalDatabaseValues,
+    RevisionLogs,
   ],
   daos: [
     PeopleDao,
@@ -41,13 +45,14 @@ typedef MediaAssetData = MediaAsset;
     PersonNotesDao,
     PersonalDatabaseDao,
     MediaAssetsDao,
+    RevisionLogsDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -100,6 +105,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 8) {
         await migrator.createTable(personNotes);
+      }
+      if (from < 9) {
+        await migrator.createTable(revisionLogs);
       }
     },
     beforeOpen: (details) async {

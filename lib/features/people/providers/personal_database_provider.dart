@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/database/database.dart';
+import '../../revision_log/data/models/revision_log_action.dart';
+import '../../revision_log/providers/revision_log_provider.dart';
 import '../data/models/personal_database_array_template_metadata.dart';
 import '../data/models/personal_database_field_node.dart';
 import '../data/models/personal_database_management_error.dart';
@@ -104,14 +106,28 @@ class PersonalDatabaseActions {
     required String personId,
     required PersonalDatabaseFieldNode field,
     required Object? value,
-  }) {
-    return _ref
+  }) async {
+    final before = _fieldLogSnapshot(field);
+    await _ref
         .read(personalDatabaseDaoProvider)
         .updateFieldValueForPerson(
           fieldId: field.id,
           personId: personId,
           type: field.type,
           jsonValue: _encodeValue(type: field.type, value: value),
+        );
+    final after = await _findField(personId: personId, fieldId: field.id);
+    await _ref
+        .read(revisionLogActionsProvider)
+        .record(
+          action: RevisionLogAction.update,
+          entityType: 'personalDatabaseValue',
+          entityId: '$personId:${field.id}',
+          entityLabel: field.key,
+          summary: 'Updated personal database value ${field.key}',
+          changedFields: const ['value'],
+          before: before,
+          after: _fieldLogSnapshot(after),
         );
   }
 
@@ -139,9 +155,10 @@ class PersonalDatabaseActions {
     final assignmentSortOrder = await dao.getNextAssignedFieldSortOrder(
       personId,
     );
+    final fieldId = _uuid.v4();
 
     await dao.createFieldAndAssignToPerson(
-      id: _uuid.v4(),
+      id: fieldId,
       personId: personId,
       key: trimmedKey,
       type: type,
@@ -152,18 +169,41 @@ class PersonalDatabaseActions {
       sortOrder: sortOrder,
       assignmentSortOrder: assignmentSortOrder,
     );
+
+    final createdField = await _findField(personId: personId, fieldId: fieldId);
+    await _ref
+        .read(revisionLogActionsProvider)
+        .record(
+          action: RevisionLogAction.create,
+          entityType: 'personalDatabaseField',
+          entityId: fieldId,
+          entityLabel: trimmedKey,
+          summary: 'Created personal database field $trimmedKey',
+          changedFields: const ['key', 'type', 'value'],
+          after: _fieldLogSnapshot(createdField),
+        );
   }
 
   Future<void> assignFieldToPerson({
     required String personId,
     required String fieldId,
     Object? value,
-  }) {
+  }) async {
     final dao = _ref.read(personalDatabaseDaoProvider);
-    return dao.assignFieldToPerson(
+    await dao.assignFieldToPerson(
       fieldId: fieldId,
       personId: personId,
       jsonValue: value == null ? null : jsonEncode(value),
+    );
+    final after = await _findField(personId: personId, fieldId: fieldId);
+    await _recordPersonalDatabaseLog(
+      action: RevisionLogAction.create,
+      entityType: 'personalDatabaseAssignment',
+      entityId: '$personId:$fieldId',
+      entityLabel: after?.key ?? fieldId,
+      summary: 'Assigned personal database field ${after?.key ?? fieldId}',
+      changedFields: const ['assignment', 'value'],
+      after: _fieldLogSnapshot(after),
     );
   }
 
@@ -181,59 +221,130 @@ class PersonalDatabaseActions {
   Future<void> removeFieldFromPerson({
     required String personId,
     required String fieldId,
-  }) {
-    return _ref
+  }) async {
+    final before = await _findField(personId: personId, fieldId: fieldId);
+    await _ref
         .read(personalDatabaseDaoProvider)
         .removeFieldFromPerson(fieldId: fieldId, personId: personId);
+    await _recordPersonalDatabaseLog(
+      action: RevisionLogAction.delete,
+      entityType: 'personalDatabaseAssignment',
+      entityId: '$personId:$fieldId',
+      entityLabel: before?.key ?? fieldId,
+      summary: 'Removed personal database field ${before?.key ?? fieldId}',
+      changedFields: const ['assignment'],
+      before: _fieldLogSnapshot(before),
+    );
   }
 
   Future<void> removeChildPropertyFromPerson({
     required String personId,
     required String fieldId,
-  }) {
-    return _ref
+  }) async {
+    final before = await _findField(personId: personId, fieldId: fieldId);
+    await _ref
         .read(personalDatabaseDaoProvider)
         .removeFieldSubtreeFromPerson(fieldId: fieldId, personId: personId);
+    await _recordPersonalDatabaseLog(
+      action: RevisionLogAction.delete,
+      entityType: 'personalDatabaseAssignment',
+      entityId: '$personId:$fieldId',
+      entityLabel: before?.key ?? fieldId,
+      summary:
+          'Removed personal database field subtree ${before?.key ?? fieldId}',
+      changedFields: const ['assignment', 'children'],
+      before: _fieldLogSnapshot(before),
+    );
   }
 
   Future<void> updatePropertyDefinition({
     required String fieldId,
     required String key,
     required PersonalDatabaseValueType type,
-  }) {
-    return _ref
-        .read(personalDatabaseDaoProvider)
-        .updatePropertyDefinition(fieldId: fieldId, key: key, type: type);
+  }) async {
+    final dao = _ref.read(personalDatabaseDaoProvider);
+    final before = await dao.getFieldById(fieldId);
+    await dao.updatePropertyDefinition(fieldId: fieldId, key: key, type: type);
+    final after = await dao.getFieldById(fieldId);
+    await _recordPersonalDatabaseLog(
+      action: RevisionLogAction.update,
+      entityType: 'personalDatabaseField',
+      entityId: fieldId,
+      entityLabel: after?.key ?? key,
+      summary: 'Updated personal database field ${after?.key ?? key}',
+      changedFields: const ['key', 'type'],
+      before: _fieldDefinitionLogSnapshot(before),
+      after: _fieldDefinitionLogSnapshot(after),
+    );
   }
 
   Future<void> updateArrayElementType({
     required String fieldId,
     required PersonalDatabaseValueType? elementType,
-  }) {
-    return _ref
-        .read(personalDatabaseDaoProvider)
-        .updateArrayElementType(fieldId: fieldId, elementType: elementType);
+  }) async {
+    final dao = _ref.read(personalDatabaseDaoProvider);
+    final before = await dao.getFieldById(fieldId);
+    await dao.updateArrayElementType(
+      fieldId: fieldId,
+      elementType: elementType,
+    );
+    final after = await dao.getFieldById(fieldId);
+    await _recordPersonalDatabaseLog(
+      action: RevisionLogAction.update,
+      entityType: 'personalDatabaseField',
+      entityId: fieldId,
+      entityLabel: after?.key ?? before?.key ?? fieldId,
+      summary:
+          'Updated array element type for ${after?.key ?? before?.key ?? fieldId}',
+      changedFields: const ['arrayElementType'],
+      before: _fieldDefinitionLogSnapshot(before),
+      after: _fieldDefinitionLogSnapshot(after),
+    );
   }
 
   Future<void> updateArrayElementTemplate({
     required String fieldId,
     required Map<String, Object?> template,
-  }) {
-    return _ref
-        .read(personalDatabaseDaoProvider)
-        .updateArrayElementTemplate(
-          fieldId: fieldId,
-          jsonValue: jsonEncode(template),
-        );
+  }) async {
+    final dao = _ref.read(personalDatabaseDaoProvider);
+    final before = await dao.getFieldById(fieldId);
+    await dao.updateArrayElementTemplate(
+      fieldId: fieldId,
+      jsonValue: jsonEncode(template),
+    );
+    final after = await dao.getFieldById(fieldId);
+    await _recordPersonalDatabaseLog(
+      action: RevisionLogAction.update,
+      entityType: 'personalDatabaseField',
+      entityId: fieldId,
+      entityLabel: after?.key ?? before?.key ?? fieldId,
+      summary:
+          'Updated array element template for ${after?.key ?? before?.key ?? fieldId}',
+      changedFields: const ['arrayElementTemplateJsonValue'],
+      before: _fieldDefinitionLogSnapshot(before),
+      after: _fieldDefinitionLogSnapshot(after),
+    );
   }
 
   Future<void> updateArrayElementMetadata({
     required String fieldId,
     required PersonalDatabaseArrayTemplateMetadata? metadata,
-  }) {
-    return _ref
-        .read(personalDatabaseDaoProvider)
-        .updateArrayElementMetadata(fieldId: fieldId, metadata: metadata);
+  }) async {
+    final dao = _ref.read(personalDatabaseDaoProvider);
+    final before = await dao.getFieldById(fieldId);
+    await dao.updateArrayElementMetadata(fieldId: fieldId, metadata: metadata);
+    final after = await dao.getFieldById(fieldId);
+    await _recordPersonalDatabaseLog(
+      action: RevisionLogAction.update,
+      entityType: 'personalDatabaseField',
+      entityId: fieldId,
+      entityLabel: after?.key ?? before?.key ?? fieldId,
+      summary:
+          'Updated array element metadata for ${after?.key ?? before?.key ?? fieldId}',
+      changedFields: const ['arrayElementTemplateJsonValue'],
+      before: _fieldDefinitionLogSnapshot(before),
+      after: _fieldDefinitionLogSnapshot(after),
+    );
   }
 
   Future<void> addArrayElementFromTemplate({
@@ -254,10 +365,23 @@ class PersonalDatabaseActions {
     await updateFieldValue(personId: personId, field: field, value: root);
   }
 
-  Future<void> deletePropertyDefinition(String fieldId) {
-    return _ref
-        .read(personalDatabaseDaoProvider)
-        .deleteFieldDefinition(fieldId);
+  Future<void> deletePropertyDefinition(String fieldId) async {
+    final dao = _ref.read(personalDatabaseDaoProvider);
+    final before = await dao.getFieldById(fieldId);
+    final assignmentCount = await dao.countAssignmentsForFieldSubtree(fieldId);
+    await dao.deleteFieldDefinition(fieldId);
+    await _recordPersonalDatabaseLog(
+      action: RevisionLogAction.delete,
+      entityType: 'personalDatabaseField',
+      entityId: fieldId,
+      entityLabel: before?.key ?? fieldId,
+      summary: 'Deleted personal database field ${before?.key ?? fieldId}',
+      changedFields: const ['field', 'assignments'],
+      before: {
+        ...?_fieldDefinitionLogSnapshot(before),
+        'assignmentCount': assignmentCount,
+      },
+    );
   }
 
   Future<void> updateManagedPropertyDefinition({
@@ -333,6 +457,17 @@ class PersonalDatabaseActions {
       ownerPersonId: ownerPersonId,
       parentFieldId: parentFieldId,
       sortOrder: sortOrder,
+    );
+
+    final createdField = await dao.getFieldById(fieldId);
+    await _recordPersonalDatabaseLog(
+      action: RevisionLogAction.create,
+      entityType: 'personalDatabaseField',
+      entityId: fieldId,
+      entityLabel: trimmedKey,
+      summary: 'Created managed personal database field $trimmedKey',
+      changedFields: const ['key', 'type', 'parentFieldId'],
+      after: _fieldDefinitionLogSnapshot(createdField),
     );
 
     return fieldId;
@@ -423,6 +558,19 @@ class PersonalDatabaseActions {
       personIds: affectedPersonIds,
       fieldsById: fieldsByIdAfterMove,
     );
+
+    final movedField = await _findLibraryField(fieldId);
+    await _recordPersonalDatabaseLog(
+      action: RevisionLogAction.update,
+      entityType: 'personalDatabaseField',
+      entityId: fieldId,
+      entityLabel: movedField?.key ?? movingField.key,
+      summary:
+          'Moved personal database field ${movedField?.key ?? movingField.key}',
+      changedFields: const ['parentFieldId', 'sortOrder'],
+      before: _fieldLogSnapshot(movingField),
+      after: _fieldLogSnapshot(movedField),
+    );
   }
 
   Future<void> updatePropertyAndValueForPerson({
@@ -432,6 +580,7 @@ class PersonalDatabaseActions {
     required PersonalDatabaseValueType type,
     required Object? value,
   }) async {
+    final before = await _findField(personId: personId, fieldId: fieldId);
     await updatePropertyDefinition(fieldId: fieldId, key: key, type: type);
     await _ref
         .read(personalDatabaseDaoProvider)
@@ -441,6 +590,17 @@ class PersonalDatabaseActions {
           type: type,
           jsonValue: _encodeValue(type: type, value: value),
         );
+    final after = await _findField(personId: personId, fieldId: fieldId);
+    await _recordPersonalDatabaseLog(
+      action: RevisionLogAction.update,
+      entityType: 'personalDatabaseValue',
+      entityId: '$personId:$fieldId',
+      entityLabel: after?.key ?? key,
+      summary: 'Updated personal database field ${after?.key ?? key}',
+      changedFields: const ['key', 'type', 'value'],
+      before: _fieldLogSnapshot(before),
+      after: _fieldLogSnapshot(after),
+    );
   }
 
   Future<void> updateRootFieldKey({
@@ -593,6 +753,19 @@ class PersonalDatabaseActions {
         fieldId: existingChild.id,
         rawValueOverride: value,
       );
+      final assignedField = await _findField(
+        personId: personId,
+        fieldId: existingChild.id,
+      );
+      await _recordPersonalDatabaseLog(
+        action: RevisionLogAction.create,
+        entityType: 'personalDatabaseAssignment',
+        entityId: '$personId:${existingChild.id}',
+        entityLabel: assignedField?.key ?? trimmedKey,
+        summary: 'Assigned child personal database field $trimmedKey',
+        changedFields: const ['assignment', 'value'],
+        after: _fieldLogSnapshot(assignedField),
+      );
       return existingChild.id;
     }
 
@@ -621,6 +794,16 @@ class PersonalDatabaseActions {
       personId: personId,
       fieldId: fieldId,
       rawValueOverride: value,
+    );
+    final createdField = await _findField(personId: personId, fieldId: fieldId);
+    await _recordPersonalDatabaseLog(
+      action: RevisionLogAction.create,
+      entityType: 'personalDatabaseField',
+      entityId: fieldId,
+      entityLabel: trimmedKey,
+      summary: 'Created child personal database field $trimmedKey',
+      changedFields: const ['key', 'type', 'value', 'parentFieldId'],
+      after: _fieldLogSnapshot(createdField),
     );
     return fieldId;
   }
@@ -786,6 +969,13 @@ class PersonalDatabaseActions {
     }
 
     return visit(fieldTree);
+  }
+
+  Future<PersonalDatabaseFieldNode?> _findLibraryField(String fieldId) async {
+    final library = await _ref
+        .read(personalDatabaseDaoProvider)
+        .getFieldLibrary();
+    return _findFieldInNodes(nodes: library, fieldId: fieldId);
   }
 
   PersonalDatabaseFieldNode? _findFieldInNodes({
@@ -1028,6 +1218,67 @@ class PersonalDatabaseActions {
     }
 
     throw StateError('Invalid JSON path segment');
+  }
+
+  Map<String, Object?>? _fieldLogSnapshot(PersonalDatabaseFieldNode? field) {
+    if (field == null) {
+      return null;
+    }
+    return {
+      'id': field.id,
+      'key': field.key,
+      'type': field.type.dbKey,
+      'isPublic': field.isPublic,
+      'parentFieldId': field.parentFieldId,
+      'sortOrder': field.sortOrder,
+      'rawJsonValue': field.rawJsonValue,
+      'value': field.value,
+    };
+  }
+
+  Map<String, Object?>? _fieldDefinitionLogSnapshot(
+    PersonalDatabaseField? field,
+  ) {
+    if (field == null) {
+      return null;
+    }
+    return {
+      'id': field.id,
+      'key': field.key,
+      'type': field.valueType,
+      'arrayElementType': field.arrayElementType,
+      'arrayElementTemplateJsonValue': field.arrayElementTemplateJsonValue,
+      'isPublic': field.isPublic,
+      'ownerPersonId': field.ownerPersonId,
+      'parentFieldId': field.parentFieldId,
+      'sortOrder': field.sortOrder,
+      'createdAt': field.createdAt.toIso8601String(),
+      'updatedAt': field.updatedAt.toIso8601String(),
+    };
+  }
+
+  Future<void> _recordPersonalDatabaseLog({
+    required String action,
+    required String entityType,
+    required String entityId,
+    required String summary,
+    required List<String> changedFields,
+    String? entityLabel,
+    Object? before,
+    Object? after,
+  }) {
+    return _ref
+        .read(revisionLogActionsProvider)
+        .record(
+          action: action,
+          entityType: entityType,
+          entityId: entityId,
+          entityLabel: entityLabel,
+          summary: summary,
+          changedFields: changedFields,
+          before: before,
+          after: after,
+        );
   }
 
   String _encodeValue({

@@ -103,6 +103,54 @@ void main() {
     );
   });
 
+  group('RevisionLogsDao', () {
+    test(
+      'inserts recent logs in reverse chronological order and clears them',
+      () async {
+        final firstHappenedAt = DateTime(2026, 6, 10, 21, 27, 22, 792);
+        final secondHappenedAt = DateTime(2026, 6, 10, 21, 28, 31, 547);
+
+        await database.revisionLogsDao.insertLog(
+          id: 'log-1',
+          action: 'create',
+          entityType: 'person',
+          entityId: 'person-1',
+          entityLabel: 'Maya',
+          summary: 'Created person Maya',
+          changedFieldsJson: '["name"]',
+          beforeJson: null,
+          afterJson: '{"name":"Maya"}',
+          happenedAt: firstHappenedAt,
+        );
+        await database.revisionLogsDao.insertLog(
+          id: 'log-2',
+          action: 'update',
+          entityType: 'todo',
+          entityId: 'todo-1',
+          entityLabel: 'Plan trip',
+          summary: 'Updated todo Plan trip',
+          changedFieldsJson: '["title","starred"]',
+          beforeJson: '{"title":"Plan"}',
+          afterJson: '{"title":"Plan trip","starred":true}',
+          happenedAt: secondHappenedAt,
+        );
+
+        final logs = await database.revisionLogsDao.getRecentLogs();
+
+        expect(logs.map((log) => log.id), ['log-2', 'log-1']);
+        expect(logs.first.happenedAt, secondHappenedAt);
+        expect(logs.first.beforeJson, '{"title":"Plan"}');
+        expect(logs.first.afterJson, '{"title":"Plan trip","starred":true}');
+        expect(logs.last.changedFieldsJson, '["name"]');
+
+        final deletedRows = await database.revisionLogsDao.clearLogs();
+
+        expect(deletedRows, 2);
+        expect(await database.revisionLogsDao.getRecentLogs(), isEmpty);
+      },
+    );
+  });
+
   group('TodosDao', () {
     setUp(() async {
       await database.peopleDao.createPerson(

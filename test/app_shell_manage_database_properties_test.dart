@@ -18,6 +18,7 @@ class _AppShellManageDatabasePropertiesAssetLoader extends AssetLoader {
         'mainPage': '主頁',
         'manageDatabaseProperties': '管理資料庫屬性',
         'mediaLibrary': '媒體資料管理',
+        'revisionLog': '修改紀錄',
         'settings': '設定',
         'feedback': '意見回饋',
       },
@@ -42,6 +43,29 @@ class _AppShellManageDatabasePropertiesAssetLoader extends AssetLoader {
         'audioTitle': '音訊',
         'videoTitle': '影片',
         'imageTitle': '圖片',
+      },
+    },
+    'revisionLog': {
+      'title': '修改紀錄',
+      'emptyTitle': '還沒有修改紀錄',
+      'emptyBody': '資料修改後會顯示在這裡。',
+      'closeTooltip': '關閉修改紀錄',
+      'clearTooltip': '清空紀錄',
+      'clearDialog': {
+        'title': '清空修改紀錄',
+        'body': '確定要清空所有修改紀錄嗎？',
+        'cancel': '取消',
+        'confirm': '清空',
+      },
+      'details': {
+        'title': 'Request Details',
+        'time': 'Time',
+        'entity': 'Entity',
+        'action': 'Action',
+        'summary': 'Summary',
+        'changedFields': 'Changed Fields',
+        'before': 'Before',
+        'after': 'After',
       },
     },
     'common': {'cancel': '取消'},
@@ -180,6 +204,67 @@ void main() {
 
     expect(find.text('媒體資料管理'), findsWidgets);
     expect(find.byType(SearchBar), findsOneWidget);
+
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
+    await tester.pump(const Duration(milliseconds: 1));
+  });
+
+  testWidgets('drawer can navigate to revision log page', (tester) async {
+    router.go('/');
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(database),
+          peopleProvider.overrideWith((ref) => Stream.value(const [])),
+          personOpenTodoCountProvider.overrideWith((ref, personId) {
+            return Stream.value(0);
+          }),
+          personPreviewTodoProvider.overrideWith((ref, personId) {
+            return Stream.value(null);
+          }),
+        ],
+        child: EasyLocalization(
+          supportedLocales: const [Locale('zh', 'TW'), Locale('en')],
+          path: 'unused',
+          assetLoader: const _AppShellManageDatabasePropertiesAssetLoader(),
+          fallbackLocale: const Locale('zh', 'TW'),
+          startLocale: const Locale('zh', 'TW'),
+          child: Builder(
+            builder: (context) {
+              return MaterialApp.router(
+                supportedLocales: context.supportedLocales,
+                localizationsDelegates: context.localizationDelegates,
+                locale: context.locale,
+                routerConfig: router,
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('開啟側邊選單'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('修改紀錄'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('修改紀錄'), findsWidgets);
+    expect(find.text('還沒有修改紀錄'), findsOneWidget);
+    expect(find.byTooltip('關閉修改紀錄'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('關閉修改紀錄'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('還沒有修改紀錄'), findsNothing);
+    expect(find.text('還沒有朋友，點右下角新增第一位。'), findsOneWidget);
 
     await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
     await tester.pump();
