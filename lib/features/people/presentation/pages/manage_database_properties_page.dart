@@ -3,7 +3,6 @@ import 'dart:ui';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/utils/useful_extension.dart';
@@ -1133,7 +1132,7 @@ class _PropertyTile extends StatelessWidget {
                     duration: const Duration(milliseconds: 220),
                     curve: Curves.easeOutCubic,
                     child: Icon(
-                      LucideIcons.chevronRight,
+                      Icons.chevron_right_rounded,
                       size: 18,
                       color: colorScheme.outline,
                     ),
